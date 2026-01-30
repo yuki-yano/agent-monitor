@@ -5,7 +5,15 @@ import type {
   SessionSummary,
   WsServerMessage,
 } from "@agent-monitor/shared";
-import React from "react";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 type SessionContextValue = {
   token: string | null;
@@ -22,7 +30,7 @@ type SessionContextValue = {
   getSessionDetail: (paneId: string) => SessionDetail | null;
 };
 
-const SessionContext = React.createContext<SessionContextValue | null>(null);
+const SessionContext = createContext<SessionContextValue | null>(null);
 
 const TOKEN_KEY = "agent-monitor-token";
 
@@ -48,20 +56,20 @@ const createReqId = () =>
     ? crypto.randomUUID()
     : `req_${Math.random().toString(16).slice(2)}`;
 
-export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [token, setToken] = React.useState<string | null>(() => {
+export const SessionProvider = ({ children }: { children: ReactNode }) => {
+  const [token, setToken] = useState<string | null>(() => {
     return localStorage.getItem(TOKEN_KEY);
   });
-  const [sessions, setSessions] = React.useState<SessionSummary[]>([]);
-  const [connected, setConnected] = React.useState(false);
-  const [readOnly, setReadOnly] = React.useState(false);
-  const wsRef = React.useRef<WebSocket | null>(null);
-  const ensureServerReadyRef = React.useRef<() => void>(() => {});
-  const readyRef = React.useRef(false);
-  const connectingRef = React.useRef(false);
-  const readyAttemptRef = React.useRef(0);
-  const readyTimerRef = React.useRef<number | null>(null);
-  const pending = React.useRef(
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [connected, setConnected] = useState(false);
+  const [readOnly, setReadOnly] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
+  const ensureServerReadyRef = useRef<() => void>(() => {});
+  const readyRef = useRef(false);
+  const connectingRef = useRef(false);
+  const readyAttemptRef = useRef(0);
+  const readyTimerRef = useRef<number | null>(null);
+  const pending = useRef(
     new Map<
       string,
       {
@@ -70,16 +78,16 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     >(),
   );
-  const reconnectAttempt = React.useRef(0);
+  const reconnectAttempt = useRef(0);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const urlToken = readTokenFromUrl();
     if (urlToken && urlToken !== token) {
       setToken(urlToken);
     }
   }, [token]);
 
-  const refreshSessions = React.useCallback(async () => {
+  const refreshSessions = useCallback(async () => {
     if (!token) return;
     const res = await fetch("/api/sessions", {
       headers: { Authorization: `Bearer ${token}` },
@@ -91,7 +99,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setSessions(data.sessions);
   }, [token]);
 
-  const updateSession = React.useCallback((session: SessionSummary) => {
+  const updateSession = useCallback((session: SessionSummary) => {
     setSessions((prev) => {
       const index = prev.findIndex((item) => item.paneId === session.paneId);
       if (index === -1) {
@@ -103,11 +111,11 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   }, []);
 
-  const removeSession = React.useCallback((paneId: string) => {
+  const removeSession = useCallback((paneId: string) => {
     setSessions((prev) => prev.filter((item) => item.paneId !== paneId));
   }, []);
 
-  const handleWsMessage = React.useCallback(
+  const handleWsMessage = useCallback(
     (message: WsServerMessage) => {
       if (message.type === "sessions.snapshot") {
         setSessions(message.data.sessions);
@@ -135,7 +143,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [removeSession, updateSession],
   );
 
-  const connectWs = React.useCallback(() => {
+  const connectWs = useCallback(() => {
     if (!token) return;
     if (connectingRef.current) return;
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
@@ -175,7 +183,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   }, [handleWsMessage, token]);
 
-  const ensureServerReady = React.useCallback(async () => {
+  const ensureServerReady = useCallback(async () => {
     if (!token) return;
     if (readyRef.current) {
       connectWs();
@@ -203,11 +211,11 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }, delay);
   }, [connectWs, refreshSessions, token]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     ensureServerReadyRef.current = ensureServerReady;
   }, [ensureServerReady]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
         ensureServerReady();
@@ -231,7 +239,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [ensureServerReady]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!token) return;
     readyRef.current = false;
     ensureServerReady();
@@ -244,14 +252,14 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [ensureServerReady, token]);
 
-  const sendWs = React.useCallback((payload: Record<string, unknown>) => {
+  const sendWs = useCallback((payload: Record<string, unknown>) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       throw new Error("WebSocket not connected");
     }
     wsRef.current.send(JSON.stringify(payload));
   }, []);
 
-  const sendRequest = React.useCallback(
+  const sendRequest = useCallback(
     (payload: Record<string, unknown>) => {
       const reqId = createReqId();
       return new Promise<ScreenResponse | CommandResponse>((resolve, reject) => {
@@ -262,7 +270,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [sendWs],
   );
 
-  const requestScreen = React.useCallback(
+  const requestScreen = useCallback(
     (paneId: string, options: { lines?: number; mode?: "text" | "image" }) => {
       return sendRequest({
         type: "screen.request",
@@ -272,7 +280,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [sendRequest],
   );
 
-  const sendText = React.useCallback(
+  const sendText = useCallback(
     (paneId: string, text: string, enter = true) => {
       return sendRequest({
         type: "send.text",
@@ -282,7 +290,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [sendRequest],
   );
 
-  const sendKeys = React.useCallback(
+  const sendKeys = useCallback(
     (paneId: string, keys: string[]) => {
       return sendRequest({
         type: "send.keys",
@@ -292,7 +300,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [sendRequest],
   );
 
-  const getSessionDetail = React.useCallback(
+  const getSessionDetail = useCallback(
     (paneId: string) => {
       const session = sessions.find((item) => item.paneId === paneId);
       return session ? (session as SessionDetail) : null;
@@ -320,7 +328,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 };
 
 export const useSessions = () => {
-  const context = React.useContext(SessionContext);
+  const context = useContext(SessionContext);
   if (!context) {
     throw new Error("SessionContext not found");
   }

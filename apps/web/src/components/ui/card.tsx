@@ -1,8 +1,8 @@
-import React from "react";
+import type { HTMLAttributes } from "react";
 
 import { cn } from "@/lib/cn";
 
-type CardProps = React.HTMLAttributes<HTMLDivElement>;
+type CardProps = HTMLAttributes<HTMLDivElement>;
 
 const Card = ({ className, ...props }: CardProps) => {
   return (

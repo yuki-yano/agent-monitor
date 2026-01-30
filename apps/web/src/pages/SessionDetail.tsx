@@ -1,6 +1,14 @@
 import { defaultDangerCommandPatterns, defaultDangerKeys } from "@agent-monitor/shared";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CornerDownLeft } from "lucide-react";
-import React from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link, useParams } from "react-router-dom";
 import { useStickToBottom } from "use-stick-to-bottom";
 
@@ -51,7 +59,7 @@ const KeyButton = ({
   disabled,
   ariaLabel,
 }: {
-  label: React.ReactNode;
+  label: ReactNode;
   onClick: () => void;
   danger?: boolean;
   disabled?: boolean;
@@ -75,25 +83,25 @@ export const SessionDetailPage = () => {
   const { connected, getSessionDetail, requestScreen, sendText, sendKeys, readOnly } =
     useSessions();
   const session = getSessionDetail(paneId);
-  const [mode, setMode] = React.useState<"text" | "image">("text");
-  const [screen, setScreen] = React.useState<string>("");
-  const [imageBase64, setImageBase64] = React.useState<string | null>(null);
-  const [fallbackReason, setFallbackReason] = React.useState<string | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-  const [textInput, setTextInput] = React.useState("");
-  const [autoEnter, setAutoEnter] = React.useState(true);
-  const [shiftHeld, setShiftHeld] = React.useState(false);
-  const [ctrlHeld, setCtrlHeld] = React.useState(false);
-  const refreshInFlightRef = React.useRef(false);
-  const renderedScreen = React.useMemo(() => renderAnsi(screen || "No screen data"), [screen]);
+  const [mode, setMode] = useState<"text" | "image">("text");
+  const [screen, setScreen] = useState<string>("");
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [fallbackReason, setFallbackReason] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [textInput, setTextInput] = useState("");
+  const [autoEnter, setAutoEnter] = useState(true);
+  const [shiftHeld, setShiftHeld] = useState(false);
+  const [ctrlHeld, setCtrlHeld] = useState(false);
+  const refreshInFlightRef = useRef(false);
+  const renderedScreen = useMemo(() => renderAnsi(screen || "No screen data"), [screen]);
   const { scrollRef, contentRef, stopScroll } = useStickToBottom({
     initial: "instant",
     resize: "instant",
   });
-  const prevModeRef = React.useRef<"text" | "image">(mode);
-  const snapToBottomRef = React.useRef(false);
+  const prevModeRef = useRef<"text" | "image">(mode);
+  const snapToBottomRef = useRef(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const prevMode = prevModeRef.current;
     if (prevMode === "image" && mode === "text") {
       snapToBottomRef.current = true;
@@ -101,7 +109,7 @@ export const SessionDetailPage = () => {
     prevModeRef.current = mode;
   }, [mode]);
 
-  React.useLayoutEffect(() => {
+  useLayoutEffect(() => {
     if (!snapToBottomRef.current || mode !== "text") {
       return;
     }
@@ -117,7 +125,7 @@ export const SessionDetailPage = () => {
     snapToBottomRef.current = false;
   }, [mode, screen, renderedScreen, scrollRef, stopScroll]);
 
-  const refreshScreen = React.useCallback(async () => {
+  const refreshScreen = useCallback(async () => {
     if (!paneId) return;
     if (!connected) {
       return;
@@ -148,11 +156,11 @@ export const SessionDetailPage = () => {
     }
   }, [connected, mode, paneId, requestScreen]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     refreshScreen();
   }, [refreshScreen]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!paneId || !connected) {
       return;
     }
@@ -166,7 +174,7 @@ export const SessionDetailPage = () => {
     };
   }, [connected, mode, paneId, refreshScreen]);
 
-  const mapKeyWithModifiers = React.useCallback(
+  const mapKeyWithModifiers = useCallback(
     (key: string) => {
       if (shiftHeld && key === "Tab") {
         return "BTab";

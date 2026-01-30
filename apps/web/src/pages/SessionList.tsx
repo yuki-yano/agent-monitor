@@ -1,4 +1,4 @@
-import React from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
@@ -31,10 +31,10 @@ const formatPath = (value: string | null) => {
 
 export const SessionListPage = () => {
   const { sessions, connected, readOnly, refreshSessions } = useSessions();
-  const [query, setQuery] = React.useState("");
-  const [filter, setFilter] = React.useState("ALL");
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("ALL");
 
-  const filtered = React.useMemo(() => {
+  const filtered = useMemo(() => {
     const lower = query.trim().toLowerCase();
     return sessions.filter((session) => {
       const matchesFilter = filter === "ALL" || session.state === filter;

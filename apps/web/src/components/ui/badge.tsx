@@ -1,8 +1,8 @@
-import React from "react";
+import type { HTMLAttributes } from "react";
 
 import { cn } from "@/lib/cn";
 
-type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
+type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
   tone?: "running" | "waiting" | "permission" | "done" | "unknown";
 };
 

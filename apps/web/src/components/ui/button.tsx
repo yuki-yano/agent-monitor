@@ -1,5 +1,5 @@
 import { cva } from "class-variance-authority";
-import React from "react";
+import { type ButtonHTMLAttributes, forwardRef } from "react";
 
 import { cn } from "@/lib/cn";
 
@@ -25,12 +25,12 @@ const buttonVariants = cva(
   },
 );
 
-type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "ghost" | "danger";
   size?: "sm" | "md" | "lg";
 };
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, ...props }, ref) => {
     return (
       <button ref={ref} className={cn(buttonVariants({ variant, size }), className)} {...props} />
