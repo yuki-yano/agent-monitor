@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import { promisify } from "node:util";
 
+import { markPaneFocus } from "./activity-suppressor.js";
+
 const execFileAsync = promisify(execFile);
 
 const isMacOS = () => process.platform === "darwin";
@@ -278,6 +280,7 @@ export const captureTerminalScreen = async (tty: string, options: CaptureOptions
   await focusTerminalApp(app.appName);
   await wait(150);
   if (options.paneId) {
+    markPaneFocus(options.paneId);
     await focusTmuxPane(options.paneId, options.tmux);
     await wait(120);
   }

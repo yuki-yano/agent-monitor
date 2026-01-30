@@ -21,6 +21,7 @@ import {
   type TmuxAdapter,
 } from "@agent-monitor/tmux";
 
+import { shouldSuppressActivity } from "./activity-suppressor.js";
 import {
   createJsonlTailer,
   createLogActivityPoller,
@@ -376,7 +377,7 @@ export const createSessionMonitor = (adapter: TmuxAdapter, config: AgentMonitorC
       }
 
       const windowActivityAt = toIsoFromEpochSeconds(pane.windowActivity);
-      if (windowActivityAt && (!pipeAttached || pipeConflict)) {
+      if (windowActivityAt && !shouldSuppressActivity(pane.paneId, windowActivityAt)) {
         updateOutputAt(windowActivityAt);
       }
 
