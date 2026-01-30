@@ -62,6 +62,19 @@ export const ensureConfig = (overrides?: Partial<AgentMonitorConfig>) => {
       next = { ...existing, port: defaultConfig.port };
       migrated = true;
     }
+    if (existing.screen?.image?.enabled === false && defaultConfig.screen.image.enabled === true) {
+      next = {
+        ...next,
+        screen: {
+          ...next.screen,
+          image: {
+            ...next.screen.image,
+            enabled: true,
+          },
+        },
+      };
+      migrated = true;
+    }
     if (migrated) {
       saveConfig(next);
     }
