@@ -2,12 +2,12 @@ import { defaultDangerCommandPatterns, defaultDangerKeys } from "@agent-monitor/
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from "lucide-react";
 import React from "react";
 import { Link, useParams } from "react-router-dom";
+import { useStickToBottom } from "use-stick-to-bottom";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { renderAnsi } from "@/lib/ansi";
-import { isNearBottom } from "@/lib/scroll";
 import { useSessions } from "@/state/session-context";
 
 const stateTone = (state: string) => {
@@ -80,12 +80,12 @@ export const SessionDetailPage = () => {
   const [fallbackReason, setFallbackReason] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [textInput, setTextInput] = React.useState("");
+  const [autoEnter, setAutoEnter] = React.useState(true);
   const [shiftHeld, setShiftHeld] = React.useState(false);
   const [ctrlHeld, setCtrlHeld] = React.useState(false);
-  const screenRef = React.useRef<HTMLDivElement | null>(null);
   const refreshInFlightRef = React.useRef(false);
-  const autoScrollRef = React.useRef(true);
   const renderedScreen = React.useMemo(() => renderAnsi(screen || "No screen data"), [screen]);
+  const { scrollRef, contentRef } = useStickToBottom({ initial: "instant", resize: "instant" });
 
   const refreshScreen = React.useCallback(async () => {
     if (!paneId) return;
@@ -136,29 +136,6 @@ export const SessionDetailPage = () => {
     };
   }, [connected, mode, paneId, refreshScreen]);
 
-  React.useEffect(() => {
-    if (mode !== "text") return;
-    const el = screenRef.current;
-    if (!el) return;
-    if (autoScrollRef.current) {
-      el.scrollTop = el.scrollHeight;
-    }
-  }, [mode, screen]);
-
-  React.useEffect(() => {
-    if (mode !== "text") return;
-    const el = screenRef.current;
-    if (!el) return;
-    const handleScroll = () => {
-      autoScrollRef.current = isNearBottom(el.scrollHeight, el.scrollTop, el.clientHeight);
-    };
-    handleScroll();
-    el.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      el.removeEventListener("scroll", handleScroll);
-    };
-  }, [mode]);
-
   const mapKeyWithModifiers = React.useCallback(
     (key: string) => {
       if (shiftHeld && key === "Tab") {
@@ -205,12 +182,11 @@ export const SessionDetailPage = () => {
       const confirmed = window.confirm("Dangerous command detected. Send anyway?");
       if (!confirmed) return;
     }
-    const result = await sendText(paneId, textInput, false);
+    const result = await sendText(paneId, textInput, autoEnter);
     if (!result.ok) {
       setError(result.error?.message ?? "Failed to send text");
       return;
     }
-    await handleSendKey("Enter");
     setTextInput("");
   };
 
@@ -302,14 +278,16 @@ export const SessionDetailPage = () => {
               </div>
             ) : (
               <div
-                ref={screenRef}
+                ref={scrollRef}
                 className="w-full min-w-0 max-w-full overflow-x-auto overflow-y-auto"
                 style={{ maxHeight: "60vh" }}
               >
-                <pre
-                  className="text-latte-text w-max whitespace-pre font-mono text-xs"
-                  dangerouslySetInnerHTML={{ __html: renderedScreen }}
-                />
+                <div ref={contentRef}>
+                  <pre
+                    className="text-latte-text w-max whitespace-pre font-mono text-xs"
+                    dangerouslySetInnerHTML={{ __html: renderedScreen }}
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -318,18 +296,27 @@ export const SessionDetailPage = () => {
         <div className="flex flex-col gap-6">
           {!readOnly ? (
             <Card className="space-y-3">
-              <div className="flex flex-wrap items-start gap-3">
+              <div className="flex items-start gap-3">
                 <textarea
                   value={textInput}
                   placeholder="Type a command…"
                   onChange={(event) => setTextInput(event.target.value)}
                   rows={2}
-                  className="border-latte-surface2 text-latte-text focus:border-latte-lavender focus:ring-latte-lavender/30 min-h-[64px] w-full flex-1 resize-y rounded-2xl border bg-white/70 px-4 py-2 text-sm shadow-sm outline-none transition focus:ring-2"
+                  className="border-latte-surface2 text-latte-text focus:border-latte-lavender focus:ring-latte-lavender/30 min-h-[64px] min-w-0 flex-1 resize-y rounded-2xl border bg-white/70 px-4 py-2 text-sm shadow-sm outline-none transition focus:ring-2"
                 />
-                <Button onClick={handleSendText} className="self-start">
+                <Button onClick={handleSendText} className="shrink-0 self-start">
                   Send
                 </Button>
               </div>
+              <label className="text-latte-subtext0 flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={autoEnter}
+                  onChange={(event) => setAutoEnter(event.target.checked)}
+                  className="border-latte-surface2 text-latte-lavender focus:ring-latte-lavender/40 accent-latte-lavender h-4 w-4 rounded"
+                />
+                Auto-enter after send
+              </label>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Button

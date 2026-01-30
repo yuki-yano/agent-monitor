@@ -163,7 +163,11 @@ export const configSchema = z.object({
     ttyCacheTtlMs: z.number(),
     ttyCacheMax: z.number(),
   }),
-  input: z.object({ maxTextLength: z.number() }),
+  input: z.object({
+    maxTextLength: z.number(),
+    enterKey: z.string().default("C-m"),
+    enterDelayMs: z.number().default(100),
+  }),
   screen: z.object({
     mode: z.enum(["text", "image"]),
     defaultLines: z.number(),

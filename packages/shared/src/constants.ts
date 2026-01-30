@@ -79,7 +79,7 @@ export const defaultConfig: AgentMonitorConfig = {
     ttyCacheTtlMs: 60000,
     ttyCacheMax: 200,
   },
-  input: { maxTextLength: 2000 },
+  input: { maxTextLength: 2000, enterKey: "C-m", enterDelayMs: 100 },
   screen: {
     mode: "text",
     defaultLines: 2000,

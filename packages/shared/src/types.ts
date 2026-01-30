@@ -162,7 +162,7 @@ export type AgentMonitorConfig = {
     ttyCacheTtlMs: number;
     ttyCacheMax: number;
   };
-  input: { maxTextLength: number };
+  input: { maxTextLength: number; enterKey: string; enterDelayMs: number };
   screen: {
     mode: "text" | "image";
     defaultLines: number;
