@@ -22,6 +22,28 @@ const stateTone = (state: string) => {
   }
 };
 
+const agentTone = (agent: string) => {
+  switch (agent) {
+    case "codex":
+      return "codex" as const;
+    case "claude":
+      return "claude" as const;
+    default:
+      return "unknown" as const;
+  }
+};
+
+const agentLabel = (agent: string) => {
+  switch (agent) {
+    case "codex":
+      return "CODEX";
+    case "claude":
+      return "CLAUDE";
+    default:
+      return "UNKNOWN";
+  }
+};
+
 const formatPath = (value: string | null) => {
   if (!value) return "—";
   const match = value.match(/^\/(Users|home)\/[^/]+(\/.*)?$/);
@@ -126,7 +148,10 @@ export const SessionListPage = () => {
           >
             <Card className="hover:shadow-glow transition hover:-translate-y-1">
               <div className="flex items-center justify-between">
-                <Badge tone={stateTone(session.state)}>{session.state}</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge tone={agentTone(session.agent)}>{agentLabel(session.agent)}</Badge>
+                  <Badge tone={stateTone(session.state)}>{session.state}</Badge>
+                </div>
                 {session.pipeConflict && (
                   <span className="bg-latte-red/15 text-latte-red rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em]">
                     Pipe conflict
@@ -144,9 +169,8 @@ export const SessionListPage = () => {
                   <p className="text-latte-overlay1 text-xs">{session.lastMessage}</p>
                 )}
               </div>
-              <div className="text-latte-overlay1 mt-4 flex items-center justify-between text-xs">
+              <div className="text-latte-overlay1 mt-4 text-xs">
                 <span>Pane {session.paneId}</span>
-                <span>{session.agent}</span>
               </div>
             </Card>
           </Link>

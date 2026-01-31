@@ -881,12 +881,18 @@ export const SessionDetailPage = () => {
     ));
 
   const tabLabel = shiftHeld ? "Shift+Tab" : "Tab";
+  const agentTone =
+    session?.agent === "codex"
+      ? "codex"
+      : session?.agent === "claude"
+        ? "claude"
+        : "unknown";
   const agentLabel =
     session?.agent === "codex"
       ? "CODEX"
       : session?.agent === "claude"
         ? "CLAUDE"
-        : (session?.agent?.toUpperCase?.() ?? "UNKNOWN");
+        : "UNKNOWN";
 
   if (!session) {
     return (
@@ -919,13 +925,8 @@ export const SessionDetailPage = () => {
             </h1>
             <p className="text-latte-subtext0 text-sm">{formatPath(session.currentPath)}</p>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <div className="text-latte-subtext1 flex items-center gap-2 text-[10px] uppercase tracking-[0.3em]">
-              Agent
-              <span className="border-latte-lavender/35 bg-latte-lavender/10 text-latte-lavender inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold tracking-[0.2em]">
-                {agentLabel}
-              </span>
-            </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone={agentTone}>{agentLabel}</Badge>
             <Badge tone={stateTone(session.state)}>{session.state}</Badge>
           </div>
         </div>
