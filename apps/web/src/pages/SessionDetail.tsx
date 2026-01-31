@@ -590,7 +590,11 @@ export const SessionDetailPage = () => {
                   aria-controls="session-controls"
                   className="text-latte-subtext0 flex items-center gap-2 text-[11px] uppercase tracking-[0.32em]"
                 >
-                  {controlsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {controlsOpen ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
                   Keys
                 </Button>
               </div>
