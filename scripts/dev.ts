@@ -17,6 +17,7 @@ const getFlagValue = (flag: string) => {
 
 const pnpmCmd = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const isPublic = hasFlag("--public");
+const isTailscale = hasFlag("--tailscale");
 const serverPort = getFlagValue("--server-port");
 
 const stripAnsi = (input: string) => {
@@ -68,6 +69,9 @@ const startServer = (webPort: number) => {
   const args = ["--filter", "@tmux-agent-monitor/server", "dev", "--"];
   if (isPublic) {
     args.push("--public");
+  }
+  if (isTailscale) {
+    args.push("--tailscale");
   }
   if (serverPort) {
     args.push("--port", serverPort);
