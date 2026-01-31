@@ -105,6 +105,33 @@ const diffStatusClass = (status: string) => {
   }
 };
 
+const buildDiffSummarySignature = (summary: DiffSummary) => {
+  const files = summary.files
+    .map((file) => ({
+      path: file.path,
+      status: file.status,
+      staged: file.staged,
+      renamedFrom: file.renamedFrom ?? null,
+      additions: file.additions ?? null,
+      deletions: file.deletions ?? null,
+    }))
+    .sort((a, b) => {
+      const pathCompare = a.path.localeCompare(b.path);
+      if (pathCompare !== 0) return pathCompare;
+      const statusCompare = a.status.localeCompare(b.status);
+      if (statusCompare !== 0) return statusCompare;
+      if (a.staged !== b.staged) return a.staged ? 1 : -1;
+      return (a.renamedFrom ?? "").localeCompare(b.renamedFrom ?? "");
+    });
+  return JSON.stringify({
+    repoRoot: summary.repoRoot ?? null,
+    rev: summary.rev ?? null,
+    truncated: summary.truncated ?? false,
+    reason: summary.reason ?? null,
+    files,
+  });
+};
+
 const KeyButton = ({
   label,
   onClick,
@@ -166,6 +193,7 @@ export const SessionDetailPage = () => {
   const [diffOpen, setDiffOpen] = useState<Record<string, boolean>>({});
   const [diffLoadingFiles, setDiffLoadingFiles] = useState<Record<string, boolean>>({});
   const diffOpenRef = useRef<Record<string, boolean>>({});
+  const diffSignatureRef = useRef<string | null>(null);
   const modeLoadedRef = useRef(modeLoaded);
   const modeSwitchRef = useRef<ScreenMode | null>(null);
   const refreshInFlightRef = useRef<null | { id: number; mode: ScreenMode }>(null);
@@ -272,12 +300,8 @@ export const SessionDetailPage = () => {
     };
   }, [connected, mode, paneId, refreshScreen]);
 
-  const loadDiffSummary = useCallback(async () => {
-    if (!paneId) return;
-    setDiffLoading(true);
-    setDiffError(null);
-    try {
-      const summary = await requestDiffSummary(paneId, { force: true });
+  const applyDiffSummary = useCallback(
+    async (summary: DiffSummary, refreshOpenFiles: boolean) => {
       setDiffSummary(summary);
       setDiffFiles({});
       const fileSet = new Set(summary.files.map((file) => file.path));
@@ -296,7 +320,7 @@ export const SessionDetailPage = () => {
       const openTargets = Object.entries(diffOpenRef.current).filter(
         ([path, value]) => value && fileSet.has(path),
       );
-      if (openTargets.length > 0) {
+      if (openTargets.length > 0 && refreshOpenFiles) {
         await Promise.all(
           openTargets.map(async ([path]) => {
             try {
@@ -308,12 +332,38 @@ export const SessionDetailPage = () => {
           }),
         );
       }
+    },
+    [paneId, requestDiffFile],
+  );
+
+  const loadDiffSummary = useCallback(async () => {
+    if (!paneId) return;
+    setDiffLoading(true);
+    setDiffError(null);
+    try {
+      const summary = await requestDiffSummary(paneId, { force: true });
+      await applyDiffSummary(summary, true);
     } catch (err) {
       setDiffError(err instanceof Error ? err.message : "Failed to load diff summary");
     } finally {
       setDiffLoading(false);
     }
-  }, [paneId, requestDiffFile, requestDiffSummary]);
+  }, [applyDiffSummary, paneId, requestDiffSummary]);
+
+  const pollDiffSummary = useCallback(async () => {
+    if (!paneId) return;
+    try {
+      const summary = await requestDiffSummary(paneId, { force: true });
+      const signature = buildDiffSummarySignature(summary);
+      if (signature === diffSignatureRef.current) {
+        return;
+      }
+      setDiffError(null);
+      await applyDiffSummary(summary, true);
+    } catch {
+      return;
+    }
+  }, [applyDiffSummary, paneId, requestDiffSummary]);
 
   const loadDiffFile = useCallback(
     async (path: string) => {
@@ -337,15 +387,33 @@ export const SessionDetailPage = () => {
   }, [loadDiffSummary]);
 
   useEffect(() => {
+    if (!paneId || !connected) {
+      return;
+    }
+    const intervalId = window.setInterval(() => {
+      if (document.hidden) return;
+      void pollDiffSummary();
+    }, 60_000);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [connected, paneId, pollDiffSummary]);
+
+  useEffect(() => {
     setDiffSummary(null);
     setDiffFiles({});
     setDiffOpen({});
     setDiffError(null);
+    diffSignatureRef.current = null;
   }, [paneId]);
 
   useEffect(() => {
     diffOpenRef.current = diffOpen;
   }, [diffOpen]);
+
+  useEffect(() => {
+    diffSignatureRef.current = diffSummary ? buildDiffSummarySignature(diffSummary) : null;
+  }, [diffSummary]);
 
   useEffect(() => {
     modeLoadedRef.current = modeLoaded;
