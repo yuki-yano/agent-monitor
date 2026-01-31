@@ -70,6 +70,35 @@ export type SessionDetail = SessionSummary & {
   panePid: number | null;
 };
 
+export type DiffFileStatus = "A" | "M" | "D" | "R" | "C" | "U" | "?";
+
+export type DiffSummaryFile = {
+  path: string;
+  status: DiffFileStatus;
+  staged: boolean;
+  renamedFrom?: string;
+  additions?: number | null;
+  deletions?: number | null;
+};
+
+export type DiffSummary = {
+  repoRoot: string | null;
+  rev: string | null;
+  generatedAt: string;
+  files: DiffSummaryFile[];
+  truncated?: boolean;
+  reason?: "not_git" | "cwd_unknown" | "error";
+};
+
+export type DiffFile = {
+  path: string;
+  status: DiffFileStatus;
+  patch: string | null;
+  binary: boolean;
+  truncated?: boolean;
+  rev: string | null;
+};
+
 export type ApiErrorCode =
   | "INVALID_PANE"
   | "INVALID_PAYLOAD"

@@ -5,7 +5,11 @@ export const encodePaneId = (paneId: string): string => {
 };
 
 export const decodePaneId = (paneIdEncoded: string): string => {
-  return decodeURIComponent(paneIdEncoded);
+  try {
+    return decodeURIComponent(paneIdEncoded);
+  } catch {
+    return paneIdEncoded;
+  }
 };
 
 export const sanitizeServerKey = (value: string): string => {

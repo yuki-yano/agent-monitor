@@ -21,6 +21,11 @@ describe("encode/decode paneId", () => {
     const encoded = encodePaneId(original);
     expect(decodePaneId(encoded)).toBe(original);
   });
+
+  it("returns raw value when decoding fails", () => {
+    const original = "%8";
+    expect(decodePaneId(original)).toBe(original);
+  });
 });
 
 describe("sanitizeServerKey", () => {

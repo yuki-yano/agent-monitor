@@ -1,4 +1,9 @@
-import { defaultDangerCommandPatterns, defaultDangerKeys } from "@agent-monitor/shared";
+import {
+  defaultDangerCommandPatterns,
+  defaultDangerKeys,
+  type DiffFile,
+  type DiffSummary,
+} from "@agent-monitor/shared";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CornerDownLeft } from "lucide-react";
 import {
   type ReactNode,
@@ -52,6 +57,40 @@ const isDangerousText = (text: string) => {
   );
 };
 
+const diffLineClass = (line: string) => {
+  if (line.startsWith("+++ ") || line.startsWith("--- ")) {
+    return "text-latte-subtext0";
+  }
+  if (line.startsWith("@@")) {
+    return "text-latte-lavender";
+  }
+  if (line.startsWith("+")) {
+    return "text-latte-green";
+  }
+  if (line.startsWith("-")) {
+    return "text-latte-red";
+  }
+  return "text-latte-text";
+};
+
+const diffStatusClass = (status: string) => {
+  switch (status) {
+    case "A":
+      return "text-latte-green";
+    case "M":
+      return "text-latte-yellow";
+    case "D":
+      return "text-latte-red";
+    case "R":
+    case "C":
+      return "text-latte-lavender";
+    case "U":
+      return "text-latte-peach";
+    default:
+      return "text-latte-subtext0";
+  }
+};
+
 const KeyButton = ({
   label,
   onClick,
@@ -80,8 +119,16 @@ const KeyButton = ({
 export const SessionDetailPage = () => {
   const { paneId: paneIdEncoded } = useParams();
   const paneId = paneIdEncoded ?? "";
-  const { connected, getSessionDetail, requestScreen, sendText, sendKeys, readOnly } =
-    useSessions();
+  const {
+    connected,
+    getSessionDetail,
+    requestDiffFile,
+    requestDiffSummary,
+    requestScreen,
+    sendText,
+    sendKeys,
+    readOnly,
+  } = useSessions();
   const session = getSessionDetail(paneId);
   const [mode, setMode] = useState<"text" | "image">("text");
   const [screen, setScreen] = useState<string>("");
@@ -92,6 +139,13 @@ export const SessionDetailPage = () => {
   const [autoEnter, setAutoEnter] = useState(true);
   const [shiftHeld, setShiftHeld] = useState(false);
   const [ctrlHeld, setCtrlHeld] = useState(false);
+  const [diffSummary, setDiffSummary] = useState<DiffSummary | null>(null);
+  const [diffError, setDiffError] = useState<string | null>(null);
+  const [diffLoading, setDiffLoading] = useState(false);
+  const [diffFiles, setDiffFiles] = useState<Record<string, DiffFile>>({});
+  const [diffOpen, setDiffOpen] = useState<Record<string, boolean>>({});
+  const [diffLoadingFiles, setDiffLoadingFiles] = useState<Record<string, boolean>>({});
+  const diffOpenRef = useRef<Record<string, boolean>>({});
   const refreshInFlightRef = useRef(false);
   const renderedScreen = useMemo(() => renderAnsi(screen || "No screen data"), [screen]);
   const { scrollRef, contentRef, stopScroll } = useStickToBottom({
@@ -174,6 +228,81 @@ export const SessionDetailPage = () => {
     };
   }, [connected, mode, paneId, refreshScreen]);
 
+  const loadDiffSummary = useCallback(async () => {
+    if (!paneId) return;
+    setDiffLoading(true);
+    setDiffError(null);
+    try {
+      const summary = await requestDiffSummary(paneId, { force: true });
+      setDiffSummary(summary);
+      setDiffFiles({});
+      const fileSet = new Set(summary.files.map((file) => file.path));
+      setDiffOpen((prev) => {
+        if (!summary.files.length) {
+          return {};
+        }
+        const next: Record<string, boolean> = {};
+        Object.entries(prev).forEach(([key, value]) => {
+          if (fileSet.has(key)) {
+            next[key] = value;
+          }
+        });
+        return next;
+      });
+      const openTargets = Object.entries(diffOpenRef.current).filter(
+        ([path, value]) => value && fileSet.has(path),
+      );
+      if (openTargets.length > 0) {
+        await Promise.all(
+          openTargets.map(async ([path]) => {
+            try {
+              const file = await requestDiffFile(paneId, path, summary.rev, { force: true });
+              setDiffFiles((prev) => ({ ...prev, [path]: file }));
+            } catch (err) {
+              setDiffError(err instanceof Error ? err.message : "Failed to load diff file");
+            }
+          }),
+        );
+      }
+    } catch (err) {
+      setDiffError(err instanceof Error ? err.message : "Failed to load diff summary");
+    } finally {
+      setDiffLoading(false);
+    }
+  }, [paneId, requestDiffFile, requestDiffSummary]);
+
+  const loadDiffFile = useCallback(
+    async (path: string) => {
+      if (!paneId || !diffSummary?.rev) return;
+      if (diffLoadingFiles[path]) return;
+      setDiffLoadingFiles((prev) => ({ ...prev, [path]: true }));
+      try {
+        const file = await requestDiffFile(paneId, path, diffSummary.rev, { force: true });
+        setDiffFiles((prev) => ({ ...prev, [path]: file }));
+      } catch (err) {
+        setDiffError(err instanceof Error ? err.message : "Failed to load diff file");
+      } finally {
+        setDiffLoadingFiles((prev) => ({ ...prev, [path]: false }));
+      }
+    },
+    [diffLoadingFiles, diffSummary?.rev, paneId, requestDiffFile],
+  );
+
+  useEffect(() => {
+    loadDiffSummary();
+  }, [loadDiffSummary]);
+
+  useEffect(() => {
+    setDiffSummary(null);
+    setDiffFiles({});
+    setDiffOpen({});
+    setDiffError(null);
+  }, [paneId]);
+
+  useEffect(() => {
+    diffOpenRef.current = diffOpen;
+  }, [diffOpen]);
+
   const mapKeyWithModifiers = useCallback(
     (key: string) => {
       if (shiftHeld && key === "Tab") {
@@ -227,6 +356,24 @@ export const SessionDetailPage = () => {
     }
     setTextInput("");
   };
+
+  const handleToggleDiff = (path: string) => {
+    setDiffOpen((prev) => {
+      const nextOpen = !prev[path];
+      if (nextOpen) {
+        void loadDiffFile(path);
+      }
+      return { ...prev, [path]: nextOpen };
+    });
+  };
+
+  const renderDiffPatch = (patch: string) =>
+    patch.split("\n").map((line, index) => (
+      <span key={`${index}-${line.slice(0, 12)}`} className={diffLineClass(line)}>
+        {line}
+        {"\n"}
+      </span>
+    ));
 
   const tabLabel = shiftHeld ? "Shift+Tab" : "Tab";
   const agentLabel =
@@ -466,6 +613,113 @@ export const SessionDetailPage = () => {
           )}
         </div>
       </div>
+
+      <Card className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-latte-subtext0 text-xs uppercase tracking-[0.3em]">Changes</p>
+            <p className="text-latte-text text-sm">
+              {diffSummary?.files.length ?? 0} file
+              {(diffSummary?.files.length ?? 0) === 1 ? "" : "s"}
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={loadDiffSummary} disabled={diffLoading}>
+            Refresh
+          </Button>
+        </div>
+        {diffSummary?.repoRoot && (
+          <p className="text-latte-subtext0 text-xs">Repo: {formatPath(diffSummary.repoRoot)}</p>
+        )}
+        {diffLoading && <p className="text-latte-subtext0 text-sm">Loading diff…</p>}
+        {diffSummary?.reason === "cwd_unknown" && (
+          <div className="border-latte-peach/40 bg-latte-peach/10 text-latte-peach rounded-2xl border px-4 py-2 text-xs">
+            Working directory is unknown for this session.
+          </div>
+        )}
+        {diffSummary?.reason === "not_git" && (
+          <div className="border-latte-peach/40 bg-latte-peach/10 text-latte-peach rounded-2xl border px-4 py-2 text-xs">
+            Current directory is not a git repository.
+          </div>
+        )}
+        {diffSummary?.reason === "error" && (
+          <div className="border-latte-red/40 bg-latte-red/10 text-latte-red rounded-2xl border px-4 py-2 text-xs">
+            Failed to load git status.
+          </div>
+        )}
+        {diffError && (
+          <div className="border-latte-red/40 bg-latte-red/10 text-latte-red rounded-2xl border px-4 py-2 text-xs">
+            {diffError}
+          </div>
+        )}
+        {!diffLoading && diffSummary && diffSummary.files.length === 0 && !diffSummary.reason && (
+          <p className="text-latte-subtext0 text-sm">No changes detected.</p>
+        )}
+        <div className="flex flex-col gap-2">
+          {diffSummary?.files.map((file) => {
+            const isOpen = Boolean(diffOpen[file.path]);
+            const loadingFile = Boolean(diffLoadingFiles[file.path]);
+            const fileData = diffFiles[file.path];
+            const statusLabel = file.status === "?" ? "U" : file.status;
+            const additionsLabel =
+              file.additions === null || typeof file.additions === "undefined"
+                ? "—"
+                : String(file.additions);
+            const deletionsLabel =
+              file.deletions === null || typeof file.deletions === "undefined"
+                ? "—"
+                : String(file.deletions);
+            return (
+              <div
+                key={`${file.path}-${file.status}`}
+                className="border-latte-surface2/70 rounded-2xl border bg-white/70"
+              >
+                <button
+                  type="button"
+                  onClick={() => handleToggleDiff(file.path)}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span
+                      className={`${diffStatusClass(
+                        statusLabel,
+                      )} text-[10px] font-semibold uppercase tracking-[0.25em]`}
+                    >
+                      {statusLabel}
+                    </span>
+                    <span className="text-latte-text truncate text-sm">{file.path}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="text-latte-green">+{additionsLabel}</span>
+                    <span className="text-latte-red">-{deletionsLabel}</span>
+                    <span className="text-latte-subtext0">{isOpen ? "Hide" : "Show"}</span>
+                  </div>
+                </button>
+                {isOpen && (
+                  <div className="border-latte-surface2/70 border-t px-4 py-3">
+                    {loadingFile && <p className="text-latte-subtext0 text-xs">Loading diff…</p>}
+                    {!loadingFile && fileData?.binary && (
+                      <p className="text-latte-subtext0 text-xs">Binary file (no diff).</p>
+                    )}
+                    {!loadingFile && !fileData?.binary && fileData?.patch && (
+                      <div className="max-h-[360px] overflow-auto">
+                        <pre className="whitespace-pre font-mono text-xs">
+                          {renderDiffPatch(fileData.patch)}
+                        </pre>
+                        {fileData.truncated && (
+                          <p className="text-latte-subtext0 mt-2 text-xs">Diff truncated.</p>
+                        )}
+                      </div>
+                    )}
+                    {!loadingFile && !fileData?.binary && !fileData?.patch && (
+                      <p className="text-latte-subtext0 text-xs">No diff available.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
     </div>
   );
 };

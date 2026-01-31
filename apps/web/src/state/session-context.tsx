@@ -1,10 +1,13 @@
 import type {
   CommandResponse,
+  DiffFile,
+  DiffSummary,
   ScreenResponse,
   SessionDetail,
   SessionSummary,
   WsServerMessage,
 } from "@agent-monitor/shared";
+import { encodePaneId } from "@agent-monitor/shared";
 import {
   createContext,
   type ReactNode,
@@ -23,6 +26,13 @@ type SessionContextValue = {
   connected: boolean;
   readOnly: boolean;
   refreshSessions: () => Promise<void>;
+  requestDiffSummary: (paneId: string, options?: { force?: boolean }) => Promise<DiffSummary>;
+  requestDiffFile: (
+    paneId: string,
+    path: string,
+    rev?: string | null,
+    options?: { force?: boolean },
+  ) => Promise<DiffFile>;
   requestScreen: (
     paneId: string,
     options: { lines?: number; mode?: "text" | "image" },
@@ -97,6 +107,62 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     const data = (await res.json()) as { sessions: SessionSummary[] };
     setSessions(data.sessions);
   }, [token]);
+
+  const requestDiffSummary = useCallback(
+    async (paneId: string, options?: { force?: boolean }) => {
+      if (!token) {
+        throw new Error("Missing token");
+      }
+      const params = new URLSearchParams();
+      if (options?.force) {
+        params.set("force", "1");
+      }
+      const url = `/api/sessions/${encodePaneId(paneId)}/diff${
+        params.toString() ? `?${params.toString()}` : ""
+      }`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = (await res.json()) as { summary?: DiffSummary; error?: { message?: string } };
+      if (!res.ok || !data.summary) {
+        throw new Error(data.error?.message ?? "Failed to load diff summary");
+      }
+      return data.summary;
+    },
+    [token],
+  );
+
+  const requestDiffFile = useCallback(
+    async (
+      paneId: string,
+      filePath: string,
+      rev?: string | null,
+      options?: { force?: boolean },
+    ) => {
+      if (!token) {
+        throw new Error("Missing token");
+      }
+      const params = new URLSearchParams({ path: filePath });
+      if (rev) {
+        params.set("rev", rev);
+      }
+      if (options?.force) {
+        params.set("force", "1");
+      }
+      const res = await fetch(
+        `/api/sessions/${encodePaneId(paneId)}/diff/file?${params.toString()}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const data = (await res.json()) as { file?: DiffFile; error?: { message?: string } };
+      if (!res.ok || !data.file) {
+        throw new Error(data.error?.message ?? "Failed to load diff file");
+      }
+      return data.file;
+    },
+    [token],
+  );
 
   const updateSession = useCallback((session: SessionSummary) => {
     setSessions((prev) => {
@@ -320,6 +386,8 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         connected,
         readOnly,
         refreshSessions,
+        requestDiffSummary,
+        requestDiffFile,
         requestScreen,
         sendText,
         sendKeys,

@@ -18,6 +18,7 @@ import { Hono } from "hono";
 import type { WSContext } from "hono/ws";
 
 import { rotateToken } from "./config.js";
+import { fetchDiffFile, fetchDiffSummary } from "./git-diff.js";
 import type { createSessionMonitor } from "./monitor.js";
 import { captureTerminalScreen } from "./screen-service.js";
 import type { createTmuxActions } from "./tmux-actions.js";
@@ -151,6 +152,50 @@ export const createApp = ({ config, monitor, tmuxActions }: AppContext) => {
       return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
     }
     return c.json({ session: detail });
+  });
+
+  app.get("/api/sessions/:paneId/diff", async (c) => {
+    let paneId: string;
+    try {
+      paneId = decodePaneId(c.req.param("paneId"));
+    } catch {
+      return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+    }
+    const detail = monitor.registry.getDetail(paneId);
+    if (!detail) {
+      return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+    }
+    const force = c.req.query("force") === "1";
+    const summary = await fetchDiffSummary(detail.currentPath, { force });
+    return c.json({ summary });
+  });
+
+  app.get("/api/sessions/:paneId/diff/file", async (c) => {
+    let paneId: string;
+    try {
+      paneId = decodePaneId(c.req.param("paneId"));
+    } catch {
+      return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+    }
+    const detail = monitor.registry.getDetail(paneId);
+    if (!detail) {
+      return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+    }
+    const pathParam = c.req.query("path");
+    if (!pathParam) {
+      return c.json({ error: buildError("INVALID_PAYLOAD", "missing path") }, 400);
+    }
+    const force = c.req.query("force") === "1";
+    const summary = await fetchDiffSummary(detail.currentPath, { force });
+    if (!summary.repoRoot || summary.reason || !summary.rev) {
+      return c.json({ error: buildError("INVALID_PAYLOAD", "diff summary unavailable") }, 400);
+    }
+    const target = summary.files.find((file) => file.path === pathParam);
+    if (!target) {
+      return c.json({ error: buildError("NOT_FOUND", "file not found") }, 404);
+    }
+    const file = await fetchDiffFile(summary.repoRoot, target, summary.rev, { force });
+    return c.json({ file });
   });
 
   app.post("/api/admin/token/rotate", (c) => {
