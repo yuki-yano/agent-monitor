@@ -64,7 +64,8 @@ const compilePatterns = () =>
   defaultDangerCommandPatterns.map((pattern) => new RegExp(pattern, "i"));
 
 const AUTO_REFRESH_INTERVAL_MS = 15_000;
-
+const backLinkClass =
+  "inline-flex items-center justify-center gap-2 rounded-full border border-latte-surface2 bg-transparent px-3 py-1.5 text-xs font-semibold text-latte-subtext0 transition hover:bg-latte-crust hover:text-latte-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-latte-lavender";
 const formatPath = (value: string | null) => {
   if (!value) return "—";
   const match = value.match(/^\/(Users|home)\/[^/]+(\/.*)?$/);
@@ -839,7 +840,8 @@ export const SessionDetailPage = () => {
       <div className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-10">
         <Card>
           <p className="text-latte-subtext0 text-sm">Session not found.</p>
-          <Link to="/" className="text-latte-blue mt-4 inline-flex text-sm">
+          <Link to="/" className={`${backLinkClass} mt-4`}>
+            <ArrowLeft className="h-4 w-4" />
             Back to list
           </Link>
         </Card>
@@ -849,16 +851,17 @@ export const SessionDetailPage = () => {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-10">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-3">
+        <Link to="/" className={backLinkClass}>
+          <ArrowLeft className="h-4 w-4" />
+          Back to list
+        </Link>
         <ThemeToggle />
       </div>
-      <header className="shadow-glass border-latte-surface1/60 bg-latte-base/80 flex flex-col gap-4 rounded-[32px] border p-6 backdrop-blur">
+      <header className="shadow-glass border-latte-surface1/60 bg-latte-base/80 flex flex-col gap-3 rounded-[32px] border p-4 backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <Link to="/" className="text-latte-subtext0 text-xs uppercase tracking-[0.4em]">
-              ← Back to list
-            </Link>
-            <h1 className="font-display text-latte-text text-3xl">
+            <h1 className="font-display text-latte-text text-xl">
               {session.title ?? session.sessionName}
             </h1>
             <p className="text-latte-subtext0 text-sm">{formatPath(session.currentPath)}</p>
