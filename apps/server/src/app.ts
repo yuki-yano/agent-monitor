@@ -13,7 +13,6 @@ import {
   type WsEnvelope,
   type WsServerMessage,
 } from "@tmux-agent-monitor/shared";
-import { decodePaneId } from "@tmux-agent-monitor/shared";
 import { Hono } from "hono";
 import type { WSContext } from "hono/ws";
 
@@ -142,10 +141,8 @@ export const createApp = ({ config, monitor, tmuxActions }: AppContext) => {
   });
 
   app.get("/api/sessions/:paneId", (c) => {
-    let paneId: string;
-    try {
-      paneId = decodePaneId(c.req.param("paneId"));
-    } catch {
+    const paneId = c.req.param("paneId");
+    if (!paneId) {
       return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
     }
     const detail = monitor.registry.getDetail(paneId);
@@ -156,10 +153,8 @@ export const createApp = ({ config, monitor, tmuxActions }: AppContext) => {
   });
 
   app.get("/api/sessions/:paneId/diff", async (c) => {
-    let paneId: string;
-    try {
-      paneId = decodePaneId(c.req.param("paneId"));
-    } catch {
+    const paneId = c.req.param("paneId");
+    if (!paneId) {
       return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
     }
     const detail = monitor.registry.getDetail(paneId);
@@ -172,10 +167,8 @@ export const createApp = ({ config, monitor, tmuxActions }: AppContext) => {
   });
 
   app.get("/api/sessions/:paneId/diff/file", async (c) => {
-    let paneId: string;
-    try {
-      paneId = decodePaneId(c.req.param("paneId"));
-    } catch {
+    const paneId = c.req.param("paneId");
+    if (!paneId) {
       return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
     }
     const detail = monitor.registry.getDetail(paneId);
@@ -200,10 +193,8 @@ export const createApp = ({ config, monitor, tmuxActions }: AppContext) => {
   });
 
   app.get("/api/sessions/:paneId/commits", async (c) => {
-    let paneId: string;
-    try {
-      paneId = decodePaneId(c.req.param("paneId"));
-    } catch {
+    const paneId = c.req.param("paneId");
+    if (!paneId) {
       return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
     }
     const detail = monitor.registry.getDetail(paneId);
@@ -222,10 +213,8 @@ export const createApp = ({ config, monitor, tmuxActions }: AppContext) => {
   });
 
   app.get("/api/sessions/:paneId/commits/:hash", async (c) => {
-    let paneId: string;
-    try {
-      paneId = decodePaneId(c.req.param("paneId"));
-    } catch {
+    const paneId = c.req.param("paneId");
+    if (!paneId) {
       return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
     }
     const detail = monitor.registry.getDetail(paneId);
@@ -250,10 +239,8 @@ export const createApp = ({ config, monitor, tmuxActions }: AppContext) => {
   });
 
   app.get("/api/sessions/:paneId/commits/:hash/file", async (c) => {
-    let paneId: string;
-    try {
-      paneId = decodePaneId(c.req.param("paneId"));
-    } catch {
+    const paneId = c.req.param("paneId");
+    if (!paneId) {
       return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
     }
     const detail = monitor.registry.getDetail(paneId);
