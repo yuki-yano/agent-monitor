@@ -7,8 +7,11 @@ export const encodePaneId = (paneId: string): string => {
 export const decodePaneId = (paneIdEncoded: string): string => {
   try {
     const decoded = decodeURIComponent(paneIdEncoded);
-    if (/[\x00-\x1F\x7F]/.test(decoded)) {
-      return paneIdEncoded;
+    for (let i = 0; i < decoded.length; i += 1) {
+      const code = decoded.charCodeAt(i);
+      if (code < 32 || code === 127) {
+        return paneIdEncoded;
+      }
     }
     return decoded;
   } catch {
