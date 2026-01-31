@@ -323,7 +323,7 @@ describe("claudeHookEventSchema", () => {
 
 describe("configSchema", () => {
   it("accepts supported image backends", () => {
-    const backends = ["auto", "alacritty", "terminal", "iterm", "wezterm", "ghostty"] as const;
+    const backends = ["alacritty", "terminal", "iterm", "wezterm", "ghostty"] as const;
     for (const backend of backends) {
       const result = configSchema.safeParse({
         ...defaultConfig,
@@ -342,6 +342,17 @@ describe("configSchema", () => {
       screen: {
         ...defaultConfig.screen,
         image: { ...defaultConfig.screen.image, backend: "kitty" },
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects auto image backend", () => {
+    const result = configSchema.safeParse({
+      ...defaultConfig,
+      screen: {
+        ...defaultConfig.screen,
+        image: { ...defaultConfig.screen.image, backend: "auto" },
       },
     });
     expect(result.success).toBe(false);

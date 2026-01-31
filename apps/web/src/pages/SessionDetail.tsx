@@ -11,6 +11,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react";
@@ -22,6 +23,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { renderAnsi } from "@/lib/ansi";
+import {
+  initialScreenLoadingState,
+  screenLoadingReducer,
+  type ScreenMode,
+} from "@/lib/screen-loading";
 import { useSessions } from "@/state/session-context";
 
 const stateTone = (state: string) => {
@@ -130,7 +136,7 @@ export const SessionDetailPage = () => {
     readOnly,
   } = useSessions();
   const session = getSessionDetail(paneId);
-  const [mode, setMode] = useState<"text" | "image">("text");
+  const [mode, setMode] = useState<ScreenMode>("text");
   const [screen, setScreen] = useState<string>("");
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [fallbackReason, setFallbackReason] = useState<string | null>(null);
@@ -139,6 +145,11 @@ export const SessionDetailPage = () => {
   const [autoEnter, setAutoEnter] = useState(true);
   const [shiftHeld, setShiftHeld] = useState(false);
   const [ctrlHeld, setCtrlHeld] = useState(false);
+  const [screenLoadingState, dispatchScreenLoading] = useReducer(
+    screenLoadingReducer,
+    initialScreenLoadingState,
+  );
+  const [modeLoaded, setModeLoaded] = useState({ text: false, image: false });
   const [diffSummary, setDiffSummary] = useState<DiffSummary | null>(null);
   const [diffError, setDiffError] = useState<string | null>(null);
   const [diffLoading, setDiffLoading] = useState(false);
@@ -146,14 +157,18 @@ export const SessionDetailPage = () => {
   const [diffOpen, setDiffOpen] = useState<Record<string, boolean>>({});
   const [diffLoadingFiles, setDiffLoadingFiles] = useState<Record<string, boolean>>({});
   const diffOpenRef = useRef<Record<string, boolean>>({});
-  const refreshInFlightRef = useRef(false);
+  const modeLoadedRef = useRef(modeLoaded);
+  const modeSwitchRef = useRef<ScreenMode | null>(null);
+  const refreshInFlightRef = useRef<null | { id: number; mode: ScreenMode }>(null);
+  const refreshRequestIdRef = useRef(0);
   const renderedScreen = useMemo(() => renderAnsi(screen || "No screen data"), [screen]);
   const { scrollRef, contentRef, stopScroll } = useStickToBottom({
     initial: "instant",
     resize: "instant",
   });
-  const prevModeRef = useRef<"text" | "image">(mode);
+  const prevModeRef = useRef<ScreenMode>(mode);
   const snapToBottomRef = useRef(false);
+  const isScreenLoading = screenLoadingState.loading && screenLoadingState.mode === mode;
 
   useEffect(() => {
     const prevMode = prevModeRef.current;
@@ -184,13 +199,24 @@ export const SessionDetailPage = () => {
     if (!connected) {
       return;
     }
-    if (refreshInFlightRef.current) {
+    const requestId = (refreshRequestIdRef.current += 1);
+    const inflight = refreshInFlightRef.current;
+    const isModeOverride = inflight && inflight.mode !== mode;
+    if (inflight && !isModeOverride) {
       return;
     }
+    const isModeSwitch = modeSwitchRef.current === mode;
+    const shouldShowLoading = isModeSwitch || !modeLoadedRef.current[mode];
     setError(null);
-    refreshInFlightRef.current = true;
+    if (shouldShowLoading) {
+      dispatchScreenLoading({ type: "start", mode });
+    }
+    refreshInFlightRef.current = { id: requestId, mode };
     try {
       const response = await requestScreen(paneId, { mode });
+      if (refreshInFlightRef.current?.id !== requestId) {
+        return;
+      }
       if (!response.ok) {
         setError(response.error?.message ?? "Failed to capture screen");
         return;
@@ -203,10 +229,19 @@ export const SessionDetailPage = () => {
         setScreen(response.screen ?? "");
         setImageBase64(null);
       }
+      setModeLoaded((prev) => ({ ...prev, [mode]: true }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Screen request failed");
     } finally {
-      refreshInFlightRef.current = false;
+      if (refreshInFlightRef.current?.id === requestId) {
+        refreshInFlightRef.current = null;
+        if (shouldShowLoading) {
+          dispatchScreenLoading({ type: "finish", mode });
+        }
+        if (isModeSwitch && modeSwitchRef.current === mode) {
+          modeSwitchRef.current = null;
+        }
+      }
     }
   }, [connected, mode, paneId, requestScreen]);
 
@@ -302,6 +337,16 @@ export const SessionDetailPage = () => {
   useEffect(() => {
     diffOpenRef.current = diffOpen;
   }, [diffOpen]);
+
+  useEffect(() => {
+    modeLoadedRef.current = modeLoaded;
+  }, [modeLoaded]);
+
+  useEffect(() => {
+    setModeLoaded({ text: false, image: false });
+    dispatchScreenLoading({ type: "reset" });
+    modeSwitchRef.current = null;
+  }, [paneId]);
 
   const mapKeyWithModifiers = useCallback(
     (key: string) => {
@@ -438,8 +483,11 @@ export const SessionDetailPage = () => {
               <Tabs
                 value={mode}
                 onValueChange={(value) => {
-                  if (value === "text" || value === "image") {
-                    setMode(value);
+                  if ((value === "text" || value === "image") && value !== mode) {
+                    const nextMode = value;
+                    modeSwitchRef.current = nextMode;
+                    dispatchScreenLoading({ type: "start", mode: nextMode });
+                    setMode(nextMode);
                   }
                 }}
               >
@@ -463,7 +511,12 @@ export const SessionDetailPage = () => {
               {error}
             </div>
           )}
-          <div className="border-latte-surface1 bg-latte-mantle/40 flex min-h-[320px] w-full min-w-0 max-w-full flex-1 overflow-hidden rounded-2xl border p-4">
+          <div className="border-latte-surface1 bg-latte-mantle/40 relative flex min-h-[320px] w-full min-w-0 max-w-full flex-1 overflow-hidden rounded-2xl border p-4">
+            {isScreenLoading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-sm">
+                <div className="border-latte-lavender/40 border-t-latte-lavender h-8 w-8 animate-spin rounded-full border-2" />
+              </div>
+            )}
             {mode === "image" && imageBase64 ? (
               <div className="flex w-full items-center justify-center">
                 <img

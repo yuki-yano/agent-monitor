@@ -177,7 +177,7 @@ export const configSchema = z.object({
     altScreen: z.enum(["auto", "on", "off"]),
     image: z.object({
       enabled: z.boolean(),
-      backend: z.enum(["auto", "alacritty", "terminal", "iterm", "wezterm", "ghostty"]),
+      backend: z.enum(["alacritty", "terminal", "iterm", "wezterm", "ghostty"]),
       format: z.enum(["png"]),
       cropPane: z.boolean(),
       timeoutMs: z.number(),

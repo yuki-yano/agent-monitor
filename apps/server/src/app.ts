@@ -351,14 +351,12 @@ export const createApp = ({ config, monitor, tmuxActions }: AppContext) => {
               return;
             }
           }
-          const imageResult = target.paneTty
-            ? await captureTerminalScreen(target.paneTty, {
-                paneId: message.data.paneId,
-                tmux: config.tmux,
-                cropPane: config.screen.image.cropPane,
-                backend: config.screen.image.backend,
-              })
-            : null;
+          const imageResult = await captureTerminalScreen(target.paneTty, {
+            paneId: message.data.paneId,
+            tmux: config.tmux,
+            cropPane: config.screen.image.cropPane,
+            backend: config.screen.image.backend,
+          });
           if (imageResult) {
             sendWs(
               ws,
