@@ -4,7 +4,15 @@ import {
   type DiffFile,
   type DiffSummary,
 } from "@agent-monitor/shared";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CornerDownLeft } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  ChevronDown,
+  ChevronUp,
+  CornerDownLeft,
+} from "lucide-react";
 import {
   type ReactNode,
   useCallback,
@@ -150,6 +158,7 @@ export const SessionDetailPage = () => {
     initialScreenLoadingState,
   );
   const [modeLoaded, setModeLoaded] = useState({ text: false, image: false });
+  const [controlsOpen, setControlsOpen] = useState(false);
   const [diffSummary, setDiffSummary] = useState<DiffSummary | null>(null);
   const [diffError, setDiffError] = useState<string | null>(null);
   const [diffLoading, setDiffLoading] = useState(false);
@@ -572,92 +581,109 @@ export const SessionDetailPage = () => {
                   </button>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={shiftHeld ? "primary" : "ghost"}
-                    size="sm"
-                    onClick={() => setShiftHeld((prev) => !prev)}
-                    aria-pressed={shiftHeld}
-                    className="font-mono text-[11px] uppercase tracking-[0.3em]"
-                  >
-                    Shift
-                  </Button>
-                  <Button
-                    variant={ctrlHeld ? "primary" : "ghost"}
-                    size="sm"
-                    onClick={() => setCtrlHeld((prev) => !prev)}
-                    aria-pressed={ctrlHeld}
-                    className="font-mono text-[11px] uppercase tracking-[0.3em]"
-                  >
-                    Ctrl
-                  </Button>
+              <div className="flex items-center justify-start">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setControlsOpen((prev) => !prev)}
+                  aria-expanded={controlsOpen}
+                  aria-controls="session-controls"
+                  className="text-latte-subtext0 flex items-center gap-2 text-[11px] uppercase tracking-[0.32em]"
+                >
+                  {controlsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  Keys
+                </Button>
+              </div>
+              {controlsOpen && (
+                <div id="session-controls" className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={shiftHeld ? "primary" : "ghost"}
+                        size="sm"
+                        onClick={() => setShiftHeld((prev) => !prev)}
+                        aria-pressed={shiftHeld}
+                        className="font-mono text-[11px] uppercase tracking-[0.3em]"
+                      >
+                        Shift
+                      </Button>
+                      <Button
+                        variant={ctrlHeld ? "primary" : "ghost"}
+                        size="sm"
+                        onClick={() => setCtrlHeld((prev) => !prev)}
+                        aria-pressed={ctrlHeld}
+                        className="font-mono text-[11px] uppercase tracking-[0.3em]"
+                      >
+                        Ctrl
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { label: "Esc", key: "Escape" },
+                      { label: tabLabel, key: "Tab" },
+                      { label: "Enter", key: "Enter" },
+                    ].map((item) => (
+                      <KeyButton
+                        key={item.key}
+                        label={item.label}
+                        onClick={() => handleSendKey(item.key)}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {[
+                      {
+                        label: (
+                          <>
+                            <ArrowLeft className="h-4 w-4" />
+                            <span className="sr-only">Left</span>
+                          </>
+                        ),
+                        key: "Left",
+                        ariaLabel: "Left",
+                      },
+                      {
+                        label: (
+                          <>
+                            <ArrowUp className="h-4 w-4" />
+                            <span className="sr-only">Up</span>
+                          </>
+                        ),
+                        key: "Up",
+                        ariaLabel: "Up",
+                      },
+                      {
+                        label: (
+                          <>
+                            <ArrowDown className="h-4 w-4" />
+                            <span className="sr-only">Down</span>
+                          </>
+                        ),
+                        key: "Down",
+                        ariaLabel: "Down",
+                      },
+                      {
+                        label: (
+                          <>
+                            <ArrowRight className="h-4 w-4" />
+                            <span className="sr-only">Right</span>
+                          </>
+                        ),
+                        key: "Right",
+                        ariaLabel: "Right",
+                      },
+                    ].map((item) => (
+                      <KeyButton
+                        key={item.key}
+                        label={item.label}
+                        ariaLabel={item.ariaLabel}
+                        onClick={() => handleSendKey(item.key)}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { label: "Esc", key: "Escape" },
-                  { label: tabLabel, key: "Tab" },
-                  { label: "Enter", key: "Enter" },
-                ].map((item) => (
-                  <KeyButton
-                    key={item.key}
-                    label={item.label}
-                    onClick={() => handleSendKey(item.key)}
-                  />
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                {[
-                  {
-                    label: (
-                      <>
-                        <ArrowLeft className="h-4 w-4" />
-                        <span className="sr-only">Left</span>
-                      </>
-                    ),
-                    key: "Left",
-                    ariaLabel: "Left",
-                  },
-                  {
-                    label: (
-                      <>
-                        <ArrowUp className="h-4 w-4" />
-                        <span className="sr-only">Up</span>
-                      </>
-                    ),
-                    key: "Up",
-                    ariaLabel: "Up",
-                  },
-                  {
-                    label: (
-                      <>
-                        <ArrowDown className="h-4 w-4" />
-                        <span className="sr-only">Down</span>
-                      </>
-                    ),
-                    key: "Down",
-                    ariaLabel: "Down",
-                  },
-                  {
-                    label: (
-                      <>
-                        <ArrowRight className="h-4 w-4" />
-                        <span className="sr-only">Right</span>
-                      </>
-                    ),
-                    key: "Right",
-                    ariaLabel: "Right",
-                  },
-                ].map((item) => (
-                  <KeyButton
-                    key={item.key}
-                    label={item.label}
-                    ariaLabel={item.ariaLabel}
-                    onClick={() => handleSendKey(item.key)}
-                  />
-                ))}
-              </div>
+              )}
             </Card>
           ) : (
             <Card className="border-latte-peach/50 bg-latte-peach/10 text-latte-peach border text-sm">
