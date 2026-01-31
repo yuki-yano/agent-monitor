@@ -1,3 +1,4 @@
+import { RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -70,8 +71,14 @@ export const SessionListPage = () => {
                   {connected ? "Connected" : "Reconnecting"}
                 </span>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => refreshSessions()}>
-                Refresh
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => refreshSessions()}
+                aria-label="Refresh"
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span className="sr-only">Refresh</span>
               </Button>
             </div>
           </div>

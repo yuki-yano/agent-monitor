@@ -17,6 +17,8 @@ import {
   ChevronUp,
   Copy,
   CornerDownLeft,
+  RefreshCw,
+  Send,
 } from "lucide-react";
 import {
   type ReactNode,
@@ -901,8 +903,9 @@ export const SessionDetailPage = () => {
                 </TabsList>
               </Tabs>
             </div>
-            <Button variant="ghost" size="sm" onClick={refreshScreen}>
-              Refresh
+            <Button variant="ghost" size="sm" onClick={refreshScreen} aria-label="Refresh screen">
+              <RefreshCw className="h-4 w-4" />
+              <span className="sr-only">Refresh</span>
             </Button>
           </div>
           {fallbackReason && (
@@ -956,26 +959,14 @@ export const SessionDetailPage = () => {
                   rows={2}
                   className="border-latte-surface2 text-latte-text focus:border-latte-lavender focus:ring-latte-lavender/30 bg-latte-base/70 min-h-[64px] min-w-0 flex-1 resize-y rounded-2xl border px-4 py-2 text-base shadow-sm outline-none transition focus:ring-2 md:text-sm"
                 />
-                <div className="flex shrink-0 flex-col items-end gap-2 self-start">
-                  <Button onClick={handleSendText}>Send</Button>
-                  <button
-                    type="button"
-                    onClick={() => setAutoEnter((prev) => !prev)}
-                    aria-pressed={autoEnter}
-                    title="Auto-enter after send"
-                    className={`group inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] transition ${
-                      autoEnter
-                        ? "border-latte-lavender/60 bg-latte-lavender/10 text-latte-lavender shadow-[inset_0_0_0_1px_rgba(114,135,253,0.12)]"
-                        : "border-latte-surface2/70 text-latte-subtext0 hover:border-latte-overlay1 hover:text-latte-text"
-                    }`}
-                  >
-                    <span className="text-[9px] font-semibold tracking-[0.3em]">Auto</span>
-                    <CornerDownLeft className="h-3.5 w-3.5" />
-                    <span className="sr-only">Auto-enter</span>
-                  </button>
+                <div className="flex shrink-0 items-center self-center">
+                  <Button onClick={handleSendText} aria-label="Send" className="h-11 w-11 p-0">
+                    <Send className="h-4 w-4" />
+                    <span className="sr-only">Send</span>
+                  </Button>
                 </div>
               </div>
-              <div className="flex items-center justify-start">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -991,6 +982,21 @@ export const SessionDetailPage = () => {
                   )}
                   Keys
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => setAutoEnter((prev) => !prev)}
+                  aria-pressed={autoEnter}
+                  title="Auto-enter after send"
+                  className={`group inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] transition ${
+                    autoEnter
+                      ? "border-latte-lavender/60 bg-latte-lavender/10 text-latte-lavender shadow-[inset_0_0_0_1px_rgba(114,135,253,0.12)]"
+                      : "border-latte-surface2/70 text-latte-subtext0 hover:border-latte-overlay1 hover:text-latte-text"
+                  }`}
+                >
+                  <span className="text-[9px] font-semibold tracking-[0.3em]">Auto</span>
+                  <CornerDownLeft className="h-3.5 w-3.5" />
+                  <span className="sr-only">Auto-enter</span>
+                </button>
               </div>
               {controlsOpen && (
                 <div id="session-controls" className="space-y-3">
@@ -1100,8 +1106,15 @@ export const SessionDetailPage = () => {
               {(diffSummary?.files.length ?? 0) === 1 ? "" : "s"}
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={loadDiffSummary} disabled={diffLoading}>
-            Refresh
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={loadDiffSummary}
+            disabled={diffLoading}
+            aria-label="Refresh changes"
+          >
+            <RefreshCw className="h-4 w-4" />
+            <span className="sr-only">Refresh</span>
           </Button>
         </div>
         {diffSummary?.repoRoot && (
@@ -1212,8 +1225,10 @@ export const SessionDetailPage = () => {
             size="sm"
             onClick={() => loadCommitLog({ force: true })}
             disabled={commitLoading}
+            aria-label="Refresh commit log"
           >
-            Refresh
+            <RefreshCw className="h-4 w-4" />
+            <span className="sr-only">Refresh</span>
           </Button>
         </div>
         {commitLog?.repoRoot && (
