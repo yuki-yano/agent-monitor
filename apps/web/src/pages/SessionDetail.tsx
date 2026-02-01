@@ -64,7 +64,7 @@ const stateTone = (state: string) => {
 const compilePatterns = () =>
   defaultDangerCommandPatterns.map((pattern) => new RegExp(pattern, "i"));
 
-const AUTO_REFRESH_INTERVAL_MS = 15_000;
+const AUTO_REFRESH_INTERVAL_MS = 10_000;
 const DISCONNECTED_MESSAGE = "Disconnected. Reconnecting...";
 const backLinkClass =
   "inline-flex items-center justify-center gap-2 rounded-full border border-latte-surface2 bg-transparent px-3 py-1.5 text-xs font-semibold text-latte-subtext0 transition hover:bg-latte-crust hover:text-latte-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-latte-lavender";
