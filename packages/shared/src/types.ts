@@ -53,6 +53,7 @@ export type SessionSummary = {
   currentPath: string | null;
   paneTty: string | null;
   title: string | null;
+  customTitle: string | null;
   agent: "codex" | "claude" | "unknown";
   state: SessionStateValue;
   stateReason: string;

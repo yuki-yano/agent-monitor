@@ -301,6 +301,7 @@ export const createSessionMonitor = (adapter: TmuxAdapter, config: AgentMonitorC
   const lastEventAt = new Map<string, string>();
   const lastMessage = new Map<string, string | null>();
   const lastFingerprint = new Map<string, string>();
+  const customTitles = new Map<string, string>();
   const restored = restoreSessions();
   const restoredReason = new Set<string>();
   const serverKey = resolveServerKey(config.tmux.socketName, config.tmux.socketPath);
@@ -314,6 +315,9 @@ export const createSessionMonitor = (adapter: TmuxAdapter, config: AgentMonitorC
     lastOutputAt.set(paneId, session.lastOutputAt ?? null);
     lastEventAt.set(paneId, session.lastEventAt ?? null);
     lastMessage.set(paneId, session.lastMessage ?? null);
+    if (session.customTitle) {
+      customTitles.set(paneId, session.customTitle);
+    }
   });
 
   const getPaneLogPath = (paneId: string) => {
@@ -491,6 +495,7 @@ export const createSessionMonitor = (adapter: TmuxAdapter, config: AgentMonitorC
       const paneTitle = normalizeTitle(pane.paneTitle);
       const defaultTitle = buildDefaultTitle(pane.currentPath, pane.paneId, pane.sessionName);
       const title = paneTitle && !hostCandidates.has(paneTitle) ? paneTitle : defaultTitle;
+      const customTitle = customTitles.get(pane.paneId) ?? null;
 
       const detail: SessionDetail = {
         paneId: pane.paneId,
@@ -503,6 +508,7 @@ export const createSessionMonitor = (adapter: TmuxAdapter, config: AgentMonitorC
         currentPath: pane.currentPath,
         paneTty: pane.paneTty,
         title,
+        customTitle,
         agent,
         state: finalState,
         stateReason: finalReason,
@@ -520,7 +526,10 @@ export const createSessionMonitor = (adapter: TmuxAdapter, config: AgentMonitorC
       registry.update(detail);
     }
 
-    registry.removeMissing(activePaneIds);
+    const removed = registry.removeMissing(activePaneIds);
+    removed.forEach((paneId) => {
+      customTitles.delete(paneId);
+    });
     lastOutputAt.forEach((_, paneId) => {
       if (!activePaneIds.has(paneId)) {
         lastOutputAt.delete(paneId);
@@ -530,6 +539,21 @@ export const createSessionMonitor = (adapter: TmuxAdapter, config: AgentMonitorC
         hookStates.delete(paneId);
       }
     });
+    saveState(registry.values());
+  };
+
+  const setCustomTitle = (paneId: string, title: string | null) => {
+    if (title) {
+      customTitles.set(paneId, title);
+    } else {
+      customTitles.delete(paneId);
+    }
+    const existing = registry.getDetail(paneId);
+    if (!existing || existing.customTitle === (title ?? null)) {
+      return;
+    }
+    const next = { ...existing, customTitle: title };
+    registry.update(next);
     saveState(registry.values());
   };
 
@@ -603,5 +627,6 @@ export const createSessionMonitor = (adapter: TmuxAdapter, config: AgentMonitorC
     stop,
     handleHookEvent,
     getScreenCapture,
+    setCustomTitle,
   };
 };

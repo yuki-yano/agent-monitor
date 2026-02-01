@@ -19,6 +19,7 @@ import {
   CornerDownLeft,
   RefreshCw,
   Send,
+  X,
 } from "lucide-react";
 import {
   type ReactNode,
@@ -203,15 +204,23 @@ export const SessionDetailPage = () => {
     requestScreen,
     sendText,
     sendKeys,
+    updateSessionTitle,
     readOnly,
   } = useSessions();
   const { resolvedTheme } = useTheme();
   const session = getSessionDetail(paneId);
+  const sessionCustomTitle = session?.customTitle ?? null;
+  const sessionAutoTitle = session?.title ?? session?.sessionName ?? "";
+  const sessionDisplayTitle = sessionCustomTitle ?? sessionAutoTitle;
   const [mode, setMode] = useState<ScreenMode>("text");
   const [screen, setScreen] = useState<string>("");
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [fallbackReason, setFallbackReason] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [titleEditing, setTitleEditing] = useState(false);
+  const [titleSaving, setTitleSaving] = useState(false);
+  const [titleError, setTitleError] = useState<string | null>(null);
   const textInputRef = useRef<HTMLTextAreaElement | null>(null);
   const [autoEnter, setAutoEnter] = useState(true);
   const [shiftHeld, setShiftHeld] = useState(false);
@@ -750,6 +759,65 @@ export const SessionDetailPage = () => {
     modeSwitchRef.current = null;
   }, [paneId]);
 
+  useEffect(() => {
+    setTitleEditing(false);
+    setTitleSaving(false);
+    setTitleError(null);
+    setTitleDraft(sessionCustomTitle ?? "");
+  }, [paneId, sessionCustomTitle]);
+
+  useEffect(() => {
+    if (titleEditing) return;
+    setTitleDraft(sessionCustomTitle ?? "");
+  }, [sessionCustomTitle, titleEditing]);
+
+  const openTitleEditor = useCallback(() => {
+    if (readOnly || !session) return;
+    setTitleError(null);
+    setTitleDraft(sessionCustomTitle ?? "");
+    setTitleEditing(true);
+  }, [readOnly, session, sessionCustomTitle]);
+
+  const closeTitleEditor = useCallback(() => {
+    setTitleEditing(false);
+    setTitleError(null);
+    setTitleDraft(sessionCustomTitle ?? "");
+  }, [sessionCustomTitle]);
+
+  const handleTitleSave = useCallback(async () => {
+    if (!session || titleSaving) return;
+    const trimmed = titleDraft.trim();
+    if (trimmed.length > 80) {
+      setTitleError("Title must be 80 characters or less.");
+      return;
+    }
+    setTitleSaving(true);
+    try {
+      await updateSessionTitle(session.paneId, trimmed.length > 0 ? trimmed : null);
+      setTitleEditing(false);
+      setTitleError(null);
+    } catch (err) {
+      setTitleError(err instanceof Error ? err.message : "Failed to update title");
+    } finally {
+      setTitleSaving(false);
+    }
+  }, [session, titleDraft, titleSaving, updateSessionTitle]);
+
+  const handleTitleClear = useCallback(async () => {
+    if (!session || titleSaving) return;
+    setTitleSaving(true);
+    try {
+      await updateSessionTitle(session.paneId, null);
+      setTitleEditing(false);
+      setTitleDraft("");
+      setTitleError(null);
+    } catch (err) {
+      setTitleError(err instanceof Error ? err.message : "Failed to update title");
+    } finally {
+      setTitleSaving(false);
+    }
+  }, [session, titleSaving, updateSessionTitle]);
+
   const mapKeyWithModifiers = useCallback(
     (key: string) => {
       if (shiftHeld && key === "Tab") {
@@ -911,11 +979,68 @@ export const SessionDetailPage = () => {
       </div>
       <header className="shadow-glass border-latte-surface1/60 bg-latte-base/80 flex flex-col gap-3 rounded-[32px] border p-4 backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="font-display text-latte-text text-xl">
-              {session.title ?? session.sessionName}
-            </h1>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              {titleEditing ? (
+                <input
+                  type="text"
+                  value={titleDraft}
+                  onChange={(event) => {
+                    setTitleDraft(event.target.value);
+                    if (titleError) {
+                      setTitleError(null);
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleTitleSave();
+                    }
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      closeTitleEditor();
+                    }
+                  }}
+                  onBlur={() => {
+                    if (titleSaving) return;
+                    closeTitleEditor();
+                  }}
+                  placeholder={sessionAutoTitle || "Untitled session"}
+                  maxLength={80}
+                  enterKeyHint="done"
+                  disabled={titleSaving}
+                  className="border-latte-surface2 text-latte-text focus:border-latte-lavender focus:ring-latte-lavender/30 bg-latte-base/70 min-w-[180px] flex-1 rounded-2xl border px-3 py-1.5 text-xl shadow-sm outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label="Custom session title"
+                  autoFocus
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={openTitleEditor}
+                  disabled={readOnly}
+                  className={`font-display text-latte-text text-left text-xl transition ${
+                    readOnly ? "cursor-default" : "cursor-text hover:text-latte-lavender"
+                  } disabled:opacity-70`}
+                  aria-label="Edit session title"
+                >
+                  {sessionDisplayTitle}
+                </button>
+              )}
+              {sessionCustomTitle && !readOnly && !titleEditing && (
+                <button
+                  type="button"
+                  onClick={handleTitleClear}
+                  disabled={titleSaving}
+                  className="border-latte-surface2 text-latte-subtext0 hover:text-latte-red hover:border-latte-red/60 inline-flex h-6 w-6 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label="Clear custom title"
+                  title="Clear custom title"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
             <p className="text-latte-subtext0 text-sm">{formatPath(session.currentPath)}</p>
+            {titleError && <p className="text-latte-red text-xs">{titleError}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={agentTone}>{agentLabel}</Badge>

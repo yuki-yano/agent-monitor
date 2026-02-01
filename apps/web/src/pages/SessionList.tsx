@@ -66,7 +66,7 @@ export const SessionListPage = () => {
       if (!matchesFilter) return false;
       if (!lower) return true;
       const haystack =
-        `${session.sessionName} ${session.currentCommand ?? ""} ${session.currentPath ?? ""} ${session.title ?? ""}`.toLowerCase();
+        `${session.sessionName} ${session.currentCommand ?? ""} ${session.currentPath ?? ""} ${session.title ?? ""} ${session.customTitle ?? ""}`.toLowerCase();
       return haystack.includes(lower);
     });
   }, [filter, query, sessions]);
@@ -160,7 +160,7 @@ export const SessionListPage = () => {
               </div>
               <div className="mt-4 space-y-2">
                 <h3 className="font-display text-latte-text text-lg">
-                  {session.title ?? session.sessionName}
+                  {session.customTitle ?? session.title ?? session.sessionName}
                 </h3>
                 <p className="text-latte-subtext0 text-sm">
                   {session.currentCommand ?? "unknown"} · {formatPath(session.currentPath)}

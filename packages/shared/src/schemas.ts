@@ -56,6 +56,7 @@ export const sessionSummarySchema = z.object({
   currentPath: z.string().nullable(),
   paneTty: z.string().nullable(),
   title: z.string().nullable(),
+  customTitle: z.string().nullable(),
   agent: z.enum(["codex", "claude", "unknown"]),
   state: sessionStateSchema,
   stateReason: z.string(),

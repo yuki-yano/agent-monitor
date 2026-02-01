@@ -59,6 +59,7 @@ type SessionContextValue = {
   ) => Promise<ScreenResponse>;
   sendText: (paneId: string, text: string, enter?: boolean) => Promise<CommandResponse>;
   sendKeys: (paneId: string, keys: string[]) => Promise<CommandResponse>;
+  updateSessionTitle: (paneId: string, title: string | null) => Promise<void>;
   getSessionDetail: (paneId: string) => SessionDetail | null;
 };
 
@@ -512,6 +513,43 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     [sendRequest],
   );
 
+  const updateSessionTitle = useCallback(
+    async (paneId: string, title: string | null) => {
+      if (!token) {
+        throw new Error("Missing token");
+      }
+      const res = await fetch(`/api/sessions/${encodePaneId(paneId)}/title`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ title }),
+      });
+      let data: { session?: SessionSummary; error?: { message?: string; code?: string } } = {};
+      try {
+        data = (await res.json()) as {
+          session?: SessionSummary;
+          error?: { message?: string; code?: string };
+        };
+      } catch {
+        // ignore parse failures
+      }
+      if (!res.ok) {
+        if (data.error?.code === "READ_ONLY") {
+          setReadOnly(true);
+        }
+        throw new Error(data.error?.message ?? "Failed to update title");
+      }
+      if (data.session) {
+        updateSession(data.session);
+        return;
+      }
+      await refreshSessions();
+    },
+    [refreshSessions, token, updateSession],
+  );
+
   const getSessionDetail = useCallback(
     (paneId: string) => {
       const session = sessions.find((item) => item.paneId === paneId);
@@ -538,6 +576,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         requestScreen,
         sendText,
         sendKeys,
+        updateSessionTitle,
         getSessionDetail,
       }}
     >

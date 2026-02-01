@@ -39,6 +39,31 @@ const buildError = (code: ApiError["code"], message: string): ApiError => ({
   message,
 });
 
+const requireAuth = (
+  config: AgentMonitorConfig,
+  c: { req: { header: (name: string) => string | undefined } },
+) => {
+  const auth = c.req.header("authorization") ?? c.req.header("Authorization");
+  if (!auth?.startsWith("Bearer ")) {
+    return false;
+  }
+  const token = auth.replace("Bearer ", "").trim();
+  return token === config.token;
+};
+
+const isOriginAllowed = (config: AgentMonitorConfig, origin?: string | null, host?: string | null) => {
+  if (config.allowedOrigins.length === 0) {
+    return true;
+  }
+  if (!origin) {
+    return false;
+  }
+  return (
+    config.allowedOrigins.includes(origin) ||
+    (host ? config.allowedOrigins.includes(host) : false)
+  );
+};
+
 const buildEnvelope = <TType extends string, TData>(
   type: TType,
   data: TData,
@@ -49,6 +74,189 @@ const buildEnvelope = <TType extends string, TData>(
   reqId,
   data,
 });
+
+type ApiContext = {
+  config: AgentMonitorConfig;
+  monitor: Monitor;
+};
+
+const createApiRouter = ({ config, monitor }: ApiContext) => {
+  const api = new Hono();
+
+  api.use("*", async (c, next) => {
+    if (!requireAuth(config, c)) {
+      return c.json({ error: buildError("INVALID_PAYLOAD", "unauthorized") }, 401);
+    }
+    const origin = c.req.header("origin");
+    const host = c.req.header("host");
+    if (!isOriginAllowed(config, origin, host)) {
+      return c.json({ error: buildError("INVALID_PAYLOAD", "origin not allowed") }, 403);
+    }
+    await next();
+  });
+
+  const apiRoutes = api
+    .get("/sessions", (c) => {
+      return c.json({ sessions: monitor.registry.snapshot(), serverTime: now() });
+    })
+    .get("/sessions/:paneId", (c) => {
+      const paneId = c.req.param("paneId");
+      if (!paneId) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+      }
+      const detail = monitor.registry.getDetail(paneId);
+      if (!detail) {
+        return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+      }
+      return c.json({ session: detail });
+    })
+    .put("/sessions/:paneId/title", async (c) => {
+      if (config.readOnly) {
+        return c.json({ error: buildError("READ_ONLY", "read-only mode") }, 403);
+      }
+      const paneId = c.req.param("paneId");
+      if (!paneId) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+      }
+      const detail = monitor.registry.getDetail(paneId);
+      if (!detail) {
+        return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+      }
+      let body: unknown;
+      try {
+        body = await c.req.json();
+      } catch {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid body") }, 400);
+      }
+      const titleValue =
+        body && typeof body === "object" && "title" in body
+          ? (body as { title?: unknown }).title
+          : undefined;
+      if (titleValue !== null && typeof titleValue !== "string") {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid title") }, 400);
+      }
+      const trimmed = typeof titleValue === "string" ? titleValue.trim() : null;
+      if (trimmed && trimmed.length > 80) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "title too long") }, 400);
+      }
+      const nextTitle = trimmed && trimmed.length > 0 ? trimmed : null;
+      monitor.setCustomTitle(paneId, nextTitle);
+      const updated = monitor.registry.getDetail(paneId) ?? detail;
+      return c.json({ session: updated });
+    })
+    .get("/sessions/:paneId/diff", async (c) => {
+      const paneId = c.req.param("paneId");
+      if (!paneId) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+      }
+      const detail = monitor.registry.getDetail(paneId);
+      if (!detail) {
+        return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+      }
+      const force = c.req.query("force") === "1";
+      const summary = await fetchDiffSummary(detail.currentPath, { force });
+      return c.json({ summary });
+    })
+    .get("/sessions/:paneId/diff/file", async (c) => {
+      const paneId = c.req.param("paneId");
+      if (!paneId) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+      }
+      const detail = monitor.registry.getDetail(paneId);
+      if (!detail) {
+        return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+      }
+      const pathParam = c.req.query("path");
+      if (!pathParam) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "missing path") }, 400);
+      }
+      const force = c.req.query("force") === "1";
+      const summary = await fetchDiffSummary(detail.currentPath, { force });
+      if (!summary.repoRoot || summary.reason || !summary.rev) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "diff summary unavailable") }, 400);
+      }
+      const target = summary.files.find((file) => file.path === pathParam);
+      if (!target) {
+        return c.json({ error: buildError("NOT_FOUND", "file not found") }, 404);
+      }
+      const file = await fetchDiffFile(summary.repoRoot, target, summary.rev, { force });
+      return c.json({ file });
+    })
+    .get("/sessions/:paneId/commits", async (c) => {
+      const paneId = c.req.param("paneId");
+      if (!paneId) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+      }
+      const detail = monitor.registry.getDetail(paneId);
+      if (!detail) {
+        return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+      }
+      const limit = Number.parseInt(c.req.query("limit") ?? "10", 10);
+      const skip = Number.parseInt(c.req.query("skip") ?? "0", 10);
+      const force = c.req.query("force") === "1";
+      const log = await fetchCommitLog(detail.currentPath, {
+        limit: Number.isFinite(limit) ? limit : 10,
+        skip: Number.isFinite(skip) ? skip : 0,
+        force,
+      });
+      return c.json({ log });
+    })
+    .get("/sessions/:paneId/commits/:hash", async (c) => {
+      const paneId = c.req.param("paneId");
+      if (!paneId) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+      }
+      const detail = monitor.registry.getDetail(paneId);
+      if (!detail) {
+        return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+      }
+      const hash = c.req.param("hash");
+      if (!hash) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "missing hash") }, 400);
+      }
+      const log = await fetchCommitLog(detail.currentPath, { limit: 1, skip: 0 });
+      if (!log.repoRoot || log.reason) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "commit log unavailable") }, 400);
+      }
+      const commit = await fetchCommitDetail(log.repoRoot, hash, {
+        force: c.req.query("force") === "1",
+      });
+      if (!commit) {
+        return c.json({ error: buildError("NOT_FOUND", "commit not found") }, 404);
+      }
+      return c.json({ commit });
+    })
+    .get("/sessions/:paneId/commits/:hash/file", async (c) => {
+      const paneId = c.req.param("paneId");
+      if (!paneId) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+      }
+      const detail = monitor.registry.getDetail(paneId);
+      if (!detail) {
+        return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+      }
+      const hash = c.req.param("hash");
+      const pathParam = c.req.query("path");
+      if (!hash || !pathParam) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "missing hash or path") }, 400);
+      }
+      const log = await fetchCommitLog(detail.currentPath, { limit: 1, skip: 0 });
+      if (!log.repoRoot || log.reason) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "commit log unavailable") }, 400);
+      }
+      const file = await fetchCommitFile(log.repoRoot, hash, pathParam, {
+        force: c.req.query("force") === "1",
+      });
+      if (!file) {
+        return c.json({ error: buildError("NOT_FOUND", "commit file not found") }, 404);
+      }
+      return c.json({ file });
+    });
+
+  return apiRoutes;
+};
+
+export type ApiAppType = ReturnType<typeof createApiRouter>;
 
 const createRateLimiter = (windowMs: number, max: number) => {
   const hits = new Map<string, { count: number; expiresAt: number }>();
@@ -162,6 +370,41 @@ export const createApp = ({ config, monitor, tmuxActions }: AppContext) => {
       return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
     }
     return c.json({ session: detail });
+  });
+
+  app.put("/api/sessions/:paneId/title", async (c) => {
+    if (config.readOnly) {
+      return c.json({ error: buildError("READ_ONLY", "read-only mode") }, 403);
+    }
+    const paneId = c.req.param("paneId");
+    if (!paneId) {
+      return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+    }
+    const detail = monitor.registry.getDetail(paneId);
+    if (!detail) {
+      return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+    }
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: buildError("INVALID_PAYLOAD", "invalid body") }, 400);
+    }
+    const titleValue =
+      body && typeof body === "object" && "title" in body
+        ? (body as { title?: unknown }).title
+        : undefined;
+    if (titleValue !== null && typeof titleValue !== "string") {
+      return c.json({ error: buildError("INVALID_PAYLOAD", "invalid title") }, 400);
+    }
+    const trimmed = typeof titleValue === "string" ? titleValue.trim() : null;
+    if (trimmed && trimmed.length > 80) {
+      return c.json({ error: buildError("INVALID_PAYLOAD", "title too long") }, 400);
+    }
+    const nextTitle = trimmed && trimmed.length > 0 ? trimmed : null;
+    monitor.setCustomTitle(paneId, nextTitle);
+    const updated = monitor.registry.getDetail(paneId) ?? detail;
+    return c.json({ session: updated });
   });
 
   app.get("/api/sessions/:paneId/diff", async (c) => {
