@@ -17,10 +17,12 @@ import {
   ChevronUp,
   Copy,
   CornerDownLeft,
+  ExternalLink,
   FileCheck,
   FileText,
   GitCommitHorizontal,
   Image,
+  List,
   RefreshCw,
   Send,
   X,
@@ -39,7 +41,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -48,11 +50,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { renderAnsiLines } from "@/lib/ansi";
+import { agentIconMeta, formatRepoDirLabel, statusIconMeta } from "@/lib/quick-panel-utils";
 import {
   initialScreenLoadingState,
   screenLoadingReducer,
   type ScreenMode,
 } from "@/lib/screen-loading";
+import { buildSessionGroups } from "@/lib/session-group";
 import { useSessions } from "@/state/session-context";
 import { useTheme } from "@/state/theme-context";
 
@@ -66,6 +70,28 @@ const stateTone = (state: string) => {
       return "permission";
     default:
       return "unknown";
+  }
+};
+
+const agentToneFor = (agent: string | null | undefined) => {
+  switch (agent) {
+    case "codex":
+      return "codex" as const;
+    case "claude":
+      return "claude" as const;
+    default:
+      return "unknown" as const;
+  }
+};
+
+const agentLabelFor = (agent: string | null | undefined) => {
+  switch (agent) {
+    case "codex":
+      return "CODEX";
+    case "claude":
+      return "CLAUDE";
+    default:
+      return "UNKNOWN";
   }
 };
 
@@ -275,6 +301,24 @@ const VirtuosoList = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
 );
 
 VirtuosoList.displayName = "VirtuosoList";
+
+const QuickLogList = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      {...props}
+      className={`text-latte-text w-max min-w-max px-3 py-2 font-mono text-[12px] leading-[16px] ${className ?? ""}`}
+    />
+  ),
+);
+
+QuickLogList.displayName = "QuickLogList";
+
+type LogCacheEntry = {
+  screen: string;
+  capturedAt: string;
+  truncated?: boolean | null;
+};
 
 type DiffSectionProps = {
   diffSummary: DiffSummary | null;
@@ -828,6 +872,7 @@ export const SessionDetailPage = () => {
   const { paneId: paneIdEncoded } = useParams();
   const paneId = paneIdEncoded ?? "";
   const {
+    sessions,
     connected,
     connectionIssue,
     getSessionDetail,
@@ -845,6 +890,7 @@ export const SessionDetailPage = () => {
   } = useSessions();
   const { resolvedTheme } = useTheme();
   const session = getSessionDetail(paneId);
+  const navigate = useNavigate();
   const sessionCustomTitle = session?.customTitle ?? null;
   const sessionAutoTitle = session?.title ?? session?.sessionName ?? "";
   const sessionDisplayTitle = sessionCustomTitle ?? sessionAutoTitle;
@@ -869,6 +915,12 @@ export const SessionDetailPage = () => {
   );
   const [modeLoaded, setModeLoaded] = useState({ text: false, image: false });
   const [controlsOpen, setControlsOpen] = useState(false);
+  const [quickPanelOpen, setQuickPanelOpen] = useState(false);
+  const [logModalOpen, setLogModalOpen] = useState(false);
+  const [selectedPaneId, setSelectedPaneId] = useState<string | null>(null);
+  const [logCache, setLogCache] = useState<Record<string, LogCacheEntry>>({});
+  const [logLoading, setLogLoading] = useState<Record<string, boolean>>({});
+  const [logError, setLogError] = useState<Record<string, string | null>>({});
   const [diffSummary, setDiffSummary] = useState<DiffSummary | null>(null);
   const [diffError, setDiffError] = useState<string | null>(null);
   const [diffLoading, setDiffLoading] = useState(false);
@@ -887,10 +939,14 @@ export const SessionDetailPage = () => {
   const [commitOpen, setCommitOpen] = useState<Record<string, boolean>>({});
   const [commitLoadingDetails, setCommitLoadingDetails] = useState<Record<string, boolean>>({});
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
+  const logCacheRef = useRef<Record<string, LogCacheEntry>>({});
   const diffOpenRef = useRef<Record<string, boolean>>({});
   const diffSignatureRef = useRef<string | null>(null);
   const commitLogRef = useRef<CommitLog | null>(null);
   const commitSignatureRef = useRef<string | null>(null);
+  const logRequestIdRef = useRef(0);
+  const logLatestRequestRef = useRef<Record<string, number>>({});
+  const logInflightRef = useRef(new Set<string>());
   const commitCopyTimeoutRef = useRef<number | null>(null);
   const screenRef = useRef<string>("");
   const imageRef = useRef<string | null>(null);
@@ -900,9 +956,25 @@ export const SessionDetailPage = () => {
   const refreshRequestIdRef = useRef(0);
 
   useEffect(() => {
+    logCacheRef.current = logCache;
+  }, [logCache]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
+  const sessionGroups = useMemo(() => buildSessionGroups(sessions), [sessions]);
+  const selectedSession = useMemo(
+    () =>
+      selectedPaneId ? (sessions.find((item) => item.paneId === selectedPaneId) ?? null) : null,
+    [selectedPaneId, sessions],
+  );
+  const selectedLogEntry = selectedPaneId ? (logCache[selectedPaneId] ?? null) : null;
+  const selectedLogLines = useMemo(() => {
+    if (!selectedLogEntry) return [];
+    const text = selectedLogEntry.screen.length > 0 ? selectedLogEntry.screen : "No log data";
+    return renderAnsiLines(text, resolvedTheme, { agent: selectedSession?.agent });
+  }, [selectedLogEntry, resolvedTheme, selectedSession?.agent]);
   const screenLines = useMemo(() => {
     if (mode !== "text") {
       return [];
@@ -947,6 +1019,80 @@ export const SessionDetailPage = () => {
       setIsAtBottom(true);
     }
   }, [mode]);
+
+  const fetchLog = useCallback(
+    async (paneId: string) => {
+      if (!paneId) return;
+      if (!connected) {
+        setLogError((prev) => ({
+          ...prev,
+          [paneId]: connectionIssue ?? DISCONNECTED_MESSAGE,
+        }));
+        return;
+      }
+      if (logInflightRef.current.has(paneId)) {
+        return;
+      }
+      const hasCache = Boolean(logCacheRef.current[paneId]);
+      logInflightRef.current.add(paneId);
+      const requestId = (logRequestIdRef.current += 1);
+      logLatestRequestRef.current[paneId] = requestId;
+      if (!hasCache) {
+        setLogLoading((prev) => ({ ...prev, [paneId]: true }));
+      }
+      setLogError((prev) => ({ ...prev, [paneId]: null }));
+      try {
+        const response = await requestScreen(paneId, { mode: "text" });
+        if (logLatestRequestRef.current[paneId] !== requestId) {
+          return;
+        }
+        if (!response.ok) {
+          setLogError((prev) => ({
+            ...prev,
+            [paneId]: response.error?.message ?? "Failed to load log",
+          }));
+          return;
+        }
+        setLogCache((prev) => ({
+          ...prev,
+          [paneId]: {
+            screen: response.screen ?? "",
+            capturedAt: response.capturedAt,
+            truncated: response.truncated ?? null,
+          },
+        }));
+      } catch (err) {
+        if (logLatestRequestRef.current[paneId] !== requestId) {
+          return;
+        }
+        setLogError((prev) => ({
+          ...prev,
+          [paneId]: err instanceof Error ? err.message : "Log request failed",
+        }));
+      } finally {
+        logInflightRef.current.delete(paneId);
+        if (!hasCache && logLatestRequestRef.current[paneId] === requestId) {
+          setLogLoading((prev) => ({ ...prev, [paneId]: false }));
+        }
+      }
+    },
+    [connected, connectionIssue, requestScreen],
+  );
+
+  useEffect(() => {
+    if (!logModalOpen || !selectedPaneId) {
+      return;
+    }
+    void fetchLog(selectedPaneId);
+    const intervalMs = 2000;
+    const intervalId = window.setInterval(() => {
+      if (document.hidden) return;
+      void fetchLog(selectedPaneId);
+    }, intervalMs);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [fetchLog, logModalOpen, selectedPaneId]);
 
   const refreshScreen = useCallback(async () => {
     if (!paneId) return;
@@ -1597,11 +1743,60 @@ export const SessionDetailPage = () => {
     void loadCommitLog({ append: true, force: true });
   }, [loadCommitLog]);
 
+  const closeQuickPanel = useCallback(() => {
+    setQuickPanelOpen(false);
+  }, []);
+
+  const openLogModal = useCallback((paneIdToOpen: string) => {
+    setSelectedPaneId(paneIdToOpen);
+    setLogModalOpen(true);
+  }, []);
+
+  const closeLogModal = useCallback(() => {
+    setLogModalOpen(false);
+    setSelectedPaneId(null);
+  }, []);
+
+  const toggleQuickPanel = useCallback(() => {
+    setQuickPanelOpen((prev) => !prev);
+  }, []);
+
+  const handleOpenInNewTab = useCallback(() => {
+    if (!selectedPaneId) return;
+    const encoded = encodeURIComponent(selectedPaneId);
+    window.open(`/sessions/${encoded}`, "_blank", "noopener,noreferrer");
+  }, [selectedPaneId]);
+
+  const handleOpenHere = useCallback(() => {
+    if (!selectedPaneId) return;
+    const encoded = encodeURIComponent(selectedPaneId);
+    navigate(`/sessions/${encoded}`);
+    closeLogModal();
+  }, [closeLogModal, navigate, selectedPaneId]);
+
+  useEffect(() => {
+    if (!quickPanelOpen && !logModalOpen) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (logModalOpen) {
+        closeLogModal();
+        return;
+      }
+      closeQuickPanel();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeLogModal, closeQuickPanel, logModalOpen, quickPanelOpen]);
+
   const tabLabel = "Tab";
-  const agentTone =
-    session?.agent === "codex" ? "codex" : session?.agent === "claude" ? "claude" : "unknown";
-  const agentLabel =
-    session?.agent === "codex" ? "CODEX" : session?.agent === "claude" ? "CLAUDE" : "UNKNOWN";
+  const agentTone = agentToneFor(session?.agent);
+  const agentLabel = agentLabelFor(session?.agent);
+  const selectedLogLoading = selectedPaneId ? logLoading[selectedPaneId] : false;
+  const selectedLogError = selectedPaneId ? logError[selectedPaneId] : null;
 
   if (!session) {
     return (
@@ -1618,423 +1813,574 @@ export const SessionDetailPage = () => {
   }
 
   return (
-    <div className="animate-fade-in-up mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-6">
-      <div className="flex items-center justify-between gap-3">
-        <Link to="/" className={backLinkClass}>
-          <ArrowLeft className="h-4 w-4" />
-          Back to list
-        </Link>
-        <ThemeToggle />
-      </div>
-      <header className="shadow-glass border-latte-surface1/60 bg-latte-base/80 flex flex-col gap-3 rounded-2xl border p-4 backdrop-blur">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              {titleEditing ? (
-                <input
-                  type="text"
-                  value={titleDraft}
-                  onChange={(event) => {
-                    setTitleDraft(event.target.value);
-                    if (titleError) {
-                      setTitleError(null);
-                    }
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      void handleTitleSave();
-                    }
-                    if (event.key === "Escape") {
-                      event.preventDefault();
-                      closeTitleEditor();
-                    }
-                  }}
-                  onBlur={() => {
-                    if (titleSaving) return;
-                    closeTitleEditor();
-                  }}
-                  placeholder={sessionAutoTitle || "Untitled session"}
-                  maxLength={80}
-                  enterKeyHint="done"
-                  disabled={titleSaving}
-                  className="border-latte-surface2 text-latte-text focus:border-latte-lavender focus:ring-latte-lavender/30 bg-latte-base/70 min-w-[180px] flex-1 rounded-2xl border px-3 py-1.5 text-xl shadow-sm outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
-                  aria-label="Custom session title"
-                  autoFocus
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={openTitleEditor}
-                  disabled={readOnly}
-                  className={`font-display text-latte-text text-left text-xl transition ${
-                    readOnly ? "cursor-default" : "hover:text-latte-lavender cursor-text"
-                  } disabled:opacity-70`}
-                  aria-label="Edit session title"
-                >
-                  {sessionDisplayTitle}
-                </button>
-              )}
-              {sessionCustomTitle && !readOnly && !titleEditing && (
-                <button
-                  type="button"
-                  onClick={handleTitleClear}
-                  disabled={titleSaving}
-                  className="border-latte-surface2 text-latte-subtext0 hover:text-latte-red hover:border-latte-red/60 inline-flex h-6 w-6 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-60"
-                  aria-label="Clear custom title"
-                  title="Clear custom title"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-            <div className="space-y-4">
-              <p className="text-latte-subtext0 text-sm">{formatPath(session.currentPath)}</p>
-              <div className="text-latte-overlay1 flex flex-wrap items-center gap-2 text-[11px] font-semibold">
-                <span className="border-latte-surface2/60 bg-latte-crust/40 rounded-full border px-3 py-1">
-                  Session {session.sessionName}
-                </span>
-                <span className="border-latte-surface2/60 bg-latte-crust/40 rounded-full border px-3 py-1">
-                  Window {session.windowIndex}
-                </span>
-                <span className="border-latte-surface2/60 bg-latte-crust/40 rounded-full border px-3 py-1">
-                  Pane {session.paneId}
-                </span>
-              </div>
-            </div>
-            {titleError && <p className="text-latte-red text-xs">{titleError}</p>}
-          </div>
-          <div className="flex flex-col items-start gap-2 sm:items-end">
-            <Badge tone={stateTone(session.state)}>{session.state}</Badge>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge tone={agentTone}>{agentLabel}</Badge>
-              <span
-                className={`${lastInputTone.pill} inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold`}
-              >
-                <span className={`h-1.5 w-1.5 rounded-full ${lastInputTone.dot}`} />
-                <span className="text-[9px] uppercase tracking-[0.2em]">Last input</span>
-                <span>{formatRelativeTime(session.lastInputAt, nowMs)}</span>
-              </span>
-            </div>
-          </div>
+    <>
+      <div className="animate-fade-in-up mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-6">
+        <div className="flex items-center justify-between gap-3">
+          <Link to="/" className={backLinkClass}>
+            <ArrowLeft className="h-4 w-4" />
+            Back to list
+          </Link>
+          <ThemeToggle />
         </div>
-        {session.pipeConflict && (
-          <div className="border-latte-red/40 bg-latte-red/10 text-latte-red rounded-2xl border px-4 py-2 text-sm">
-            Another pipe-pane is attached. Screen is capture-only.
-          </div>
-        )}
-        {readOnly && (
-          <div className="border-latte-peach/50 bg-latte-peach/10 text-latte-peach rounded-2xl border px-4 py-2 text-sm">
-            Read-only mode is active. Actions are disabled.
-          </div>
-        )}
-        {connectionIssue && (
-          <div className="border-latte-peach/50 bg-latte-peach/10 text-latte-peach rounded-2xl border px-4 py-2 text-sm">
-            {connectionIssue}
-          </div>
-        )}
-      </header>
-
-      <div className="flex min-w-0 flex-col gap-4">
-        <Card className="flex min-w-0 flex-col gap-3 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Tabs
-                value={mode}
-                onValueChange={(value) => {
-                  if ((value === "text" || value === "image") && value !== mode) {
-                    const nextMode = value;
-                    if (!connected) {
-                      modeSwitchRef.current = null;
-                      dispatchScreenLoading({ type: "reset" });
-                      setMode(nextMode);
-                      return;
-                    }
-                    modeSwitchRef.current = nextMode;
-                    dispatchScreenLoading({ type: "start", mode: nextMode });
-                    setMode(nextMode);
-                  }
-                }}
-              >
-                <TabsList aria-label="Screen mode">
-                  <TabsTrigger value="text">
-                    <span className="inline-flex items-center gap-1.5">
-                      <FileText className="h-3.5 w-3.5" />
-                      <span>Text</span>
-                    </span>
-                  </TabsTrigger>
-                  <TabsTrigger value="image">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Image className="h-3.5 w-3.5" />
-                      <span>Image</span>
-                    </span>
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => (connected ? refreshScreen() : reconnect())}
-              aria-label={connected ? "Refresh screen" : "Reconnect"}
-            >
-              <RefreshCw className="h-4 w-4" />
-              <span className="sr-only">{connected ? "Refresh" : "Reconnect"}</span>
-            </Button>
-          </div>
-          {fallbackReason && (
-            <div className="border-latte-peach/40 bg-latte-peach/10 text-latte-peach rounded-2xl border px-4 py-2 text-xs">
-              Image fallback: {fallbackReason}
-            </div>
-          )}
-          {error && (
-            <div className="border-latte-red/40 bg-latte-red/10 text-latte-red rounded-2xl border px-4 py-2 text-xs">
-              {error}
-            </div>
-          )}
-          <div className="border-latte-surface2/80 bg-latte-crust/95 relative min-h-[320px] w-full min-w-0 max-w-full flex-1 rounded-2xl border-2 shadow-inner">
-            {isScreenLoading && (
-              <div className="bg-latte-base/70 absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-2xl backdrop-blur-sm">
-                <div className="relative">
-                  <div className="border-latte-lavender/20 h-10 w-10 rounded-full border-2" />
-                  <div className="border-latte-lavender absolute inset-0 h-10 w-10 animate-spin rounded-full border-2 border-t-transparent" />
-                </div>
-                <span className="text-latte-subtext0 text-xs font-medium">Loading screen...</span>
-              </div>
-            )}
-            {mode === "image" && imageBase64 ? (
-              <div className="flex w-full items-center justify-center p-3">
-                <img
-                  src={`data:image/png;base64,${imageBase64}`}
-                  alt="screen"
-                  className="border-latte-surface2 max-h-[480px] w-full rounded-xl border object-contain"
-                />
-              </div>
-            ) : (
-              <>
-                <Virtuoso
-                  ref={virtuosoRef}
-                  data={screenLines}
-                  initialTopMostItemIndex={Math.max(screenLines.length - 1, 0)}
-                  followOutput="auto"
-                  atBottomStateChange={setIsAtBottom}
-                  components={{ Scroller: VirtuosoScroller, List: VirtuosoList }}
-                  className="w-full min-w-0 max-w-full"
-                  style={{ height: "60vh" }}
-                  itemContent={(_index, line) => (
-                    <div
-                      className="min-h-4 whitespace-pre leading-4"
-                      dangerouslySetInnerHTML={{ __html: line || "&#x200B;" }}
-                    />
-                  )}
-                />
-                {!isAtBottom && (
-                  <button
-                    type="button"
-                    onClick={() => scrollToBottom("smooth")}
-                    aria-label="Scroll to bottom"
-                    className="border-latte-surface2 bg-latte-base/80 text-latte-text hover:border-latte-lavender/60 hover:text-latte-lavender focus-visible:ring-latte-lavender absolute bottom-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-md backdrop-blur transition focus-visible:outline-none focus-visible:ring-2"
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-          <div>
-            {!readOnly ? (
-              <div className="space-y-4">
-                <div className="flex items-start gap-4">
-                  <textarea
-                    placeholder="Type a prompt…"
-                    ref={textInputRef}
-                    rows={2}
-                    disabled={!connected}
-                    className="border-latte-surface2 text-latte-text focus:border-latte-lavender focus:ring-latte-lavender/30 bg-latte-base/70 min-h-[64px] min-w-0 flex-1 resize-y rounded-2xl border px-4 py-2 text-base shadow-sm outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 md:text-sm"
+        <header className="shadow-glass border-latte-surface1/60 bg-latte-base/80 flex flex-col gap-3 rounded-2xl border p-4 backdrop-blur">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {titleEditing ? (
+                  <input
+                    type="text"
+                    value={titleDraft}
+                    onChange={(event) => {
+                      setTitleDraft(event.target.value);
+                      if (titleError) {
+                        setTitleError(null);
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void handleTitleSave();
+                      }
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        closeTitleEditor();
+                      }
+                    }}
+                    onBlur={() => {
+                      if (titleSaving) return;
+                      closeTitleEditor();
+                    }}
+                    placeholder={sessionAutoTitle || "Untitled session"}
+                    maxLength={80}
+                    enterKeyHint="done"
+                    disabled={titleSaving}
+                    className="border-latte-surface2 text-latte-text focus:border-latte-lavender focus:ring-latte-lavender/30 bg-latte-base/70 min-w-[180px] flex-1 rounded-2xl border px-3 py-1.5 text-xl shadow-sm outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
+                    aria-label="Custom session title"
+                    autoFocus
                   />
-                  <div className="flex shrink-0 items-center self-center">
-                    <Button onClick={handleSendText} aria-label="Send" className="h-11 w-11 p-0">
-                      <Send className="h-4 w-4" />
-                      <span className="sr-only">Send</span>
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setControlsOpen((prev) => !prev)}
-                    aria-expanded={controlsOpen}
-                    aria-controls="session-controls"
-                    className="text-latte-subtext0 flex items-center gap-2 text-[11px] uppercase tracking-[0.32em]"
-                  >
-                    {controlsOpen ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                    Keys
-                  </Button>
+                ) : (
                   <button
                     type="button"
-                    onClick={() => setAutoEnter((prev) => !prev)}
-                    aria-pressed={autoEnter}
-                    title="Auto-enter after send"
-                    className={`group inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] transition ${
-                      autoEnter
-                        ? "border-latte-lavender/60 bg-latte-lavender/10 text-latte-lavender shadow-[inset_0_0_0_1px_rgba(114,135,253,0.12)]"
-                        : "border-latte-surface2/70 text-latte-subtext0 hover:border-latte-overlay1 hover:text-latte-text"
-                    }`}
+                    onClick={openTitleEditor}
+                    disabled={readOnly}
+                    className={`font-display text-latte-text text-left text-xl transition ${
+                      readOnly ? "cursor-default" : "hover:text-latte-lavender cursor-text"
+                    } disabled:opacity-70`}
+                    aria-label="Edit session title"
                   >
-                    <span className="text-[9px] font-semibold tracking-[0.3em]">Auto</span>
-                    <CornerDownLeft className="h-3.5 w-3.5" />
-                    <span className="sr-only">Auto-enter</span>
+                    {sessionDisplayTitle}
                   </button>
-                </div>
-                {controlsOpen && (
-                  <div id="session-controls" className="space-y-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setShiftHeld((prev) => !prev)}
-                        aria-pressed={shiftHeld}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border-2 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] transition-all ${
-                          shiftHeld
-                            ? "border-latte-mauve bg-latte-mauve/20 text-latte-mauve shadow-[0_0_12px_rgb(var(--ctp-mauve)/0.4)]"
-                            : "border-latte-surface2 text-latte-subtext0 hover:border-latte-overlay1 hover:text-latte-text"
-                        }`}
-                      >
-                        <span
-                          className={`h-2 w-2 rounded-full transition-colors ${shiftHeld ? "bg-latte-mauve" : "bg-latte-surface2"}`}
-                        />
-                        Shift
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCtrlHeld((prev) => !prev)}
-                        aria-pressed={ctrlHeld}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border-2 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] transition-all ${
-                          ctrlHeld
-                            ? "border-latte-blue bg-latte-blue/20 text-latte-blue shadow-[0_0_12px_rgb(var(--ctp-blue)/0.4)]"
-                            : "border-latte-surface2 text-latte-subtext0 hover:border-latte-overlay1 hover:text-latte-text"
-                        }`}
-                      >
-                        <span
-                          className={`h-2 w-2 rounded-full transition-colors ${ctrlHeld ? "bg-latte-blue" : "bg-latte-surface2"}`}
-                        />
-                        Ctrl
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          { label: "Esc", key: "Escape" },
-                          { label: tabLabel, key: "Tab" },
-                          { label: "Enter", key: "Enter" },
-                        ].map((item) => (
-                          <KeyButton
-                            key={item.key}
-                            label={item.label}
-                            onClick={() => handleSendKey(item.key)}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        {[
-                          {
-                            label: (
-                              <>
-                                <ArrowLeft className="h-4 w-4" />
-                                <span className="sr-only">Left</span>
-                              </>
-                            ),
-                            key: "Left",
-                            ariaLabel: "Left",
-                          },
-                          {
-                            label: (
-                              <>
-                                <ArrowUp className="h-4 w-4" />
-                                <span className="sr-only">Up</span>
-                              </>
-                            ),
-                            key: "Up",
-                            ariaLabel: "Up",
-                          },
-                          {
-                            label: (
-                              <>
-                                <ArrowDown className="h-4 w-4" />
-                                <span className="sr-only">Down</span>
-                              </>
-                            ),
-                            key: "Down",
-                            ariaLabel: "Down",
-                          },
-                          {
-                            label: (
-                              <>
-                                <ArrowRight className="h-4 w-4" />
-                                <span className="sr-only">Right</span>
-                              </>
-                            ),
-                            key: "Right",
-                            ariaLabel: "Right",
-                          },
-                        ].map((item) => (
-                          <KeyButton
-                            key={item.key}
-                            label={item.label}
-                            ariaLabel={item.ariaLabel}
-                            onClick={() => handleSendKey(item.key)}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                )}
+                {sessionCustomTitle && !readOnly && !titleEditing && (
+                  <button
+                    type="button"
+                    onClick={handleTitleClear}
+                    disabled={titleSaving}
+                    className="border-latte-surface2 text-latte-subtext0 hover:text-latte-red hover:border-latte-red/60 inline-flex h-6 w-6 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-60"
+                    aria-label="Clear custom title"
+                    title="Clear custom title"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 )}
               </div>
-            ) : (
-              <div className="border-latte-peach/50 bg-latte-peach/10 text-latte-peach rounded-2xl border px-4 py-2 text-sm">
-                Read-only mode is active. Interactive controls are hidden.
+              <div className="space-y-4">
+                <p className="text-latte-subtext0 text-sm">{formatPath(session.currentPath)}</p>
+                <div className="text-latte-overlay1 flex flex-wrap items-center gap-2 text-[11px] font-semibold">
+                  <span className="border-latte-surface2/60 bg-latte-crust/40 rounded-full border px-3 py-1">
+                    Session {session.sessionName}
+                  </span>
+                  <span className="border-latte-surface2/60 bg-latte-crust/40 rounded-full border px-3 py-1">
+                    Window {session.windowIndex}
+                  </span>
+                  <span className="border-latte-surface2/60 bg-latte-crust/40 rounded-full border px-3 py-1">
+                    Pane {session.paneId}
+                  </span>
+                </div>
+              </div>
+              {titleError && <p className="text-latte-red text-xs">{titleError}</p>}
+            </div>
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              <Badge tone={stateTone(session.state)}>{session.state}</Badge>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone={agentTone}>{agentLabel}</Badge>
+                <span
+                  className={`${lastInputTone.pill} inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${lastInputTone.dot}`} />
+                  <span className="text-[9px] uppercase tracking-[0.2em]">Last input</span>
+                  <span>{formatRelativeTime(session.lastInputAt, nowMs)}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          {session.pipeConflict && (
+            <div className="border-latte-red/40 bg-latte-red/10 text-latte-red rounded-2xl border px-4 py-2 text-sm">
+              Another pipe-pane is attached. Screen is capture-only.
+            </div>
+          )}
+          {readOnly && (
+            <div className="border-latte-peach/50 bg-latte-peach/10 text-latte-peach rounded-2xl border px-4 py-2 text-sm">
+              Read-only mode is active. Actions are disabled.
+            </div>
+          )}
+          {connectionIssue && (
+            <div className="border-latte-peach/50 bg-latte-peach/10 text-latte-peach rounded-2xl border px-4 py-2 text-sm">
+              {connectionIssue}
+            </div>
+          )}
+        </header>
+
+        <div className="flex min-w-0 flex-col gap-4">
+          <Card className="flex min-w-0 flex-col gap-3 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Tabs
+                  value={mode}
+                  onValueChange={(value) => {
+                    if ((value === "text" || value === "image") && value !== mode) {
+                      const nextMode = value;
+                      if (!connected) {
+                        modeSwitchRef.current = null;
+                        dispatchScreenLoading({ type: "reset" });
+                        setMode(nextMode);
+                        return;
+                      }
+                      modeSwitchRef.current = nextMode;
+                      dispatchScreenLoading({ type: "start", mode: nextMode });
+                      setMode(nextMode);
+                    }
+                  }}
+                >
+                  <TabsList aria-label="Screen mode">
+                    <TabsTrigger value="text">
+                      <span className="inline-flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5" />
+                        <span>Text</span>
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="image">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Image className="h-3.5 w-3.5" />
+                        <span>Image</span>
+                      </span>
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => (connected ? refreshScreen() : reconnect())}
+                aria-label={connected ? "Refresh screen" : "Reconnect"}
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span className="sr-only">{connected ? "Refresh" : "Reconnect"}</span>
+              </Button>
+            </div>
+            {fallbackReason && (
+              <div className="border-latte-peach/40 bg-latte-peach/10 text-latte-peach rounded-2xl border px-4 py-2 text-xs">
+                Image fallback: {fallbackReason}
               </div>
             )}
-          </div>
-        </Card>
+            {error && (
+              <div className="border-latte-red/40 bg-latte-red/10 text-latte-red rounded-2xl border px-4 py-2 text-xs">
+                {error}
+              </div>
+            )}
+            <div className="border-latte-surface2/80 bg-latte-crust/95 relative min-h-[320px] w-full min-w-0 max-w-full flex-1 rounded-2xl border-2 shadow-inner">
+              {isScreenLoading && (
+                <div className="bg-latte-base/70 absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-2xl backdrop-blur-sm">
+                  <div className="relative">
+                    <div className="border-latte-lavender/20 h-10 w-10 rounded-full border-2" />
+                    <div className="border-latte-lavender absolute inset-0 h-10 w-10 animate-spin rounded-full border-2 border-t-transparent" />
+                  </div>
+                  <span className="text-latte-subtext0 text-xs font-medium">Loading screen...</span>
+                </div>
+              )}
+              {mode === "image" && imageBase64 ? (
+                <div className="flex w-full items-center justify-center p-3">
+                  <img
+                    src={`data:image/png;base64,${imageBase64}`}
+                    alt="screen"
+                    className="border-latte-surface2 max-h-[480px] w-full rounded-xl border object-contain"
+                  />
+                </div>
+              ) : (
+                <>
+                  <Virtuoso
+                    ref={virtuosoRef}
+                    data={screenLines}
+                    initialTopMostItemIndex={Math.max(screenLines.length - 1, 0)}
+                    followOutput="auto"
+                    atBottomStateChange={setIsAtBottom}
+                    components={{ Scroller: VirtuosoScroller, List: VirtuosoList }}
+                    className="w-full min-w-0 max-w-full"
+                    style={{ height: "60vh" }}
+                    itemContent={(_index, line) => (
+                      <div
+                        className="min-h-4 whitespace-pre leading-4"
+                        dangerouslySetInnerHTML={{ __html: line || "&#x200B;" }}
+                      />
+                    )}
+                  />
+                  {!isAtBottom && (
+                    <button
+                      type="button"
+                      onClick={() => scrollToBottom("smooth")}
+                      aria-label="Scroll to bottom"
+                      className="border-latte-surface2 bg-latte-base/80 text-latte-text hover:border-latte-lavender/60 hover:text-latte-lavender focus-visible:ring-latte-lavender absolute bottom-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-md backdrop-blur transition focus-visible:outline-none focus-visible:ring-2"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+            <div>
+              {!readOnly ? (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-4">
+                    <textarea
+                      placeholder="Type a prompt…"
+                      ref={textInputRef}
+                      rows={2}
+                      disabled={!connected}
+                      className="border-latte-surface2 text-latte-text focus:border-latte-lavender focus:ring-latte-lavender/30 bg-latte-base/70 min-h-[64px] min-w-0 flex-1 resize-y rounded-2xl border px-4 py-2 text-base shadow-sm outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 md:text-sm"
+                    />
+                    <div className="flex shrink-0 items-center self-center">
+                      <Button onClick={handleSendText} aria-label="Send" className="h-11 w-11 p-0">
+                        <Send className="h-4 w-4" />
+                        <span className="sr-only">Send</span>
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setControlsOpen((prev) => !prev)}
+                      aria-expanded={controlsOpen}
+                      aria-controls="session-controls"
+                      className="text-latte-subtext0 flex items-center gap-2 text-[11px] uppercase tracking-[0.32em]"
+                    >
+                      {controlsOpen ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                      Keys
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => setAutoEnter((prev) => !prev)}
+                      aria-pressed={autoEnter}
+                      title="Auto-enter after send"
+                      className={`group inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] transition ${
+                        autoEnter
+                          ? "border-latte-lavender/60 bg-latte-lavender/10 text-latte-lavender shadow-[inset_0_0_0_1px_rgba(114,135,253,0.12)]"
+                          : "border-latte-surface2/70 text-latte-subtext0 hover:border-latte-overlay1 hover:text-latte-text"
+                      }`}
+                    >
+                      <span className="text-[9px] font-semibold tracking-[0.3em]">Auto</span>
+                      <CornerDownLeft className="h-3.5 w-3.5" />
+                      <span className="sr-only">Auto-enter</span>
+                    </button>
+                  </div>
+                  {controlsOpen && (
+                    <div id="session-controls" className="space-y-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShiftHeld((prev) => !prev)}
+                          aria-pressed={shiftHeld}
+                          className={`inline-flex items-center gap-1.5 rounded-lg border-2 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] transition-all ${
+                            shiftHeld
+                              ? "border-latte-mauve bg-latte-mauve/20 text-latte-mauve shadow-[0_0_12px_rgb(var(--ctp-mauve)/0.4)]"
+                              : "border-latte-surface2 text-latte-subtext0 hover:border-latte-overlay1 hover:text-latte-text"
+                          }`}
+                        >
+                          <span
+                            className={`h-2 w-2 rounded-full transition-colors ${shiftHeld ? "bg-latte-mauve" : "bg-latte-surface2"}`}
+                          />
+                          Shift
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCtrlHeld((prev) => !prev)}
+                          aria-pressed={ctrlHeld}
+                          className={`inline-flex items-center gap-1.5 rounded-lg border-2 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] transition-all ${
+                            ctrlHeld
+                              ? "border-latte-blue bg-latte-blue/20 text-latte-blue shadow-[0_0_12px_rgb(var(--ctp-blue)/0.4)]"
+                              : "border-latte-surface2 text-latte-subtext0 hover:border-latte-overlay1 hover:text-latte-text"
+                          }`}
+                        >
+                          <span
+                            className={`h-2 w-2 rounded-full transition-colors ${ctrlHeld ? "bg-latte-blue" : "bg-latte-surface2"}`}
+                          />
+                          Ctrl
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { label: "Esc", key: "Escape" },
+                            { label: tabLabel, key: "Tab" },
+                            { label: "Enter", key: "Enter" },
+                          ].map((item) => (
+                            <KeyButton
+                              key={item.key}
+                              label={item.label}
+                              onClick={() => handleSendKey(item.key)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          {[
+                            {
+                              label: (
+                                <>
+                                  <ArrowLeft className="h-4 w-4" />
+                                  <span className="sr-only">Left</span>
+                                </>
+                              ),
+                              key: "Left",
+                              ariaLabel: "Left",
+                            },
+                            {
+                              label: (
+                                <>
+                                  <ArrowUp className="h-4 w-4" />
+                                  <span className="sr-only">Up</span>
+                                </>
+                              ),
+                              key: "Up",
+                              ariaLabel: "Up",
+                            },
+                            {
+                              label: (
+                                <>
+                                  <ArrowDown className="h-4 w-4" />
+                                  <span className="sr-only">Down</span>
+                                </>
+                              ),
+                              key: "Down",
+                              ariaLabel: "Down",
+                            },
+                            {
+                              label: (
+                                <>
+                                  <ArrowRight className="h-4 w-4" />
+                                  <span className="sr-only">Right</span>
+                                </>
+                              ),
+                              key: "Right",
+                              ariaLabel: "Right",
+                            },
+                          ].map((item) => (
+                            <KeyButton
+                              key={item.key}
+                              label={item.label}
+                              ariaLabel={item.ariaLabel}
+                              onClick={() => handleSendKey(item.key)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="border-latte-peach/50 bg-latte-peach/10 text-latte-peach rounded-2xl border px-4 py-2 text-sm">
+                  Read-only mode is active. Interactive controls are hidden.
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        <DiffSection
+          diffSummary={diffSummary}
+          diffError={diffError}
+          diffLoading={diffLoading}
+          diffFiles={diffFiles}
+          diffOpen={diffOpen}
+          diffLoadingFiles={diffLoadingFiles}
+          onRefresh={handleRefreshDiff}
+          onToggle={handleToggleDiff}
+        />
+
+        <CommitSection
+          commitLog={commitLog}
+          commitError={commitError}
+          commitLoading={commitLoading}
+          commitLoadingMore={commitLoadingMore}
+          commitHasMore={commitHasMore}
+          commitDetails={commitDetails}
+          commitFileDetails={commitFileDetails}
+          commitFileOpen={commitFileOpen}
+          commitFileLoading={commitFileLoading}
+          commitOpen={commitOpen}
+          commitLoadingDetails={commitLoadingDetails}
+          copiedHash={copiedHash}
+          onRefresh={handleRefreshCommitLog}
+          onLoadMore={handleLoadMoreCommits}
+          onToggleCommit={handleToggleCommit}
+          onToggleCommitFile={handleToggleCommitFile}
+          onCopyHash={handleCopyHash}
+        />
       </div>
 
-      <DiffSection
-        diffSummary={diffSummary}
-        diffError={diffError}
-        diffLoading={diffLoading}
-        diffFiles={diffFiles}
-        diffOpen={diffOpen}
-        diffLoadingFiles={diffLoadingFiles}
-        onRefresh={handleRefreshDiff}
-        onToggle={handleToggleDiff}
-      />
+      <div className="fixed bottom-4 left-6 z-40 flex flex-col items-start gap-3">
+        {quickPanelOpen && (
+          <Card className="border-latte-surface2/60 bg-latte-base/90 font-body animate-fade-in-up relative max-h-[72vh] w-[calc(100vw-3rem)] max-w-[320px] overflow-hidden rounded-[24px] border p-3 shadow-[0_18px_40px_-30px_rgba(76,79,105,0.35)] backdrop-blur">
+            <button
+              type="button"
+              onClick={closeQuickPanel}
+              className="shadow-glass border-latte-surface1/60 bg-latte-base/80 text-latte-subtext0 hover:text-latte-text hover:border-latte-lavender/60 absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full border backdrop-blur transition"
+              aria-label="Close quick panel"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="custom-scrollbar mt-2 max-h-[62vh] space-y-3 overflow-y-auto pr-1">
+              {sessionGroups.length === 0 && (
+                <div className="border-latte-surface2/60 bg-latte-crust/60 text-latte-subtext0 rounded-2xl border px-3 py-4 text-center text-xs">
+                  No sessions available.
+                </div>
+              )}
+              {sessionGroups.map((group) => (
+                <div key={group.repoRoot ?? "no-repo"} className="space-y-2">
+                  <div className="text-latte-subtext0 px-2 text-[12px] font-medium">
+                    {formatRepoDirLabel(group.repoRoot)}
+                  </div>
+                  <div className="space-y-2">
+                    {group.sessions.map((item) => {
+                      const displayTitle = item.customTitle ?? item.title ?? item.sessionName;
+                      const lastInputTone = getLastInputTone(item.lastInputAt ?? null, nowMs);
+                      const statusMeta = statusIconMeta(item.state);
+                      const agentMeta = agentIconMeta(item.agent);
+                      const StatusIcon = statusMeta.icon;
+                      const AgentIcon = agentMeta.icon;
+                      return (
+                        <button
+                          key={item.paneId}
+                          type="button"
+                          onClick={() => openLogModal(item.paneId)}
+                          className="border-latte-surface2/70 bg-latte-crust/70 hover:border-latte-lavender/40 hover:bg-latte-crust/90 w-full rounded-2xl border px-3 py-3 text-left transition"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span
+                                className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${statusMeta.wrap}`}
+                                aria-label={statusMeta.label}
+                              >
+                                <StatusIcon className={`h-3.5 w-3.5 ${statusMeta.className}`} />
+                              </span>
+                              <span
+                                className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${agentMeta.wrap}`}
+                                aria-label={agentMeta.label}
+                              >
+                                <AgentIcon className={`h-3.5 w-3.5 ${agentMeta.className}`} />
+                              </span>
+                              <span className="text-latte-text text-sm font-semibold">
+                                {displayTitle}
+                              </span>
+                            </div>
+                            <span
+                              className={`${lastInputTone.pill} inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-[10px] font-semibold`}
+                            >
+                              <span className={`h-1.5 w-1.5 rounded-full ${lastInputTone.dot}`} />
+                              <span className="text-[9px] uppercase tracking-[0.2em]">Last</span>
+                              <span>{formatRelativeTime(item.lastInputAt, nowMs)}</span>
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+        <button
+          type="button"
+          onClick={toggleQuickPanel}
+          className="shadow-glass border-latte-surface1/60 bg-latte-base/95 text-latte-text hover:border-latte-lavender/50 hover:text-latte-lavender focus-visible:ring-latte-lavender inline-flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur transition focus-visible:outline-none focus-visible:ring-2"
+          aria-label="Toggle session quick panel"
+        >
+          <List className="h-5 w-5" />
+        </button>
+      </div>
 
-      <CommitSection
-        commitLog={commitLog}
-        commitError={commitError}
-        commitLoading={commitLoading}
-        commitLoadingMore={commitLoadingMore}
-        commitHasMore={commitHasMore}
-        commitDetails={commitDetails}
-        commitFileDetails={commitFileDetails}
-        commitFileOpen={commitFileOpen}
-        commitFileLoading={commitFileLoading}
-        commitOpen={commitOpen}
-        commitLoadingDetails={commitLoadingDetails}
-        copiedHash={copiedHash}
-        onRefresh={handleRefreshCommitLog}
-        onLoadMore={handleLoadMoreCommits}
-        onToggleCommit={handleToggleCommit}
-        onToggleCommitFile={handleToggleCommitFile}
-        onCopyHash={handleCopyHash}
-      />
-    </div>
+      {logModalOpen && selectedSession && (
+        <div className="fixed bottom-24 left-6 z-50 w-[calc(100vw-3rem)] max-w-[480px] translate-x-1 translate-y-1">
+          <Card className="border-latte-lavender/40 bg-latte-base/95 font-body animate-fade-in-up relative rounded-[24px] border p-4 shadow-[0_30px_80px_-40px_rgba(76,79,105,0.55),0_0_0_1px_rgba(180,190,254,0.35)] backdrop-blur">
+            <button
+              type="button"
+              onClick={closeLogModal}
+              className="shadow-glass border-latte-surface1/60 bg-latte-base/80 text-latte-subtext0 hover:text-latte-text hover:border-latte-lavender/60 absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full border backdrop-blur transition"
+              aria-label="Close log"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="flex flex-wrap items-center justify-between gap-3 pr-12">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <p className="text-latte-text truncate text-base font-semibold">
+                  {selectedSession.customTitle ??
+                    selectedSession.title ??
+                    selectedSession.sessionName}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={handleOpenHere} aria-label="Open here">
+                  <CornerDownLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleOpenInNewTab}
+                  aria-label="Open in new tab"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            {selectedLogError && (
+              <div className="border-latte-red/40 bg-latte-red/10 text-latte-red mt-2 rounded-2xl border px-3 py-2 text-xs">
+                {selectedLogError}
+              </div>
+            )}
+            <div className="border-latte-surface2/80 bg-latte-crust/95 relative mt-3 min-h-[200px] w-full rounded-2xl border-2 shadow-inner">
+              {selectedLogLoading && (
+                <div className="bg-latte-base/70 absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-2xl backdrop-blur-sm">
+                  <div className="relative">
+                    <div className="border-latte-lavender/20 h-8 w-8 rounded-full border-2" />
+                    <div className="border-latte-lavender absolute inset-0 h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
+                  </div>
+                  <span className="text-latte-subtext0 text-xs font-medium">Loading log...</span>
+                </div>
+              )}
+              <Virtuoso
+                data={selectedLogLines}
+                initialTopMostItemIndex={Math.max(selectedLogLines.length - 1, 0)}
+                followOutput="auto"
+                components={{ Scroller: VirtuosoScroller, List: QuickLogList }}
+                className="w-full min-w-0 max-w-full"
+                style={{ height: "66vh", minHeight: "260px", maxHeight: "78vh" }}
+                itemContent={(_index, line) => (
+                  <div
+                    className="min-h-4 whitespace-pre leading-5"
+                    dangerouslySetInnerHTML={{ __html: line || "&#x200B;" }}
+                  />
+                )}
+              />
+            </div>
+          </Card>
+        </div>
+      )}
+    </>
   );
 };
