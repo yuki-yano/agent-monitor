@@ -16,6 +16,6 @@ export default defineConfig({
       "apps/**/*.test.ts",
       "apps/**/*.test.tsx",
     ],
-    environment: "node",
+    environment: "happy-dom",
   },
 });

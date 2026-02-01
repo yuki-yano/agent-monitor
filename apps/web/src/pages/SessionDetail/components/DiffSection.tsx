@@ -39,7 +39,7 @@ export const DiffSection = memo(
     const totals = useMemo(() => {
       if (!diffSummary) return null;
       if (diffSummary.files.length === 0) {
-        return { additions: 0, deletions: 0, total: 0 };
+        return { additions: 0, deletions: 0 };
       }
       let additions = 0;
       let deletions = 0;
@@ -55,9 +55,8 @@ export const DiffSection = memo(
         }
       });
       if (!hasTotals) return null;
-      return { additions, deletions, total: additions + deletions };
+      return { additions, deletions };
     }, [diffSummary]);
-    const totalLabel = totals ? `${totals.total} line${totals.total === 1 ? "" : "s"}` : "—";
 
     useEffect(() => {
       if (!diffSummary?.files.length) {
@@ -138,7 +137,6 @@ export const DiffSection = memo(
                 <span className="ml-2 inline-flex items-center gap-2 text-xs">
                   <span className="text-latte-green">+{totals?.additions ?? "—"}</span>
                   <span className="text-latte-red">-{totals?.deletions ?? "—"}</span>
-                  <span className="text-latte-subtext0">{totalLabel}</span>
                 </span>
               )}
             </p>
