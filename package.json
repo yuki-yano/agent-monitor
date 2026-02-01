@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/yuki-yano/tmux-agent-monitor.git"
   },
-  "version": "0.0.29",
+  "version": "0.0.30",
   "type": "module",
   "packageManager": "pnpm@10.28.2",
   "engines": {
@@ -56,6 +56,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
+    "@testing-library/react": "^16.0.0",
     "@types/node": "^24.5.2",
     "concurrently": "^9.2.1",
     "eslint": "^9.35.0",
