@@ -282,13 +282,10 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
   const updateSession = useCallback((session: SessionSummary) => {
     setSessions((prev) => {
-      const index = prev.findIndex((item) => item.paneId === session.paneId);
-      if (index === -1) {
-        return [...prev, session];
-      }
-      const next = [...prev];
-      next[index] = session;
-      return next;
+      const next = new Map<string, SessionSummary>();
+      prev.forEach((item) => next.set(item.paneId, item));
+      next.set(session.paneId, session);
+      return Array.from(next.values());
     });
   }, []);
 
@@ -303,7 +300,11 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       if (message.type === "sessions.snapshot") {
-        setSessions(message.data.sessions);
+        const unique = new Map<string, SessionSummary>();
+        message.data.sessions.forEach((session) => {
+          unique.set(session.paneId, session);
+        });
+        setSessions(Array.from(unique.values()));
         return;
       }
       if (message.type === "session.updated") {
