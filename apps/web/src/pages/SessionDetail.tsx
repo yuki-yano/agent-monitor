@@ -1960,53 +1960,6 @@ export const SessionDetailPage = () => {
                         ))}
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <span className="text-latte-subtext0 text-[10px] uppercase tracking-[0.3em]">
-                        Quick Actions
-                      </span>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            void sendKeys(paneId, ["C-c"]);
-                          }}
-                          className="font-mono text-[11px]"
-                        >
-                          Ctrl+C
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            void sendKeys(paneId, ["C-d"]);
-                          }}
-                          className="font-mono text-[11px]"
-                        >
-                          Ctrl+D
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            void sendKeys(paneId, ["C-z"]);
-                          }}
-                          className="font-mono text-[11px]"
-                        >
-                          Ctrl+Z
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            void sendKeys(paneId, ["C-l"]);
-                          }}
-                          className="font-mono text-[11px]"
-                        >
-                          Ctrl+L
-                        </Button>
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>
