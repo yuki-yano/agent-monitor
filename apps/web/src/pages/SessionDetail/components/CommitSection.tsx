@@ -16,6 +16,7 @@ import {
   Card,
   ChipButton,
   EmptyState,
+  FilePathLabel,
   InsetPanel,
   LoadingOverlay,
   MonoBlock,
@@ -229,7 +230,7 @@ export const CommitSection = memo(
                       {!loadingDetail && detail?.files && detail.files.length > 0 && (
                         <div className="flex flex-col gap-2 text-xs">
                           {detail.files.map((file) => {
-                            const statusLabel = file.status === "?" ? "U" : file.status;
+                            const statusLabel = file.status === "?" ? "A" : file.status;
                             const fileKey = `${commit.hash}:${file.path}`;
                             const fileOpen = Boolean(commitFileOpen[fileKey]);
                             const fileDetail = commitFileDetails[fileKey];
@@ -242,9 +243,6 @@ export const CommitSection = memo(
                               file.deletions === null || typeof file.deletions === "undefined"
                                 ? "—"
                                 : String(file.deletions);
-                            const pathLabel = file.renamedFrom
-                              ? `${file.renamedFrom} → ${file.path}`
-                              : file.path;
                             const renderedPatch = renderedPatches[fileKey];
                             return (
                               <div
@@ -253,10 +251,18 @@ export const CommitSection = memo(
                               >
                                 <Toolbar>
                                   <div className="flex min-w-0 items-center gap-2">
-                                    <TagPill tone="status" className={diffStatusClass(statusLabel)}>
+                                    <TagPill
+                                      tone="status"
+                                      className={`${diffStatusClass(statusLabel)} shrink-0`}
+                                    >
                                       {statusLabel}
                                     </TagPill>
-                                    <span className="text-latte-text truncate">{pathLabel}</span>
+                                    <FilePathLabel
+                                      path={file.path}
+                                      renamedFrom={file.renamedFrom}
+                                      size="xs"
+                                      tailSegments={3}
+                                    />
                                   </div>
                                   <div className="flex shrink-0 items-center gap-3 text-xs">
                                     <span className="text-latte-green">+{additions}</span>

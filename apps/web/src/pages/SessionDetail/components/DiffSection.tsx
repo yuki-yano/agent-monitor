@@ -7,6 +7,7 @@ import {
   Callout,
   Card,
   EmptyState,
+  FilePathLabel,
   InsetPanel,
   LoadingOverlay,
   MonoBlock,
@@ -201,7 +202,7 @@ export const DiffSection = memo(
               const loadingFile = Boolean(diffLoadingFiles[file.path]);
               const fileData = diffFiles[file.path];
               const renderedPatch = renderedPatches[file.path];
-              const statusLabel = file.status === "?" ? "U" : file.status;
+              const statusLabel = file.status === "?" ? "A" : file.status;
               const additionsLabel =
                 file.additions === null || typeof file.additions === "undefined"
                   ? "—"
@@ -214,10 +215,10 @@ export const DiffSection = memo(
                 <InsetPanel key={`${file.path}-${file.status}`}>
                   <RowButton type="button" onClick={() => onToggle(file.path)}>
                     <div className="flex min-w-0 items-center gap-3">
-                      <TagPill tone="status" className={diffStatusClass(statusLabel)}>
+                      <TagPill tone="status" className={`${diffStatusClass(statusLabel)} shrink-0`}>
                         {statusLabel}
                       </TagPill>
-                      <span className="text-latte-text truncate text-sm">{file.path}</span>
+                      <FilePathLabel path={file.path} size="sm" tailSegments={3} />
                     </div>
                     <div className="flex items-center gap-3 text-xs">
                       <span className="text-latte-green">+{additionsLabel}</span>

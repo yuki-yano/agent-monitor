@@ -6,6 +6,7 @@ export { ChipButton } from "./chip-button";
 export { ConnectionStatusPill } from "./connection-status-pill";
 export { EmptyCard } from "./empty-card";
 export { EmptyState } from "./empty-state";
+export { FilePathLabel } from "./file-path-label";
 export { FilterToggleGroup } from "./filter-toggle-group";
 export { GlassPanel } from "./glass-panel";
 export { GlowCard } from "./glow-card";
