@@ -65,14 +65,13 @@ describe("CommitSection", () => {
       />,
     );
 
-    const [first, second] = screen.getAllByText("Hide");
-    expect(first).toBeTruthy();
-    expect(second).toBeTruthy();
+    const commitToggle = screen.getByText("Hide");
+    expect(commitToggle).toBeTruthy();
     expect(screen.getByText("Total changes")).toBeTruthy();
-    fireEvent.click(first as Element);
+    fireEvent.click(commitToggle as Element);
     expect(onToggleCommit).toHaveBeenCalledWith("abc123");
 
-    fireEvent.click(second as Element);
+    fireEvent.click(screen.getByText("index.ts"));
     expect(onToggleCommitFile).toHaveBeenCalledWith("abc123", "src/index.ts");
   });
 

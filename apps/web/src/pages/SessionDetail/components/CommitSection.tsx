@@ -23,7 +23,6 @@ import {
   PanelSection,
   SectionHeader,
   TagPill,
-  TextButton,
   Toolbar,
 } from "@/components/ui";
 
@@ -249,7 +248,10 @@ export const CommitSection = memo(
                                 key={`${file.path}-${file.status}`}
                                 className="flex flex-col gap-2"
                               >
-                                <Toolbar>
+                                <Toolbar
+                                  onClick={() => onToggleCommitFile(commit.hash, file.path)}
+                                  className="cursor-pointer"
+                                >
                                   <div className="flex min-w-0 items-center gap-2">
                                     <TagPill
                                       tone="status"
@@ -267,18 +269,13 @@ export const CommitSection = memo(
                                   <div className="flex shrink-0 items-center gap-3 text-xs">
                                     <span className="text-latte-green">+{additions}</span>
                                     <span className="text-latte-red">-{deletions}</span>
-                                    <TextButton
-                                      type="button"
-                                      onClick={() => onToggleCommitFile(commit.hash, file.path)}
-                                      variant="subtle"
-                                    >
+                                    <span className="text-latte-overlay1">
                                       {fileOpen ? (
                                         <ChevronUp className="h-3.5 w-3.5" />
                                       ) : (
                                         <ChevronDown className="h-3.5 w-3.5" />
                                       )}
-                                      <span className="sr-only">{fileOpen ? "Hide" : "Show"}</span>
-                                    </TextButton>
+                                    </span>
                                   </div>
                                 </Toolbar>
                                 {fileOpen && (
