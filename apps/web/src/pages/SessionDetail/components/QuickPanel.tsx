@@ -1,4 +1,5 @@
 import { Clock, List, X } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 import { Card, IconButton, LastInputPill, SurfaceButton } from "@/components/ui";
 import { agentIconMeta, formatRepoDirLabel, statusIconMeta } from "@/lib/quick-panel-utils";
@@ -25,10 +26,71 @@ export const QuickPanel = ({
   onClose,
   onToggle,
 }: QuickPanelProps) => {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const target = scrollRef.current;
+    if (!target) return;
+    const handleWheel = (event: WheelEvent) => {
+      const { scrollHeight, clientHeight, scrollTop } = target;
+      if (scrollHeight <= clientHeight) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      if (event.deltaY < 0 && scrollTop <= 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      if (event.deltaY > 0 && scrollTop + clientHeight >= scrollHeight) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    const handleTouchStart = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      if (!touch) return;
+      touchStartYRef.current = touch.clientY;
+    };
+    const handleTouchMove = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      if (!touch) return;
+      const startY = touchStartYRef.current;
+      if (startY === null) return;
+      const currentY = touch.clientY;
+      const deltaY = startY - currentY;
+      const { scrollHeight, clientHeight, scrollTop } = target;
+      if (scrollHeight <= clientHeight) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      if (deltaY < 0 && scrollTop <= 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      if (deltaY > 0 && scrollTop + clientHeight >= scrollHeight) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    target.addEventListener("wheel", handleWheel, { passive: false });
+    target.addEventListener("touchstart", handleTouchStart, { passive: true });
+    target.addEventListener("touchmove", handleTouchMove, { passive: false });
+    return () => {
+      target.removeEventListener("wheel", handleWheel);
+      target.removeEventListener("touchstart", handleTouchStart);
+      target.removeEventListener("touchmove", handleTouchMove);
+    };
+  }, []);
+
   return (
     <div className="fixed bottom-4 left-6 z-40 flex flex-col items-start gap-3">
       {open && (
-        <Card className="font-body animate-panel-enter border-latte-lavender/30 bg-latte-mantle/85 relative max-h-[80dvh] w-[calc(100vw-3rem)] max-w-[320px] overflow-hidden rounded-[28px] border-2 p-4 shadow-[0_25px_80px_-20px_rgba(114,135,253,0.4),0_0_0_1px_rgba(114,135,253,0.15)] ring-1 ring-inset ring-white/10 backdrop-blur-xl">
+        <Card className="font-body animate-panel-enter border-latte-lavender/30 bg-latte-mantle/85 relative flex max-h-[80dvh] w-[calc(100vw-3rem)] max-w-[320px] flex-col overflow-hidden rounded-[28px] border-2 p-4 shadow-[0_25px_80px_-20px_rgba(114,135,253,0.4),0_0_0_1px_rgba(114,135,253,0.15)] ring-1 ring-inset ring-white/10 backdrop-blur-xl">
           <IconButton
             type="button"
             onClick={onClose}
@@ -39,7 +101,10 @@ export const QuickPanel = ({
           >
             <X className="h-4 w-4" />
           </IconButton>
-          <div className="custom-scrollbar -mr-4 mt-2 max-h-[70dvh] overflow-y-auto overscroll-contain">
+          <div
+            ref={scrollRef}
+            className="custom-scrollbar -mr-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pt-4"
+          >
             <div className="space-y-3 pr-5">
               {sessionGroups.length === 0 && (
                 <div className="border-latte-lavender/20 bg-latte-crust/50 text-latte-subtext0 rounded-2xl border px-3 py-4 text-center text-xs">
