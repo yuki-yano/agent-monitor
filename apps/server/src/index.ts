@@ -62,7 +62,6 @@ const runServe = async (flags: Map<string, string | boolean>) => {
     getTailscaleIP,
   });
 
-  config.bind = bindHost;
   config.attachOnServe = !noAttach;
   const parsedPort = parsePort(portFlag);
   if (parsedPort) {
@@ -75,7 +74,7 @@ const runServe = async (flags: Map<string, string | boolean>) => {
     config.tmux.socketPath = socketPath;
   }
 
-  const host = config.bind;
+  const host = bindHost;
   const port = await findAvailablePort(config.port, host, 10);
 
   const adapter = createTmuxAdapter({

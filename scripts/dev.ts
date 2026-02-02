@@ -18,6 +18,8 @@ const getFlagValue = (flag: string) => {
 const pnpmCmd = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const isPublic = hasFlag("--public");
 const isTailscale = hasFlag("--tailscale");
+const shouldExposeWeb = isPublic || isTailscale;
+const shouldExposeServer = isPublic || isTailscale;
 const bindHost = getFlagValue("--bind");
 const serverPort = getFlagValue("--server-port");
 
@@ -68,7 +70,7 @@ const startServer = (webPort: number) => {
     return;
   }
   const args = ["--filter", "@vde-monitor/server", "dev", "--"];
-  if (isPublic) {
+  if (shouldExposeServer) {
     args.push("--public");
   }
   if (isTailscale) {
@@ -94,7 +96,13 @@ const startServer = (webPort: number) => {
   });
 };
 
-const webArgs = ["--filter", "@vde-monitor/web", isPublic ? "dev:public" : "dev"];
+if (isTailscale && !isPublic) {
+  console.warn(
+    "[vde-monitor] --tailscale detected. Enabling --public for dev (web/server) to allow Vite WS proxy access.",
+  );
+}
+
+const webArgs = ["--filter", "@vde-monitor/web", shouldExposeWeb ? "dev:public" : "dev"];
 const webProcess = spawnPnpm(webArgs);
 
 const handleWebOutput = (data: Buffer, isError = false) => {

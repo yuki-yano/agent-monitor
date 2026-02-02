@@ -80,6 +80,9 @@ const parseBind = (value: FlagValue) => {
   if (value === true) {
     throw new Error("--bind requires an IPv4 address.");
   }
+  if (typeof value !== "string") {
+    return null;
+  }
   if (!isIPv4(value)) {
     throw new Error(`--bind must be a valid IPv4 address. (received: ${value})`);
   }

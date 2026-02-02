@@ -5,7 +5,7 @@ import { resolveHosts } from "./cli.js";
 const makeFlags = (entries: Array<[string, string | boolean]>) => new Map(entries);
 
 const baseOptions = {
-  configBind: "127.0.0.1",
+  configBind: "127.0.0.1" as const,
   getLocalIP: () => "192.168.0.2",
   getTailscaleIP: () => "100.64.0.1",
 };
