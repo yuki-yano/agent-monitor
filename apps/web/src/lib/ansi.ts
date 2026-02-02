@@ -196,31 +196,13 @@ const extractBackgroundColor = (html: string): string | null => {
   return match?.[1]?.trim() ?? null;
 };
 
-const normalizePaddedBackgroundColor = (color: string, theme: Theme): string => {
-  if (theme !== "latte") {
-    return color;
-  }
-  const rgb = parseColor(color);
-  if (!rgb) {
-    return color;
-  }
-  if (luminance(rgb) > 0.28) {
-    return color;
-  }
-  return fallbackByTheme[theme].background;
-};
-
 const wrapLineBackground = (html: string, color: string): string => {
   return `<span style="background-color:${color}; display:block; width:100%;">${html}</span>`;
 };
 
 const hasVisibleText = (line: string): boolean => stripAnsi(line).length > 0;
 
-const applyAdjacentBackgroundPadding = (
-  htmlLines: string[],
-  rawLines: string[],
-  theme: Theme,
-): string[] => {
+const applyAdjacentBackgroundPadding = (htmlLines: string[], rawLines: string[]): string[] => {
   if (htmlLines.length === 0) return htmlLines;
   const baseColors = htmlLines.map(extractBackgroundColor);
   const paddedColors: Array<string | null> = [...baseColors];
@@ -263,9 +245,7 @@ const applyAdjacentBackgroundPadding = (
   return htmlLines.map((html, index) => {
     const color = paddedColors[index];
     if (!color) return html;
-    const resolvedColor =
-      baseColors[index] === null ? normalizePaddedBackgroundColor(color, theme) : color;
-    return wrapLineBackground(html, resolvedColor);
+    return wrapLineBackground(html, color);
   });
 };
 
@@ -367,7 +347,7 @@ export const renderAnsiLines = (
       const html = converter.toHtml(line);
       return ensureLineContent(adjustLowContrast(html, theme, options));
     });
-    return shouldPadBackground ? applyAdjacentBackgroundPadding(rendered, lines, theme) : rendered;
+    return shouldPadBackground ? applyAdjacentBackgroundPadding(rendered, lines) : rendered;
   }
   const plainLines = lines.map(stripAnsi);
   const diffMask = buildClaudeDiffMask(plainLines);
