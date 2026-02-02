@@ -174,10 +174,16 @@ export const CommitSection = memo(
               })();
               return (
                 <InsetPanel key={commit.hash}>
-                  <div className="flex w-full flex-wrap items-start gap-3 px-3 py-2">
+                  <div
+                    className="flex w-full cursor-pointer flex-wrap items-start gap-3 px-3 py-2"
+                    onClick={() => onToggleCommit(commit.hash)}
+                  >
                     <ChipButton
                       type="button"
-                      onClick={() => onCopyHash(commit.hash)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCopyHash(commit.hash);
+                      }}
                       aria-label={`Copy commit hash ${commit.shortHash}`}
                     >
                       <span className="font-mono">{commit.shortHash}</span>
@@ -194,19 +200,16 @@ export const CommitSection = memo(
                           {commit.authorName} · {formatTimestamp(commit.authoredAt)}
                         </p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onToggleCommit(commit.hash)}
-                        className="ml-auto flex items-center border-0 px-2 text-xs"
+                      <span
+                        className="text-latte-overlay1 ml-auto flex items-center px-2"
+                        aria-label={isOpen ? "Collapse commit" : "Expand commit"}
                       >
                         {isOpen ? (
                           <ChevronUp className="h-4 w-4" />
                         ) : (
                           <ChevronDown className="h-4 w-4" />
                         )}
-                        <span className="sr-only">{isOpen ? "Hide" : "Show"}</span>
-                      </Button>
+                      </span>
                     </div>
                   </div>
                   {isOpen && (

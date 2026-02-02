@@ -65,10 +65,10 @@ describe("CommitSection", () => {
       />,
     );
 
-    const commitToggle = screen.getByText("Hide");
+    const commitToggle = screen.getByLabelText("Collapse commit");
     expect(commitToggle).toBeTruthy();
     expect(screen.getByText("Total changes")).toBeTruthy();
-    fireEvent.click(commitToggle as Element);
+    fireEvent.click(screen.getByText("Initial commit"));
     expect(onToggleCommit).toHaveBeenCalledWith("abc123");
 
     fireEvent.click(screen.getByText("index.ts"));
