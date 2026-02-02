@@ -169,14 +169,23 @@ export type ScreenResponse = {
   paneId: string;
   mode: "text" | "image";
   capturedAt: string;
+  cursor?: string;
   lines?: number;
   truncated?: boolean | null;
   alternateOn?: boolean;
   screen?: string;
+  full?: boolean;
+  deltas?: ScreenDelta[];
   imageBase64?: string;
   cropped?: boolean;
   fallbackReason?: "image_failed" | "image_disabled";
   error?: ApiError;
+};
+
+export type ScreenDelta = {
+  start: number;
+  deleteCount: number;
+  insertLines: string[];
 };
 
 export type CommandResponse = {
@@ -192,7 +201,10 @@ export type WsEnvelope<TType extends string, TData> = {
 };
 
 export type WsClientMessage =
-  | WsEnvelope<"screen.request", { paneId: string; lines?: number; mode?: "text" | "image" }>
+  | WsEnvelope<
+      "screen.request",
+      { paneId: string; lines?: number; mode?: "text" | "image"; cursor?: string }
+    >
   | WsEnvelope<"send.text", { paneId: string; text: string; enter?: boolean }>
   | WsEnvelope<"send.keys", { paneId: string; keys: AllowedKey[] }>
   | WsEnvelope<"client.ping", Record<string, never>>;

@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { useSessionScreen } from "./useSessionScreen";
 
 vi.mock("@/lib/ansi", () => ({
-  renderAnsiLines: () => ["rendered-line"],
+  renderAnsiLines: (text: string) => text.split("\n"),
 }));
 
 describe("useSessionScreen", () => {
@@ -48,7 +48,55 @@ describe("useSessionScreen", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.screenLines).toEqual(["rendered-line"]);
+      expect(result.current.screenLines).toEqual(["hello"]);
+    });
+  });
+
+  it("applies deltas when cursor is provided", async () => {
+    const requestScreen = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        paneId: "pane-1",
+        mode: "text",
+        capturedAt: new Date(0).toISOString(),
+        cursor: "cursor-1",
+        screen: "hello\nworld",
+        full: true,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        paneId: "pane-1",
+        mode: "text",
+        capturedAt: new Date(0).toISOString(),
+        cursor: "cursor-2",
+        full: false,
+        deltas: [{ start: 1, deleteCount: 1, insertLines: ["world!"] }],
+      });
+
+    const { result } = renderHook(() =>
+      useSessionScreen({
+        paneId: "pane-1",
+        connected: true,
+        connectionIssue: null,
+        requestScreen,
+        resolvedTheme: "latte",
+        agent: "codex",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.screenLines).toEqual(["hello", "world"]);
+    });
+
+    await act(async () => {
+      await result.current.refreshScreen();
+    });
+
+    expect(requestScreen).toHaveBeenLastCalledWith("pane-1", { mode: "text", cursor: "cursor-1" });
+
+    await waitFor(() => {
+      expect(result.current.screenLines).toEqual(["hello", "world!"]);
     });
   });
 

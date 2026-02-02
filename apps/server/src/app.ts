@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,6 +23,7 @@ import { rotateToken } from "./config.js";
 import { fetchCommitDetail, fetchCommitFile, fetchCommitLog } from "./git-commits.js";
 import { fetchDiffFile, fetchDiffSummary } from "./git-diff.js";
 import type { createSessionMonitor } from "./monitor.js";
+import { buildScreenDeltas, shouldSendFull } from "./screen-diff.js";
 import { captureTerminalScreen } from "./screen-service.js";
 import type { createTmuxActions } from "./tmux-actions.js";
 
@@ -332,6 +334,99 @@ export const createApp = ({ config, monitor, tmuxActions }: AppContext) => {
     config.rateLimit.screen.max,
   );
 
+  type ScreenSnapshot = {
+    cursor: string;
+    lines: string[];
+    alternateOn: boolean;
+    truncated: boolean | null;
+  };
+
+  const SCREEN_CACHE_LIMIT = 10;
+  const screenCache = new Map<string, Map<string, ScreenSnapshot>>();
+
+  const splitScreenLines = (value: string) => value.replace(/\r\n/g, "\n").split("\n");
+
+  const getScreenCacheKey = (paneId: string, lineCount: number) => `${paneId}:text:${lineCount}`;
+
+  const storeScreenSnapshot = (cacheKey: string, snapshot: ScreenSnapshot) => {
+    const bucket = screenCache.get(cacheKey) ?? new Map<string, ScreenSnapshot>();
+    bucket.set(snapshot.cursor, snapshot);
+    while (bucket.size > SCREEN_CACHE_LIMIT) {
+      const oldestKey = bucket.keys().next().value;
+      if (!oldestKey) break;
+      bucket.delete(oldestKey);
+    }
+    screenCache.set(cacheKey, bucket);
+  };
+
+  const buildTextResponse = ({
+    paneId,
+    lineCount,
+    screen,
+    alternateOn,
+    truncated,
+    cursor,
+    fallbackReason,
+  }: {
+    paneId: string;
+    lineCount: number;
+    screen: string;
+    alternateOn: boolean;
+    truncated: boolean | null;
+    cursor?: string;
+    fallbackReason?: "image_failed" | "image_disabled";
+  }): ScreenResponse => {
+    const cacheKey = getScreenCacheKey(paneId, lineCount);
+    const bucket = screenCache.get(cacheKey);
+    const previous = cursor ? bucket?.get(cursor) : null;
+
+    const nextLines = splitScreenLines(screen);
+    const nextCursor = randomUUID();
+    storeScreenSnapshot(cacheKey, {
+      cursor: nextCursor,
+      lines: nextLines,
+      alternateOn,
+      truncated,
+    });
+
+    const response: ScreenResponse = {
+      ok: true,
+      paneId,
+      mode: "text",
+      capturedAt: now(),
+      lines: lineCount,
+      truncated,
+      alternateOn,
+      cursor: nextCursor,
+    };
+    if (fallbackReason) {
+      response.fallbackReason = fallbackReason;
+    }
+
+    if (!cursor || !previous) {
+      response.full = true;
+      response.screen = screen;
+      return response;
+    }
+
+    if (previous.alternateOn !== alternateOn || previous.truncated !== truncated) {
+      response.full = true;
+      response.screen = screen;
+      return response;
+    }
+
+    const deltas = buildScreenDeltas(previous.lines, nextLines);
+    if (shouldSendFull(previous.lines.length, nextLines.length, deltas)) {
+      response.full = true;
+      response.screen = screen;
+      return response;
+    }
+
+    response.full = false;
+    response.deltas = deltas;
+    return response;
+  };
+
   const requireStaticAuth = (c: { req: { query: (name: string) => string | undefined } }) => {
     const token = c.req.query("token");
     if (!token) {
@@ -499,24 +594,16 @@ export const createApp = ({ config, monitor, tmuxActions }: AppContext) => {
                 altScreen: config.screen.altScreen,
                 alternateOn: target.alternateOn,
               });
-              sendWs(
-                ws,
-                buildEnvelope(
-                  "screen.response",
-                  {
-                    ok: true,
-                    paneId: message.data.paneId,
-                    mode: "text",
-                    capturedAt: now(),
-                    lines: lineCount,
-                    truncated: text.truncated,
-                    alternateOn: target.alternateOn,
-                    screen: text.screen,
-                    fallbackReason: "image_disabled",
-                  } as ScreenResponse,
-                  reqId,
-                ),
-              );
+              const response = buildTextResponse({
+                paneId: message.data.paneId,
+                lineCount,
+                screen: text.screen,
+                alternateOn: text.alternateOn,
+                truncated: text.truncated,
+                cursor: message.data.cursor,
+                fallbackReason: "image_disabled",
+              });
+              sendWs(ws, buildEnvelope("screen.response", response, reqId));
               return;
             } catch {
               sendWs(
@@ -569,24 +656,16 @@ export const createApp = ({ config, monitor, tmuxActions }: AppContext) => {
               altScreen: config.screen.altScreen,
               alternateOn: target.alternateOn,
             });
-            sendWs(
-              ws,
-              buildEnvelope(
-                "screen.response",
-                {
-                  ok: true,
-                  paneId: message.data.paneId,
-                  mode: "text",
-                  capturedAt: now(),
-                  lines: lineCount,
-                  truncated: text.truncated,
-                  alternateOn: target.alternateOn,
-                  screen: text.screen,
-                  fallbackReason: "image_failed",
-                } as ScreenResponse,
-                reqId,
-              ),
-            );
+            const response = buildTextResponse({
+              paneId: message.data.paneId,
+              lineCount,
+              screen: text.screen,
+              alternateOn: text.alternateOn,
+              truncated: text.truncated,
+              cursor: message.data.cursor,
+              fallbackReason: "image_failed",
+            });
+            sendWs(ws, buildEnvelope("screen.response", response, reqId));
             return;
           } catch {
             sendWs(
@@ -616,23 +695,15 @@ export const createApp = ({ config, monitor, tmuxActions }: AppContext) => {
             altScreen: config.screen.altScreen,
             alternateOn: target.alternateOn,
           });
-          sendWs(
-            ws,
-            buildEnvelope(
-              "screen.response",
-              {
-                ok: true,
-                paneId: message.data.paneId,
-                mode: "text",
-                capturedAt: now(),
-                lines: lineCount,
-                truncated: text.truncated,
-                alternateOn: target.alternateOn,
-                screen: text.screen,
-              } as ScreenResponse,
-              reqId,
-            ),
-          );
+          const response = buildTextResponse({
+            paneId: message.data.paneId,
+            lineCount,
+            screen: text.screen,
+            alternateOn: text.alternateOn,
+            truncated: text.truncated,
+            cursor: message.data.cursor,
+          });
+          sendWs(ws, buildEnvelope("screen.response", response, reqId));
           return;
         } catch {
           sendWs(

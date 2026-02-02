@@ -12,6 +12,7 @@ import {
 import type { VirtuosoHandle } from "react-virtuoso";
 
 import { renderAnsiLines } from "@/lib/ansi";
+import { applyScreenDeltas } from "@/lib/screen-delta";
 import {
   initialScreenLoadingState,
   screenLoadingReducer,
@@ -27,7 +28,7 @@ type UseSessionScreenParams = {
   connectionIssue: string | null;
   requestScreen: (
     paneId: string,
-    options: { lines?: number; mode?: "text" | "image" },
+    options: { lines?: number; mode?: "text" | "image"; cursor?: string },
   ) => Promise<ScreenResponse>;
   resolvedTheme: Theme;
   agent?: string | null;
@@ -62,6 +63,8 @@ export const useSessionScreen = ({
   const modeSwitchRef = useRef<ScreenMode | null>(null);
   const refreshInFlightRef = useRef<null | { id: number; mode: ScreenMode }>(null);
   const refreshRequestIdRef = useRef(0);
+  const cursorRef = useRef<string | null>(null);
+  const screenLinesRef = useRef<string[]>([]);
 
   const resolvedAgent = useMemo(() => {
     if (agent === "codex" || agent === "claude") {
@@ -137,7 +140,11 @@ export const useSessionScreen = ({
     }
     refreshInFlightRef.current = { id: requestId, mode };
     try {
-      const response = await requestScreen(paneId, { mode });
+      const options: { mode: ScreenMode; cursor?: string } = { mode };
+      if (mode === "text" && cursorRef.current) {
+        options.cursor = cursorRef.current;
+      }
+      const response = await requestScreen(paneId, options);
       if (refreshInFlightRef.current?.id !== requestId) {
         return;
       }
@@ -157,14 +164,39 @@ export const useSessionScreen = ({
           screenRef.current = "";
         }
       } else {
-        const nextScreen = response.screen ?? "";
-        if (screenRef.current !== nextScreen || imageRef.current !== null) {
-          startTransition(() => {
-            setScreen(nextScreen);
-            setImageBase64(null);
-          });
-          screenRef.current = nextScreen;
-          imageRef.current = null;
+        const nextCursor = response.cursor ?? null;
+        const shouldUseFull = response.full || response.screen !== undefined || !response.deltas;
+        if (shouldUseFull) {
+          const nextScreen = response.screen ?? "";
+          const nextLines = nextScreen.replace(/\r\n/g, "\n").split("\n");
+          screenLinesRef.current = nextLines;
+          cursorRef.current = nextCursor;
+          if (screenRef.current !== nextScreen || imageRef.current !== null) {
+            startTransition(() => {
+              setScreen(nextScreen);
+              setImageBase64(null);
+            });
+            screenRef.current = nextScreen;
+            imageRef.current = null;
+          }
+        } else {
+          const applied = applyScreenDeltas(screenLinesRef.current, response.deltas ?? []);
+          if (!applied.ok) {
+            cursorRef.current = null;
+            return;
+          }
+          const nextLines = applied.lines;
+          const nextScreen = nextLines.join("\n");
+          screenLinesRef.current = nextLines;
+          cursorRef.current = nextCursor;
+          if (screenRef.current !== nextScreen || imageRef.current !== null) {
+            startTransition(() => {
+              setScreen(nextScreen);
+              setImageBase64(null);
+            });
+            screenRef.current = nextScreen;
+            imageRef.current = null;
+          }
         }
       }
       setModeLoaded((prev) => ({ ...prev, [mode]: true }));
@@ -226,6 +258,8 @@ export const useSessionScreen = ({
     modeSwitchRef.current = null;
     screenRef.current = "";
     imageRef.current = null;
+    cursorRef.current = null;
+    screenLinesRef.current = [];
     setScreen("");
     setImageBase64(null);
   }, [paneId]);
@@ -239,6 +273,8 @@ export const useSessionScreen = ({
         setMode(value);
         return;
       }
+      cursorRef.current = null;
+      screenLinesRef.current = [];
       modeSwitchRef.current = value;
       dispatchScreenLoading({ type: "start", mode: value });
       setMode(value);

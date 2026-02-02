@@ -58,7 +58,7 @@ type SessionContextValue = {
   ) => Promise<CommitFileDiff>;
   requestScreen: (
     paneId: string,
-    options: { lines?: number; mode?: "text" | "image" },
+    options: { lines?: number; mode?: "text" | "image"; cursor?: string },
   ) => Promise<ScreenResponse>;
   sendText: (paneId: string, text: string, enter?: boolean) => Promise<CommandResponse>;
   sendKeys: (paneId: string, keys: string[]) => Promise<CommandResponse>;
@@ -477,7 +477,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const requestScreen = useCallback(
-    (paneId: string, options: { lines?: number; mode?: "text" | "image" }) => {
+    (paneId: string, options: { lines?: number; mode?: "text" | "image"; cursor?: string }) => {
       return sendRequest({
         type: "screen.request",
         data: { paneId, ...options },

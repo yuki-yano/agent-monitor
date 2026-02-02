@@ -18,7 +18,7 @@ type UseSessionLogsParams = {
   sessions: SessionSummary[];
   requestScreen: (
     paneId: string,
-    options: { lines?: number; mode?: "text" | "image" },
+    options: { lines?: number; mode?: "text" | "image"; cursor?: string },
   ) => Promise<ScreenResponse>;
   resolvedTheme: Theme;
 };

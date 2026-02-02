@@ -25,15 +25,24 @@ export const apiErrorSchema = z.object({
   message: z.string(),
 });
 
+const screenDeltaSchema = z.object({
+  start: z.number(),
+  deleteCount: z.number(),
+  insertLines: z.array(z.string()),
+});
+
 export const screenResponseSchema = z.object({
   ok: z.boolean(),
   paneId: z.string(),
   mode: z.enum(["text", "image"]),
   capturedAt: z.string(),
+  cursor: z.string().optional(),
   lines: z.number().optional(),
   truncated: z.boolean().nullable().optional(),
   alternateOn: z.boolean().optional(),
   screen: z.string().optional(),
+  full: z.boolean().optional(),
+  deltas: z.array(screenDeltaSchema).optional(),
   imageBase64: z.string().optional(),
   cropped: z.boolean().optional(),
   fallbackReason: z.enum(["image_failed", "image_disabled"]).optional(),
@@ -94,6 +103,7 @@ export const wsClientMessageSchema = z.discriminatedUnion("type", [
       paneId: z.string(),
       lines: z.number().optional(),
       mode: z.enum(["text", "image"]).optional(),
+      cursor: z.string().optional(),
     }),
   ),
   wsEnvelopeSchema(

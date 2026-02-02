@@ -70,6 +70,15 @@ describe("wsClientMessageSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts screen.request with cursor", () => {
+    const result = wsClientMessageSchema.safeParse({
+      type: "screen.request",
+      ts: "2025-01-01T00:00:00Z",
+      data: { paneId: "%1", mode: "text", cursor: "cursor-1" },
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("rejects client.ping with extra fields", () => {
     const result = wsClientMessageSchema.safeParse({
       type: "client.ping",
@@ -97,6 +106,19 @@ describe("screenResponseSchema", () => {
       mode: "text",
       capturedAt: "2025-01-01T00:00:00Z",
       screen: "output",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts text response with deltas and cursor", () => {
+    const result = screenResponseSchema.safeParse({
+      ok: true,
+      paneId: "%1",
+      mode: "text",
+      capturedAt: "2025-01-01T00:00:00Z",
+      cursor: "cursor-2",
+      full: false,
+      deltas: [{ start: 1, deleteCount: 1, insertLines: ["next"] }],
     });
     expect(result.success).toBe(true);
   });
