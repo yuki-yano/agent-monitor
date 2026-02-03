@@ -16,9 +16,20 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+const getSafeStorage = (): Storage | null => {
+  if (typeof window === "undefined") return null;
+  const storage = window.localStorage;
+  if (!storage) return null;
+  if (typeof storage.getItem !== "function" || typeof storage.setItem !== "function") {
+    return null;
+  }
+  return storage;
+};
+
 const getStoredPreference = (): ThemePreference => {
-  if (typeof window === "undefined") return "system";
-  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+  const storage = getSafeStorage();
+  if (!storage) return "system";
+  const stored = storage.getItem(THEME_STORAGE_KEY);
   return isThemePreference(stored) ? stored : "system";
 };
 
@@ -34,7 +45,8 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     };
     const nextTheme = resolveTheme(preference);
     applyTheme(nextTheme);
-    window.localStorage.setItem(THEME_STORAGE_KEY, preference);
+    const storage = getSafeStorage();
+    storage?.setItem(THEME_STORAGE_KEY, preference);
 
     if (preference !== "system") return;
     const media = window.matchMedia?.("(prefers-color-scheme: dark)");

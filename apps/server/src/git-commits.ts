@@ -1,22 +1,18 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-
 import type {
   CommitDetail,
   CommitFile,
   CommitFileDiff,
   CommitLog,
   CommitSummary,
-  DiffFileStatus,
 } from "@vde-monitor/shared";
 
-const execFileAsync = promisify(execFile);
+import { isBinaryPatch, parseNumstat, pickStatus } from "./git-parsers.js";
+import { resolveRepoRoot, runGit } from "./git-utils.js";
 
 const LOG_TTL_MS = 3000;
 const DETAIL_TTL_MS = 3000;
 const FILE_TTL_MS = 3000;
 const MAX_PATCH_BYTES = 2_000_000;
-const MAX_OUTPUT_BUFFER = 20_000_000;
 
 const RECORD_SEPARATOR = "\u001e";
 const FIELD_SEPARATOR = "\u001f";
@@ -29,33 +25,6 @@ const logCache = new Map<
 >();
 const detailCache = new Map<string, { at: number; detail: CommitDetail }>();
 const fileCache = new Map<string, { at: number; file: CommitFileDiff }>();
-
-const runGit = async (cwd: string, args: string[]) => {
-  try {
-    const result = await execFileAsync("git", ["-C", cwd, ...args], {
-      encoding: "utf8",
-      timeout: 5000,
-      maxBuffer: MAX_OUTPUT_BUFFER,
-    });
-    return result.stdout ?? "";
-  } catch (err) {
-    if (err && typeof err === "object" && "stdout" in err) {
-      const stdout = (err as { stdout?: string }).stdout;
-      return stdout ?? "";
-    }
-    throw err;
-  }
-};
-
-const resolveRepoRoot = async (cwd: string) => {
-  try {
-    const output = await runGit(cwd, ["rev-parse", "--show-toplevel"]);
-    const trimmed = output.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  } catch {
-    return null;
-  }
-};
 
 const resolveHead = async (repoRoot: string) => {
   try {
@@ -78,17 +47,6 @@ const resolveCommitCount = async (repoRoot: string) => {
     return null;
   }
 };
-
-const pickStatus = (value: string) => {
-  const allowed: DiffFileStatus[] = ["A", "M", "D", "R", "C", "U", "?"];
-  const status = value.toUpperCase().slice(0, 1);
-  return allowed.includes(status as DiffFileStatus) ? (status as DiffFileStatus) : "?";
-};
-
-const isBinaryPatch = (patch: string) =>
-  patch.includes("Binary files ") ||
-  patch.includes("GIT binary patch") ||
-  patch.includes("literal ");
 
 export const parseCommitLogOutput = (output: string): CommitSummary[] => {
   if (!output) return [];
@@ -121,27 +79,6 @@ export const parseCommitLogOutput = (output: string): CommitSummary[] => {
     });
   }
   return commits;
-};
-
-const parseNumstat = (output: string) => {
-  const stats = new Map<string, { additions: number | null; deletions: number | null }>();
-  const lines = output.split("\n").filter((line) => line.trim().length > 0);
-  for (const line of lines) {
-    const parts = line.split("\t");
-    if (parts.length < 3) {
-      continue;
-    }
-    const addRaw = parts[0] ?? "";
-    const delRaw = parts[1] ?? "";
-    const pathValue = parts[parts.length - 1] ?? "";
-    const additions = addRaw === "-" ? null : Number.parseInt(addRaw, 10);
-    const deletions = delRaw === "-" ? null : Number.parseInt(delRaw, 10);
-    stats.set(pathValue, {
-      additions: Number.isFinite(additions) ? additions : null,
-      deletions: Number.isFinite(deletions) ? deletions : null,
-    });
-  }
-  return stats;
 };
 
 export const parseNameStatusOutput = (output: string): CommitFile[] => {

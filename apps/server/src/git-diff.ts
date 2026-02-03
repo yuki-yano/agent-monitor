@@ -1,16 +1,14 @@
-import { execFile } from "node:child_process";
 import crypto from "node:crypto";
 import path from "node:path";
-import { promisify } from "node:util";
 
 import type { DiffFile, DiffFileStatus, DiffSummary, DiffSummaryFile } from "@vde-monitor/shared";
 
-const execFileAsync = promisify(execFile);
+import { isBinaryPatch, parseNumstat, parseNumstatLine, pickStatus } from "./git-parsers.js";
+import { resolveRepoRoot, runGit } from "./git-utils.js";
 
 const SUMMARY_TTL_MS = 3000;
 const FILE_TTL_MS = 3000;
 const MAX_PATCH_BYTES = 2_000_000;
-const MAX_OUTPUT_BUFFER = 20_000_000;
 
 const nowIso = () => new Date().toISOString();
 
@@ -19,81 +17,6 @@ const fileCache = new Map<string, { at: number; rev: string; file: DiffFile }>()
 
 const createRevision = (statusOutput: string) =>
   crypto.createHash("sha1").update(statusOutput).digest("hex");
-
-const runGit = async (cwd: string, args: string[]) => {
-  try {
-    const result = await execFileAsync("git", ["-C", cwd, ...args], {
-      encoding: "utf8",
-      timeout: 5000,
-      maxBuffer: MAX_OUTPUT_BUFFER,
-    });
-    return result.stdout ?? "";
-  } catch (err) {
-    if (err && typeof err === "object" && "stdout" in err) {
-      const stdout = (err as { stdout?: string }).stdout;
-      return stdout ?? "";
-    }
-    throw err;
-  }
-};
-
-const resolveRepoRoot = async (cwd: string) => {
-  try {
-    const output = await runGit(cwd, ["rev-parse", "--show-toplevel"]);
-    const trimmed = output.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  } catch {
-    return null;
-  }
-};
-
-const pickStatus = (value: string) => {
-  const allowed: DiffFileStatus[] = ["A", "M", "D", "R", "C", "U", "?"];
-  return allowed.includes(value as DiffFileStatus) ? (value as DiffFileStatus) : "?";
-};
-
-const parseNumstat = (output: string) => {
-  const stats = new Map<string, { additions: number | null; deletions: number | null }>();
-  const lines = output.split("\n").filter((line) => line.trim().length > 0);
-  for (const line of lines) {
-    const parts = line.split("\t");
-    if (parts.length < 3) {
-      continue;
-    }
-    const addRaw = parts[0] ?? "";
-    const delRaw = parts[1] ?? "";
-    const pathValue = parts[parts.length - 1] ?? "";
-    const additions = addRaw === "-" ? null : Number.parseInt(addRaw, 10);
-    const deletions = delRaw === "-" ? null : Number.parseInt(delRaw, 10);
-    stats.set(pathValue, {
-      additions: Number.isFinite(additions) ? additions : null,
-      deletions: Number.isFinite(deletions) ? deletions : null,
-    });
-  }
-  return stats;
-};
-
-const parseNumstatLine = (output: string) => {
-  const line = output
-    .split("\n")
-    .map((value) => value.trim())
-    .find((value) => value.length > 0);
-  if (!line) {
-    return null;
-  }
-  const parts = line.split("\t");
-  if (parts.length < 2) {
-    return null;
-  }
-  const addRaw = parts[0] ?? "";
-  const delRaw = parts[1] ?? "";
-  const additions = addRaw === "-" ? null : Number.parseInt(addRaw, 10);
-  const deletions = delRaw === "-" ? null : Number.parseInt(delRaw, 10);
-  return {
-    additions: Number.isFinite(additions) ? additions : null,
-    deletions: Number.isFinite(deletions) ? deletions : null,
-  };
-};
 
 export const parseGitStatus = (statusOutput: string) => {
   if (!statusOutput) {
@@ -228,11 +151,6 @@ export const fetchDiffSummary = async (
     };
   }
 };
-
-const isBinaryPatch = (patch: string) =>
-  patch.includes("Binary files ") ||
-  patch.includes("GIT binary patch") ||
-  patch.includes("literal ");
 
 export const fetchDiffFile = async (
   repoRoot: string,

@@ -22,6 +22,7 @@ import {
 } from "@vde-monitor/tmux";
 
 import { resolveActivityTimestamp } from "./activity-resolver.js";
+import { resolveRepoRoot as resolveRepoRootShared } from "./git-utils.js";
 import {
   createJsonlTailer,
   createLogActivityPoller,
@@ -132,24 +133,13 @@ const hostCandidates = (() => {
   return new Set([host, short, `${host}.local`, `${short}.local`]);
 })();
 
-const runGit = async (cwd: string, args: string[]) => {
-  try {
-    const result = await execFileAsync("git", ["-C", cwd, ...args], {
-      encoding: "utf8",
-      timeout: 2000,
-      maxBuffer: 2_000_000,
-    });
-    return result.stdout ?? "";
-  } catch {
-    return "";
-  }
-};
-
 const resolveRepoRoot = async (cwd: string | null) => {
   if (!cwd) return null;
-  const output = await runGit(cwd, ["rev-parse", "--show-toplevel"]);
-  const trimmed = output.trim();
-  return trimmed.length > 0 ? trimmed : null;
+  return resolveRepoRootShared(cwd, {
+    timeoutMs: 2000,
+    maxBuffer: 2_000_000,
+    allowStdoutOnError: false,
+  });
 };
 
 const resolveRepoRootCached = async (cwd: string | null) => {

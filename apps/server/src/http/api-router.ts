@@ -1,0 +1,235 @@
+import { zValidator } from "@hono/zod-validator";
+import type { AgentMonitorConfig } from "@vde-monitor/shared";
+import { Hono } from "hono";
+import { z } from "zod";
+
+import { fetchCommitDetail, fetchCommitFile, fetchCommitLog } from "../git-commits.js";
+import { fetchDiffFile, fetchDiffSummary } from "../git-diff.js";
+import type { createSessionMonitor } from "../monitor.js";
+import { buildError, isOriginAllowed, nowIso, requireAuth } from "./helpers.js";
+
+type Monitor = ReturnType<typeof createSessionMonitor>;
+
+type ApiContext = {
+  config: AgentMonitorConfig;
+  monitor: Monitor;
+};
+
+const forceQuerySchema = z.object({ force: z.string().optional() });
+const diffFileQuerySchema = z.object({
+  path: z.string(),
+  rev: z.string().optional(),
+  force: z.string().optional(),
+});
+const commitLogQuerySchema = z.object({
+  limit: z.string().optional(),
+  skip: z.string().optional(),
+  force: z.string().optional(),
+});
+const commitDetailQuerySchema = z.object({ force: z.string().optional() });
+const commitFileQuerySchema = z.object({
+  path: z.string(),
+  force: z.string().optional(),
+});
+const titleSchema = z.object({
+  title: z.string().nullable(),
+});
+
+export const createApiRouter = ({ config, monitor }: ApiContext) => {
+  const api = new Hono();
+
+  api.use("*", async (c, next) => {
+    if (!requireAuth(config, c)) {
+      return c.json({ error: buildError("INVALID_PAYLOAD", "unauthorized") }, 401);
+    }
+    const origin = c.req.header("origin");
+    const host = c.req.header("host");
+    if (!isOriginAllowed(config, origin, host)) {
+      return c.json({ error: buildError("INVALID_PAYLOAD", "origin not allowed") }, 403);
+    }
+    await next();
+  });
+
+  const apiRoutes = api
+    .get("/sessions", (c) => {
+      return c.json({ sessions: monitor.registry.snapshot(), serverTime: nowIso() });
+    })
+    .get("/sessions/:paneId", (c) => {
+      const paneId = c.req.param("paneId");
+      if (!paneId) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+      }
+      const detail = monitor.registry.getDetail(paneId);
+      if (!detail) {
+        return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+      }
+      return c.json({ session: detail });
+    })
+    .put("/sessions/:paneId/title", zValidator("json", titleSchema), async (c) => {
+      if (config.readOnly) {
+        return c.json({ error: buildError("READ_ONLY", "read-only mode") }, 403);
+      }
+      const paneId = c.req.param("paneId");
+      if (!paneId) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+      }
+      const detail = monitor.registry.getDetail(paneId);
+      if (!detail) {
+        return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+      }
+      const { title } = c.req.valid("json");
+      const trimmed = title ? title.trim() : null;
+      if (trimmed && trimmed.length > 80) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "title too long") }, 400);
+      }
+      const nextTitle = trimmed && trimmed.length > 0 ? trimmed : null;
+      monitor.setCustomTitle(paneId, nextTitle);
+      const updated = monitor.registry.getDetail(paneId) ?? detail;
+      return c.json({ session: updated });
+    })
+    .post("/sessions/:paneId/touch", (c) => {
+      if (config.readOnly) {
+        return c.json({ error: buildError("READ_ONLY", "read-only mode") }, 403);
+      }
+      const paneId = c.req.param("paneId");
+      if (!paneId) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+      }
+      const detail = monitor.registry.getDetail(paneId);
+      if (!detail) {
+        return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+      }
+      monitor.recordInput(paneId);
+      const updated = monitor.registry.getDetail(paneId) ?? detail;
+      return c.json({ session: updated });
+    })
+    .get("/sessions/:paneId/diff", zValidator("query", forceQuerySchema), async (c) => {
+      const paneId = c.req.param("paneId");
+      if (!paneId) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+      }
+      const detail = monitor.registry.getDetail(paneId);
+      if (!detail) {
+        return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+      }
+      const query = c.req.valid("query");
+      const force = query.force === "1";
+      const summary = await fetchDiffSummary(detail.currentPath, { force });
+      return c.json({ summary });
+    })
+    .get("/sessions/:paneId/diff/file", zValidator("query", diffFileQuerySchema), async (c) => {
+      const paneId = c.req.param("paneId");
+      if (!paneId) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+      }
+      const detail = monitor.registry.getDetail(paneId);
+      if (!detail) {
+        return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+      }
+      const query = c.req.valid("query");
+      const pathParam = query.path;
+      const force = query.force === "1";
+      const summary = await fetchDiffSummary(detail.currentPath, { force });
+      if (!summary.repoRoot || summary.reason || !summary.rev) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "diff summary unavailable") }, 400);
+      }
+      const target = summary.files.find((file) => file.path === pathParam);
+      if (!target) {
+        return c.json({ error: buildError("NOT_FOUND", "file not found") }, 404);
+      }
+      const file = await fetchDiffFile(summary.repoRoot, target, summary.rev, { force });
+      return c.json({ file });
+    })
+    .get("/sessions/:paneId/commits", zValidator("query", commitLogQuerySchema), async (c) => {
+      const paneId = c.req.param("paneId");
+      if (!paneId) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+      }
+      const detail = monitor.registry.getDetail(paneId);
+      if (!detail) {
+        return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+      }
+      const query = c.req.valid("query");
+      const limit = Number.parseInt(query.limit ?? "10", 10);
+      const skip = Number.parseInt(query.skip ?? "0", 10);
+      const force = query.force === "1";
+      const log = await fetchCommitLog(detail.currentPath, {
+        limit: Number.isFinite(limit) ? limit : 10,
+        skip: Number.isFinite(skip) ? skip : 0,
+        force,
+      });
+      return c.json({ log });
+    })
+    .get(
+      "/sessions/:paneId/commits/:hash",
+      zValidator("query", commitDetailQuerySchema),
+      async (c) => {
+        const paneId = c.req.param("paneId");
+        if (!paneId) {
+          return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+        }
+        const detail = monitor.registry.getDetail(paneId);
+        if (!detail) {
+          return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+        }
+        const hash = c.req.param("hash");
+        if (!hash) {
+          return c.json({ error: buildError("INVALID_PAYLOAD", "missing hash") }, 400);
+        }
+        const log = await fetchCommitLog(detail.currentPath, { limit: 1, skip: 0 });
+        if (!log.repoRoot || log.reason) {
+          return c.json({ error: buildError("INVALID_PAYLOAD", "commit log unavailable") }, 400);
+        }
+        const query = c.req.valid("query");
+        const commit = await fetchCommitDetail(log.repoRoot, hash, {
+          force: query.force === "1",
+        });
+        if (!commit) {
+          return c.json({ error: buildError("NOT_FOUND", "commit not found") }, 404);
+        }
+        return c.json({ commit });
+      },
+    )
+    .get(
+      "/sessions/:paneId/commits/:hash/file",
+      zValidator("query", commitFileQuerySchema),
+      async (c) => {
+        const paneId = c.req.param("paneId");
+        if (!paneId) {
+          return c.json({ error: buildError("INVALID_PAYLOAD", "invalid pane id") }, 400);
+        }
+        const detail = monitor.registry.getDetail(paneId);
+        if (!detail) {
+          return c.json({ error: buildError("NOT_FOUND", "pane not found") }, 404);
+        }
+        const hash = c.req.param("hash");
+        const query = c.req.valid("query");
+        const pathParam = query.path;
+        if (!hash) {
+          return c.json({ error: buildError("INVALID_PAYLOAD", "missing hash") }, 400);
+        }
+        const log = await fetchCommitLog(detail.currentPath, { limit: 1, skip: 0 });
+        if (!log.repoRoot || log.reason) {
+          return c.json({ error: buildError("INVALID_PAYLOAD", "commit log unavailable") }, 400);
+        }
+        const commit = await fetchCommitDetail(log.repoRoot, hash, { force: true });
+        if (!commit) {
+          return c.json({ error: buildError("NOT_FOUND", "commit not found") }, 404);
+        }
+        const target =
+          commit.files.find((file) => file.path === pathParam) ??
+          commit.files.find((file) => file.renamedFrom === pathParam);
+        if (!target) {
+          return c.json({ error: buildError("NOT_FOUND", "file not found") }, 404);
+        }
+        const file = await fetchCommitFile(log.repoRoot, hash, target, {
+          force: query.force === "1",
+        });
+        return c.json({ file });
+      },
+    );
+
+  return apiRoutes;
+};
+
+export type ApiAppType = ReturnType<typeof createApiRouter>;

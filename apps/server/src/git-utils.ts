@@ -1,0 +1,49 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
+
+export type RunGitOptions = {
+  timeoutMs?: number;
+  maxBuffer?: number;
+  allowStdoutOnError?: boolean;
+};
+
+const DEFAULT_TIMEOUT_MS = 5000;
+const DEFAULT_MAX_BUFFER = 20_000_000;
+
+export const runGit = async (
+  cwd: string,
+  args: string[],
+  options?: RunGitOptions,
+): Promise<string> => {
+  try {
+    const result = await execFileAsync("git", ["-C", cwd, ...args], {
+      encoding: "utf8",
+      timeout: options?.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      maxBuffer: options?.maxBuffer ?? DEFAULT_MAX_BUFFER,
+    });
+    return result.stdout ?? "";
+  } catch (err) {
+    if (options?.allowStdoutOnError ?? true) {
+      if (err && typeof err === "object" && "stdout" in err) {
+        const stdout = (err as { stdout?: string }).stdout;
+        return stdout ?? "";
+      }
+    }
+    throw err;
+  }
+};
+
+export const resolveRepoRoot = async (
+  cwd: string,
+  options?: RunGitOptions,
+): Promise<string | null> => {
+  try {
+    const output = await runGit(cwd, ["rev-parse", "--show-toplevel"], options);
+    const trimmed = output.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  } catch {
+    return null;
+  }
+};
