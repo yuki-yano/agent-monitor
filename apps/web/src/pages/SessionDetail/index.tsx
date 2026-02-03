@@ -58,6 +58,7 @@ export const SessionDetailPage = () => {
     isScreenLoading,
     isAtBottom,
     handleAtBottomChange,
+    handleUserScrollStateChange,
     forceFollow,
     refreshScreen,
     scrollToBottom,
@@ -251,6 +252,7 @@ export const SessionDetailPage = () => {
             forceFollow={forceFollow}
             onAtBottomChange={handleAtBottomChange}
             onScrollToBottom={scrollToBottom}
+            onUserScrollStateChange={handleUserScrollStateChange}
             controls={
               <ControlsPanel
                 readOnly={readOnly}

@@ -33,6 +33,7 @@ type ScreenPanelProps = {
   forceFollow: boolean;
   onAtBottomChange: (value: boolean) => void;
   onScrollToBottom: (behavior: "auto" | "smooth") => void;
+  onUserScrollStateChange: (value: boolean) => void;
   controls: ReactNode;
 };
 
@@ -64,6 +65,7 @@ export const ScreenPanel = ({
   forceFollow,
   onAtBottomChange,
   onScrollToBottom,
+  onUserScrollStateChange,
   controls,
 }: ScreenPanelProps) => {
   const { scrollerRef: stableScrollerRef, handleRangeChanged } = useStableVirtuosoScroll({
@@ -72,6 +74,7 @@ export const ScreenPanel = ({
     enabled: mode === "text",
     scrollerRef,
     isUserScrolling: forceFollow,
+    onUserScrollStateChange,
   });
 
   const VirtuosoScroller = useMemo(() => {

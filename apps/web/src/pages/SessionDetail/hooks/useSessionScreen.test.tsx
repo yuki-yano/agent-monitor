@@ -126,4 +126,57 @@ describe("useSessionScreen", () => {
 
     expect(result.current.mode).toBe("image");
   });
+
+  it("suppresses updates while user is scrolling", async () => {
+    const requestScreen = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        paneId: "pane-1",
+        mode: "text",
+        capturedAt: new Date(0).toISOString(),
+        screen: "first",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        paneId: "pane-1",
+        mode: "text",
+        capturedAt: new Date(0).toISOString(),
+        screen: "first\nsecond",
+      });
+
+    const { result } = renderHook(() =>
+      useSessionScreen({
+        paneId: "pane-1",
+        connected: true,
+        connectionIssue: null,
+        requestScreen,
+        resolvedTheme: "latte",
+        agent: "codex",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.screenLines).toEqual(["first"]);
+    });
+
+    act(() => {
+      result.current.handleAtBottomChange(false);
+      result.current.handleUserScrollStateChange(true);
+    });
+
+    await act(async () => {
+      await result.current.refreshScreen();
+    });
+
+    expect(result.current.screenLines).toEqual(["first"]);
+
+    act(() => {
+      result.current.handleUserScrollStateChange(false);
+    });
+
+    await waitFor(() => {
+      expect(result.current.screenLines).toEqual(["first", "second"]);
+    });
+  });
 });

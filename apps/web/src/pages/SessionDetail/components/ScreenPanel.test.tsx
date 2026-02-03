@@ -40,6 +40,7 @@ describe("ScreenPanel", () => {
         forceFollow={false}
         onAtBottomChange={vi.fn()}
         onScrollToBottom={vi.fn()}
+        onUserScrollStateChange={vi.fn()}
         controls={null}
       />,
     );
@@ -66,6 +67,7 @@ describe("ScreenPanel", () => {
         forceFollow={false}
         onAtBottomChange={vi.fn()}
         onScrollToBottom={vi.fn()}
+        onUserScrollStateChange={vi.fn()}
         controls={null}
       />,
     );
@@ -93,6 +95,7 @@ describe("ScreenPanel", () => {
         forceFollow={false}
         onAtBottomChange={vi.fn()}
         onScrollToBottom={onScrollToBottom}
+        onUserScrollStateChange={vi.fn()}
         controls={null}
       />,
     );
@@ -120,6 +123,7 @@ describe("ScreenPanel", () => {
         forceFollow={false}
         onAtBottomChange={vi.fn()}
         onScrollToBottom={vi.fn()}
+        onUserScrollStateChange={vi.fn()}
         controls={null}
       />,
     );

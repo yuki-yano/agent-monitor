@@ -10,6 +10,7 @@ type UseStableVirtuosoScrollParams = {
   enabled?: boolean;
   isUserScrolling?: boolean;
   scrollerRef?: RefObject<HTMLDivElement | null>;
+  onUserScrollStateChange?: (isScrolling: boolean) => void;
 };
 
 const getItemOffset = (scroller: HTMLDivElement, index: number) => {
@@ -33,6 +34,7 @@ export const useStableVirtuosoScroll = ({
   enabled = true,
   isUserScrolling,
   scrollerRef: scrollerRefProp,
+  onUserScrollStateChange,
 }: UseStableVirtuosoScrollParams) => {
   const internalScrollerRef = useRef<HTMLDivElement | null>(null);
   const scrollerRef = scrollerRefProp ?? internalScrollerRef;
@@ -47,6 +49,11 @@ export const useStableVirtuosoScroll = ({
   const scrollEndTimerRef = useRef<number | null>(null);
   const isAdjustingRef = useRef(false);
   const scrollSuppressMs = 300;
+  const onUserScrollStateChangeRef = useRef(onUserScrollStateChange);
+
+  useEffect(() => {
+    onUserScrollStateChangeRef.current = onUserScrollStateChange;
+  }, [onUserScrollStateChange]);
 
   const updateBaseline = useCallback(
     (index: number) => {
@@ -75,26 +82,45 @@ export const useStableVirtuosoScroll = ({
     [isUserScrolling, updateBaseline],
   );
 
+  const setUserScrolling = useCallback(
+    (value: boolean) => {
+      if (isUserScrollingRef.current === value) return;
+      isUserScrollingRef.current = value;
+      if (!value) {
+        updateBaseline(anchorIndexRef.current);
+      }
+      onUserScrollStateChangeRef.current?.(value);
+    },
+    [updateBaseline],
+  );
+
   const scheduleScrollEnd = useCallback(() => {
     if (scrollEndTimerRef.current !== null) {
       window.clearTimeout(scrollEndTimerRef.current);
     }
     scrollEndTimerRef.current = window.setTimeout(() => {
-      isUserScrollingRef.current = false;
+      setUserScrolling(false);
       scrollEndTimerRef.current = null;
     }, 120);
-  }, []);
+  }, [setUserScrolling]);
 
   const startUserScroll = useCallback(() => {
     if (isAdjustingRef.current) return;
-    isUserScrollingRef.current = true;
+    setUserScrolling(true);
     lastUserScrollAtRef.current = performance.now();
     updateBaseline(anchorIndexRef.current);
     scheduleScrollEnd();
-  }, [scheduleScrollEnd, updateBaseline]);
-  const handleScrollEvent = useCallback(() => {
-    startUserScroll();
-  }, [startUserScroll]);
+  }, [scheduleScrollEnd, setUserScrolling, updateBaseline]);
+  const handleScrollEvent = useCallback(
+    (event: Event) => {
+      if (event.type === "scroll" && !event.isTrusted) {
+        updateBaseline(anchorIndexRef.current);
+        return;
+      }
+      startUserScroll();
+    },
+    [startUserScroll, updateBaseline],
+  );
 
   useLayoutEffect(() => {
     if (!enabled) return undefined;

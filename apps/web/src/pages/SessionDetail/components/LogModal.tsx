@@ -1,6 +1,14 @@
 import type { SessionSummary } from "@vde-monitor/shared";
 import { ArrowDown, CornerDownLeft, ExternalLink, X } from "lucide-react";
-import { forwardRef, type HTMLAttributes, useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  type HTMLAttributes,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 
 import { Button, Callout, Card, IconButton, LoadingOverlay, Toolbar } from "@/components/ui";
@@ -42,10 +50,21 @@ export const LogModal = ({
 }: LogModalProps) => {
   const virtuosoRef = useRef<VirtuosoHandle | null>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [displayLines, setDisplayLines] = useState(logLines);
+  const pendingLinesRef = useRef<string[] | null>(null);
+  const isUserScrollingRef = useRef(false);
+  const handleUserScrollStateChange = useCallback((value: boolean) => {
+    isUserScrollingRef.current = value;
+    if (!value && pendingLinesRef.current) {
+      setDisplayLines(pendingLinesRef.current);
+      pendingLinesRef.current = null;
+    }
+  }, []);
   const { scrollerRef, handleRangeChanged } = useStableVirtuosoScroll({
-    items: logLines,
+    items: displayLines,
     isAtBottom,
     enabled: open,
+    onUserScrollStateChange: handleUserScrollStateChange,
   });
 
   const VirtuosoScroller = useMemo(() => {
@@ -70,22 +89,35 @@ export const LogModal = ({
   }, [scrollerRef]);
 
   useEffect(() => {
-    if (open && logLines.length > 0) {
+    if (open && displayLines.length > 0) {
       // モーダルが開いたときに一番下にスクロール
       const timer = setTimeout(() => {
         virtuosoRef.current?.scrollToIndex({
-          index: logLines.length - 1,
+          index: displayLines.length - 1,
           behavior: "auto",
           align: "end",
         });
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [open, logLines.length]);
+  }, [open, displayLines.length]);
+
+  useEffect(() => {
+    if (!open) {
+      pendingLinesRef.current = null;
+      return;
+    }
+    if (isUserScrollingRef.current) {
+      pendingLinesRef.current = logLines;
+      return;
+    }
+    setDisplayLines(logLines);
+    pendingLinesRef.current = null;
+  }, [logLines, open]);
 
   const scrollToBottom = () => {
     virtuosoRef.current?.scrollToIndex({
-      index: logLines.length - 1,
+      index: displayLines.length - 1,
       behavior: "smooth",
       align: "end",
     });
@@ -149,8 +181,8 @@ export const LogModal = ({
           {loading && <LoadingOverlay label="Loading log..." size="sm" />}
           <Virtuoso
             ref={virtuosoRef}
-            data={logLines}
-            initialTopMostItemIndex={Math.max(logLines.length - 1, 0)}
+            data={displayLines}
+            initialTopMostItemIndex={Math.max(displayLines.length - 1, 0)}
             followOutput="auto"
             atBottomStateChange={setIsAtBottom}
             rangeChanged={handleRangeChanged}

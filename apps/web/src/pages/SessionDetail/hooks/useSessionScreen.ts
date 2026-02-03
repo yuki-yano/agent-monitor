@@ -58,6 +58,8 @@ export const useSessionScreen = ({
   const virtuosoRef = useRef<VirtuosoHandle | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const forceFollowTimerRef = useRef<number | null>(null);
+  const isUserScrollingRef = useRef(false);
+  const pendingScreenRef = useRef<string | null>(null);
   const prevModeRef = useRef<ScreenMode>(mode);
   const snapToBottomRef = useRef(false);
   const screenRef = useRef<string>("");
@@ -85,6 +87,18 @@ export const useSessionScreen = ({
     });
   }, [mode, screen, resolvedAgent, resolvedTheme]);
 
+  const flushPendingScreen = useCallback(() => {
+    const pending = pendingScreenRef.current;
+    if (pending === null) return;
+    pendingScreenRef.current = null;
+    startTransition(() => {
+      setScreen(pending);
+      setImageBase64(null);
+    });
+    screenRef.current = pending;
+    imageRef.current = null;
+  }, []);
+
   const scrollToBottom = useCallback(
     (behavior: "auto" | "smooth" = "auto") => {
       if (!virtuosoRef.current || screenLines.length === 0) return;
@@ -108,16 +122,30 @@ export const useSessionScreen = ({
     [screenLines.length],
   );
 
-  const handleAtBottomChange = useCallback((value: boolean) => {
-    setIsAtBottom(value);
-    if (value) {
-      setForceFollow(false);
-      if (forceFollowTimerRef.current !== null) {
-        window.clearTimeout(forceFollowTimerRef.current);
-        forceFollowTimerRef.current = null;
+  const handleAtBottomChange = useCallback(
+    (value: boolean) => {
+      setIsAtBottom(value);
+      if (value) {
+        setForceFollow(false);
+        if (forceFollowTimerRef.current !== null) {
+          window.clearTimeout(forceFollowTimerRef.current);
+          forceFollowTimerRef.current = null;
+        }
+        flushPendingScreen();
       }
-    }
-  }, []);
+    },
+    [flushPendingScreen],
+  );
+
+  const handleUserScrollStateChange = useCallback(
+    (value: boolean) => {
+      isUserScrollingRef.current = value;
+      if (!value) {
+        flushPendingScreen();
+      }
+    },
+    [flushPendingScreen],
+  );
 
   const isScreenLoading = screenLoadingState.loading && screenLoadingState.mode === mode;
 
@@ -141,6 +169,7 @@ export const useSessionScreen = ({
     if (mode !== "text") {
       setIsAtBottom(true);
       setForceFollow(false);
+      pendingScreenRef.current = null;
     }
   }, [mode]);
 
@@ -190,6 +219,7 @@ export const useSessionScreen = ({
         return;
       }
       setFallbackReason(response.fallbackReason ?? null);
+      const suppressRender = mode === "text" && !isAtBottom && isUserScrollingRef.current;
       if (response.mode === "image") {
         const nextImage = response.imageBase64 ?? null;
         if (imageRef.current !== nextImage || screenRef.current !== "") {
@@ -199,6 +229,7 @@ export const useSessionScreen = ({
           });
           imageRef.current = nextImage;
           screenRef.current = "";
+          pendingScreenRef.current = null;
         }
       } else {
         const nextCursor = response.cursor ?? null;
@@ -208,13 +239,16 @@ export const useSessionScreen = ({
           const nextLines = nextScreen.replace(/\r\n/g, "\n").split("\n");
           screenLinesRef.current = nextLines;
           cursorRef.current = nextCursor;
-          if (screenRef.current !== nextScreen || imageRef.current !== null) {
+          if (suppressRender) {
+            pendingScreenRef.current = nextScreen;
+          } else if (screenRef.current !== nextScreen || imageRef.current !== null) {
             startTransition(() => {
               setScreen(nextScreen);
               setImageBase64(null);
             });
             screenRef.current = nextScreen;
             imageRef.current = null;
+            pendingScreenRef.current = null;
           }
         } else {
           const applied = applyScreenDeltas(screenLinesRef.current, response.deltas ?? []);
@@ -226,13 +260,16 @@ export const useSessionScreen = ({
           const nextScreen = nextLines.join("\n");
           screenLinesRef.current = nextLines;
           cursorRef.current = nextCursor;
-          if (screenRef.current !== nextScreen || imageRef.current !== null) {
+          if (suppressRender) {
+            pendingScreenRef.current = nextScreen;
+          } else if (screenRef.current !== nextScreen || imageRef.current !== null) {
             startTransition(() => {
               setScreen(nextScreen);
               setImageBase64(null);
             });
             screenRef.current = nextScreen;
             imageRef.current = null;
+            pendingScreenRef.current = null;
           }
         }
       }
@@ -250,7 +287,7 @@ export const useSessionScreen = ({
         }
       }
     }
-  }, [connected, connectionIssue, mode, paneId, requestScreen]);
+  }, [connected, connectionIssue, isAtBottom, mode, paneId, requestScreen]);
 
   useEffect(() => {
     refreshScreen();
@@ -297,6 +334,7 @@ export const useSessionScreen = ({
     imageRef.current = null;
     cursorRef.current = null;
     screenLinesRef.current = [];
+    pendingScreenRef.current = null;
     setScreen("");
     setImageBase64(null);
   }, [paneId]);
@@ -329,6 +367,7 @@ export const useSessionScreen = ({
     isScreenLoading,
     isAtBottom,
     handleAtBottomChange,
+    handleUserScrollStateChange,
     forceFollow,
     refreshScreen,
     scrollToBottom,
