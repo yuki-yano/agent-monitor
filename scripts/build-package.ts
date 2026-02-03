@@ -1,15 +1,16 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+
+import { execaSync } from "execa";
 
 const pnpmCmd = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 
 const run = (args: string[], label: string) => {
-  const result = spawnSync(pnpmCmd, args, { stdio: "inherit" });
-  if (result.status !== 0) {
+  const result = execaSync(pnpmCmd, args, { stdio: "inherit", reject: false });
+  if (result.exitCode !== 0) {
     process.stderr.write(`\n[vde-monitor] ${label} failed.\n`);
-    process.exit(result.status ?? 1);
+    process.exit(result.exitCode ?? 1);
   }
 };
 

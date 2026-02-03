@@ -1,11 +1,12 @@
-import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
-import { promisify } from "node:util";
+
+import { execa } from "execa";
 
 import { markPaneFocus } from "./activity-suppressor.js";
 
-const execFileAsync = promisify(execFile);
+const runCommand = (command: string, args: string[], timeout?: number) =>
+  execa(command, args, timeout ? { timeout } : undefined);
 
 const isMacOS = () => process.platform === "darwin";
 
@@ -34,7 +35,7 @@ const parseBounds = (input: string) => {
 
 const runAppleScript = async (script: string) => {
   try {
-    const result = await execFileAsync("osascript", ["-e", script], { encoding: "utf8" });
+    const result = await runCommand("osascript", ["-e", script]);
     return (result.stdout ?? "").trim();
   } catch {
     return "";
@@ -72,7 +73,7 @@ const captureRegion = async (bounds: { x: number; y: number; width: number; heig
   const tempPath = `/tmp/vde-monitor-${randomUUID()}.png`;
   const region = `${bounds.x},${bounds.y},${bounds.width},${bounds.height}`;
   try {
-    await execFileAsync("screencapture", ["-R", region, "-x", tempPath], { timeout: 10000 });
+    await runCommand("screencapture", ["-R", region, "-x", tempPath], 10000);
     const data = await fs.readFile(tempPath);
     await fs.unlink(tempPath).catch(() => null);
     return data.toString("base64");
@@ -139,10 +140,10 @@ const buildTmuxArgs = (args: string[], options?: TmuxOptions) => {
 
 const getPaneSession = async (paneId: string, options?: TmuxOptions) => {
   try {
-    const result = await execFileAsync(
+    const result = await runCommand(
       "tmux",
       buildTmuxArgs(["display-message", "-p", "-t", paneId, "-F", "#{session_name}"], options),
-      { encoding: "utf8", timeout: 2000 },
+      2000,
     );
     const name = (result.stdout ?? "").trim();
     return name.length > 0 ? name : null;
@@ -156,30 +157,26 @@ const focusTmuxPane = async (paneId: string, options?: TmuxOptions) => {
     return;
   }
   if (options?.primaryClient) {
-    await execFileAsync(
+    await runCommand(
       "tmux",
       buildTmuxArgs(["switch-client", "-t", options.primaryClient], options),
-      {
-        encoding: "utf8",
-        timeout: 2000,
-      },
+      2000,
     ).catch(() => null);
   }
   const sessionName = await getPaneSession(paneId, options);
   if (sessionName) {
-    await execFileAsync("tmux", buildTmuxArgs(["switch-client", "-t", sessionName], options), {
-      encoding: "utf8",
-      timeout: 2000,
-    }).catch(() => null);
+    await runCommand(
+      "tmux",
+      buildTmuxArgs(["switch-client", "-t", sessionName], options),
+      2000,
+    ).catch(() => null);
   }
-  await execFileAsync("tmux", buildTmuxArgs(["select-window", "-t", paneId], options), {
-    encoding: "utf8",
-    timeout: 2000,
-  }).catch(() => null);
-  await execFileAsync("tmux", buildTmuxArgs(["select-pane", "-t", paneId], options), {
-    encoding: "utf8",
-    timeout: 2000,
-  }).catch(() => null);
+  await runCommand("tmux", buildTmuxArgs(["select-window", "-t", paneId], options), 2000).catch(
+    () => null,
+  );
+  await runCommand("tmux", buildTmuxArgs(["select-pane", "-t", paneId], options), 2000).catch(
+    () => null,
+  );
 };
 
 const getPaneGeometry = async (paneId: string, options?: TmuxOptions) => {
@@ -192,10 +189,10 @@ const getPaneGeometry = async (paneId: string, options?: TmuxOptions) => {
       "#{window_width}",
       "#{window_height}",
     ].join("\t");
-    const result = await execFileAsync(
+    const result = await runCommand(
       "tmux",
       buildTmuxArgs(["display-message", "-p", "-t", paneId, "-F", format], options),
-      { encoding: "utf8", timeout: 2000 },
+      2000,
     );
     return parsePaneGeometry(result.stdout ?? "");
   } catch {

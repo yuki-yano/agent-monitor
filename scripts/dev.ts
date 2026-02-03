@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
+import { execa } from "execa";
 
 const argv = process.argv.slice(2);
 const hasFlag = (flag: string) => argv.includes(flag);
@@ -58,10 +58,13 @@ const extractPort = (input: string) => {
 };
 
 const spawnPnpm = (args: string[]) => {
-  return spawn(pnpmCmd, args, { stdio: ["inherit", "pipe", "pipe"] });
+  return execa(pnpmCmd, args, {
+    stdio: ["inherit", "pipe", "pipe"],
+    reject: false,
+  });
 };
 
-let serverProcess: ReturnType<typeof spawn> | null = null;
+let serverProcess: ReturnType<typeof execa> | null = null;
 let shuttingDown = false;
 let webBuffer = "";
 

@@ -1,5 +1,6 @@
-import { execFileSync } from "node:child_process";
 import { networkInterfaces } from "node:os";
+
+import { execaSync } from "execa";
 
 const isValidOctets = (parts: number[]) => {
   return parts.every((value) => !Number.isNaN(value) && value >= 0 && value <= 255);
@@ -39,11 +40,16 @@ const getTailscaleFromCLI = () => {
   const candidates = ["tailscale", "/Applications/Tailscale.app/Contents/MacOS/Tailscale"];
   for (const bin of candidates) {
     try {
-      const ip = execFileSync(bin, ["ip", "-4"], {
+      const result = execaSync(bin, ["ip", "-4"], {
         encoding: "utf8",
         timeout: 2000,
         stdio: ["pipe", "pipe", "ignore"],
-      }).trim();
+        reject: false,
+      });
+      if (result.exitCode !== 0) {
+        continue;
+      }
+      const ip = result.stdout.trim();
       if (ip && isTailscaleIP(ip)) {
         return ip;
       }

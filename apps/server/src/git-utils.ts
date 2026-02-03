@@ -1,7 +1,4 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-
-const execFileAsync = promisify(execFile);
+import { execa } from "execa";
 
 export type RunGitOptions = {
   timeoutMs?: number;
@@ -18,8 +15,7 @@ export const runGit = async (
   options?: RunGitOptions,
 ): Promise<string> => {
   try {
-    const result = await execFileAsync("git", ["-C", cwd, ...args], {
-      encoding: "utf8",
+    const result = await execa("git", ["-C", cwd, ...args], {
       timeout: options?.timeoutMs ?? DEFAULT_TIMEOUT_MS,
       maxBuffer: options?.maxBuffer ?? DEFAULT_MAX_BUFFER,
     });

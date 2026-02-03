@@ -114,6 +114,9 @@ importers:
       '@vde-monitor/tmux':
         specifier: workspace:*
         version: link:../../packages/tmux
+      execa:
+        specifier: ^9.6.0
+        version: 9.6.1
       hono:
         specifier: ^4.11.4
         version: 4.11.7
