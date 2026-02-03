@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Clock, MonitorX, RefreshCw, Search } from "lucide-react";
+import { Clock, FolderGit2, MonitorX, RefreshCw, Search } from "lucide-react";
 import { type CSSProperties, useCallback, useMemo, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -17,13 +17,13 @@ import {
   TagPill,
   Toolbar,
 } from "@/components/ui";
+import { cn } from "@/lib/cn";
 import {
   agentLabelFor,
   agentToneFor,
   formatPath,
   formatRelativeTime,
   getLastInputTone,
-  stateTone,
 } from "@/lib/session-format";
 import { buildSessionGroups } from "@/lib/session-group";
 import { useNowMs } from "@/lib/use-now-ms";
@@ -36,8 +36,15 @@ import { QuickPanel } from "./SessionDetail/components/QuickPanel";
 import { SessionSidebar } from "./SessionDetail/components/SessionSidebar";
 import { useSessionLogs } from "./SessionDetail/hooks/useSessionLogs";
 
-const formatRepoLabel = (value: string | null) => {
+const formatRepoName = (value: string | null) => {
   if (!value) return "No repo";
+  // パスの最後のセグメント（リポジトリ名）を取得
+  const segments = value.split("/").filter(Boolean);
+  return segments[segments.length - 1] ?? "Unknown";
+};
+
+const formatRepoPath = (value: string | null) => {
+  if (!value) return null;
   return formatPath(value);
 };
 
@@ -218,28 +225,49 @@ export const SessionListPage = () => {
             )}
             {groups.map((group) => {
               const groupTone = getLastInputTone(group.lastInputAt, nowMs);
+              const repoName = formatRepoName(group.repoRoot);
+              const repoPath = formatRepoPath(group.repoRoot);
               return (
-                <GlowCard key={group.repoRoot ?? "no-repo"}>
-                  <GlassPanel>
-                    <p className="text-latte-subtext0 text-[10px] uppercase tracking-[0.4em]">
-                      Repository
-                    </p>
-                    <p className="text-latte-text mt-1 text-base font-semibold">
-                      {formatRepoLabel(group.repoRoot)}
-                    </p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                      <TagPill tone="neutral">{group.sessions.length} sessions</TagPill>
+                <GlowCard key={group.repoRoot ?? "no-repo"} contentClassName="gap-3 sm:gap-4">
+                  <GlassPanel
+                    className="px-4 py-3 sm:px-5 sm:py-4"
+                    contentClassName="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    {/* 左: リポジトリ情報 */}
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="border-latte-surface2/70 from-latte-crust/70 via-latte-surface0/70 to-latte-mantle/80 relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border bg-gradient-to-br">
+                        <div className="bg-latte-lavender/30 pointer-events-none absolute -bottom-3 -right-3 h-8 w-8 rounded-full blur-xl" />
+                        <FolderGit2 className="text-latte-lavender h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <p className="font-display text-latte-text truncate text-lg font-semibold leading-snug">
+                          {repoName}
+                        </p>
+                        {repoPath && (
+                          <p className="text-latte-subtext0 truncate font-mono text-[11px] leading-normal">
+                            {repoPath}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 右: メトリクス */}
+                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                      <TagPill tone="neutral" className="text-[11px]">
+                        {group.sessions.length} sessions
+                      </TagPill>
                       <LastInputPill
                         tone={groupTone}
                         label={<Clock className="h-3 w-3" />}
                         srLabel="Latest input"
                         value={formatRelativeTime(group.lastInputAt, nowMs)}
-                        size="md"
+                        size="xs"
                         showDot={false}
+                        className="text-[10px]"
                       />
                     </div>
                   </GlassPanel>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                  <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {group.sessions.map((session) => {
                       const sessionTone = getLastInputTone(session.lastInputAt, nowMs);
                       return (
@@ -249,43 +277,103 @@ export const SessionListPage = () => {
                           params={{ paneId: session.paneId }}
                           className="group"
                         >
-                          <Card interactive className="p-6">
-                            <div className="flex flex-col gap-2">
-                              <Toolbar className="gap-3">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <Badge tone={stateTone(session.state)}>{session.state}</Badge>
-                                  <Badge tone={agentToneFor(session.agent)}>
-                                    {agentLabelFor(session.agent)}
-                                  </Badge>
-                                  <LastInputPill
-                                    tone={sessionTone}
-                                    label={<Clock className="h-3 w-3" />}
-                                    srLabel="Last input"
-                                    value={formatRelativeTime(session.lastInputAt, nowMs)}
-                                    size="sm"
-                                    showDot={false}
-                                  />
-                                </div>
-                                {session.pipeConflict && (
-                                  <TagPill tone="danger">Pipe conflict</TagPill>
+                          <Card
+                            interactive
+                            className={cn(
+                              "relative flex h-full flex-col overflow-hidden p-4 transition-all",
+                              session.state === "RUNNING" &&
+                                "border-green-500/50 shadow-lg shadow-green-500/10",
+                              session.state === "WAITING_INPUT" &&
+                                "border-amber-500/50 shadow-lg shadow-amber-500/10",
+                              session.state === "WAITING_PERMISSION" &&
+                                "border-red-500/50 shadow-lg shadow-red-500/10",
+                              session.state === "UNKNOWN" &&
+                                "border-gray-400/50 shadow-lg shadow-gray-400/10",
+                            )}
+                          >
+                            {/* 背景グロー */}
+                            <div
+                              className={cn(
+                                "pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-br to-transparent opacity-50",
+                                session.state === "RUNNING" && "from-green-500/5",
+                                session.state === "WAITING_INPUT" && "from-amber-500/5",
+                                session.state === "WAITING_PERMISSION" && "from-red-500/5",
+                                session.state === "UNKNOWN" && "from-gray-400/5",
+                              )}
+                            />
+
+                            {/* セクション1: ステータスバー */}
+                            <div className="relative flex items-center gap-2">
+                              <span
+                                className={cn(
+                                  "h-2 w-2 shrink-0 rounded-full",
+                                  session.state === "RUNNING" && "animate-pulse bg-green-500",
+                                  session.state === "WAITING_INPUT" && "bg-amber-500",
+                                  session.state === "WAITING_PERMISSION" &&
+                                    "animate-pulse bg-red-500",
+                                  session.state === "UNKNOWN" && "bg-gray-400",
                                 )}
-                              </Toolbar>
+                              />
+                              <span
+                                className={cn(
+                                  "text-[9px] font-medium uppercase tracking-wider",
+                                  session.state === "RUNNING" && "text-green-600",
+                                  session.state === "WAITING_INPUT" && "text-amber-600",
+                                  session.state === "WAITING_PERMISSION" && "text-red-600",
+                                  session.state === "UNKNOWN" && "text-gray-500",
+                                )}
+                              >
+                                {session.state.replace(/_/g, " ")}
+                              </span>
+                              <Badge tone={agentToneFor(session.agent)} className="text-[10px]">
+                                {agentLabelFor(session.agent)}
+                              </Badge>
+                              {session.pipeConflict && (
+                                <TagPill tone="danger" className="text-[9px]">
+                                  Conflict
+                                </TagPill>
+                              )}
+                              <span className="ml-auto">
+                                <LastInputPill
+                                  tone={sessionTone}
+                                  label={<Clock className="h-2.5 w-2.5" />}
+                                  srLabel="Last input"
+                                  value={formatRelativeTime(session.lastInputAt, nowMs)}
+                                  size="sm"
+                                  showDot={false}
+                                />
+                              </span>
                             </div>
-                            <div className="mt-4 space-y-3">
-                              <h3 className="font-display text-latte-text text-lg">
+
+                            {/* セクション2: メインコンテンツ */}
+                            <div className="relative mt-2.5 flex min-w-0 flex-1 flex-col">
+                              <h3 className="font-display text-latte-text truncate text-[15px] font-semibold leading-snug">
                                 {session.customTitle ?? session.title ?? session.sessionName}
                               </h3>
-                              <p className="text-latte-subtext0 text-sm">
+                              <p
+                                className="text-latte-subtext0 mt-1.5 line-clamp-2 font-mono text-[11px] leading-normal tracking-tight"
+                                title={session.currentPath ?? undefined}
+                              >
                                 {formatPath(session.currentPath)}
                               </p>
                               {session.lastMessage && (
-                                <p className="text-latte-overlay1 text-xs">{session.lastMessage}</p>
+                                <p className="text-latte-overlay1 mt-2.5 line-clamp-2 text-[11px] leading-relaxed">
+                                  {session.lastMessage}
+                                </p>
                               )}
                             </div>
-                            <div className="text-latte-overlay1 mt-4 flex flex-wrap items-center gap-2 text-[11px] font-semibold">
-                              <TagPill tone="meta">Session {session.sessionName}</TagPill>
-                              <TagPill tone="meta">Window {session.windowIndex}</TagPill>
-                              <TagPill tone="meta">Pane {session.paneId}</TagPill>
+
+                            {/* セクション3: メタ情報フッター */}
+                            <div className="border-latte-surface1/30 relative mt-3 flex flex-wrap items-center gap-1.5 border-t pt-2.5">
+                              <TagPill tone="meta" className="text-[9px]">
+                                Session {session.sessionName}
+                              </TagPill>
+                              <TagPill tone="meta" className="text-[9px]">
+                                Window {session.windowIndex}
+                              </TagPill>
+                              <TagPill tone="meta" className="text-[9px]">
+                                Pane {session.paneId}
+                              </TagPill>
                             </div>
                           </Card>
                         </Link>
