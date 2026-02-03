@@ -201,7 +201,7 @@ export const CommitSection = memo(
                         </p>
                       </div>
                       <span
-                        className="text-latte-overlay1 ml-auto flex items-center px-2"
+                        className="text-latte-overlay1 ml-auto flex items-center self-center px-2"
                         aria-label={isOpen ? "Collapse commit" : "Expand commit"}
                       >
                         {isOpen ? (
