@@ -116,6 +116,10 @@ export const useStableVirtuosoScroll = ({
   const handleScrollEvent = useCallback(
     (event: Event) => {
       if (event.type === "scroll" && !event.isTrusted) {
+        if (!isAdjustingRef.current) {
+          lastUserScrollAtRef.current = performance.now();
+          allowCorrectionOnceRef.current = false;
+        }
         updateBaseline(anchorIndexRef.current);
         return;
       }

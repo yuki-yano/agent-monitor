@@ -293,4 +293,44 @@ describe("useStableVirtuosoScroll", () => {
     expect(onUserScrollStateChange).not.toHaveBeenCalled();
     rectSpy.mockRestore();
   });
+
+  it("suppresses correction after programmatic scroll", () => {
+    const rectSpy = mockRects();
+    let control: Control | null = null;
+    const getControl = () => {
+      if (!control) throw new Error("control not ready");
+      return control;
+    };
+
+    const { rerender } = render(
+      <TestHarness
+        items={["A", "B", "C", "D"]}
+        isAtBottom={false}
+        onReady={(next) => {
+          control = next;
+        }}
+      />,
+    );
+
+    getControl().scroller.scrollTop = 20;
+    getControl().handleRangeChanged({ startIndex: 2, endIndex: 3 });
+
+    const event = new Event("scroll");
+    act(() => {
+      getControl().scroller.dispatchEvent(event);
+    });
+
+    rerender(
+      <TestHarness
+        items={["X", "A", "B", "C", "D"]}
+        isAtBottom={false}
+        onReady={(next) => {
+          control = next;
+        }}
+      />,
+    );
+
+    expect(getControl().scroller.scrollTop).toBe(20);
+    rectSpy.mockRestore();
+  });
 });
