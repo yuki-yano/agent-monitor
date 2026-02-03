@@ -86,6 +86,10 @@ export const defaultConfig: AgentMonitorConfigFile = {
     joinLines: false,
     ansi: true,
     altScreen: "auto",
+    highlightCorrection: {
+      codex: true,
+      claude: true,
+    },
     image: {
       enabled: true,
       backend: "terminal",

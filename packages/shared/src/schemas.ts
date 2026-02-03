@@ -85,6 +85,22 @@ export const sessionDetailSchema = sessionSummarySchema.extend({
   panePid: z.number().nullable(),
 });
 
+const highlightCorrectionSchema = z.object({
+  codex: z.boolean().default(true),
+  claude: z.boolean().default(true),
+});
+
+const clientConfigSchema = z.object({
+  screen: z.object({
+    highlightCorrection: highlightCorrectionSchema,
+  }),
+});
+
+const serverHealthSchema = z.object({
+  version: z.string(),
+  clientConfig: clientConfigSchema.optional(),
+});
+
 export const wsEnvelopeSchema = <TType extends z.ZodTypeAny, TData extends z.ZodTypeAny>(
   typeSchema: TType,
   dataSchema: TData,
@@ -124,7 +140,7 @@ export const wsServerMessageSchema = z.discriminatedUnion("type", [
   ),
   wsEnvelopeSchema(z.literal("session.updated"), z.object({ session: sessionSummarySchema })),
   wsEnvelopeSchema(z.literal("session.removed"), z.object({ paneId: z.string() })),
-  wsEnvelopeSchema(z.literal("server.health"), z.object({ version: z.string() })),
+  wsEnvelopeSchema(z.literal("server.health"), serverHealthSchema),
   wsEnvelopeSchema(z.literal("screen.response"), screenResponseSchema),
   wsEnvelopeSchema(z.literal("command.response"), commandResponseSchema),
 ]);
@@ -187,6 +203,7 @@ export const configSchema = z.object({
     joinLines: z.boolean(),
     ansi: z.boolean().default(true),
     altScreen: z.enum(["auto", "on", "off"]),
+    highlightCorrection: highlightCorrectionSchema.default({ codex: true, claude: true }),
     image: z.object({
       enabled: z.boolean(),
       backend: z.enum(["alacritty", "terminal", "iterm", "wezterm", "ghostty"]),

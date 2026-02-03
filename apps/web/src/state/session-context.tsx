@@ -5,6 +5,7 @@ import type {
   CommitLog,
   DiffFile,
   DiffSummary,
+  HighlightCorrectionConfig,
   ScreenResponse,
   SessionDetail,
   SessionSummary,
@@ -32,6 +33,7 @@ type SessionContextValue = {
   connected: boolean;
   connectionIssue: string | null;
   readOnly: boolean;
+  highlightCorrections: HighlightCorrectionConfig;
   reconnect: () => void;
   refreshSessions: () => Promise<void>;
   requestDiffSummary: (paneId: string, options?: { force?: boolean }) => Promise<DiffSummary>;
@@ -102,6 +104,10 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [connectionIssue, setConnectionIssue] = useState<string | null>(null);
   const [readOnly, setReadOnly] = useState(false);
+  const [highlightCorrections, setHighlightCorrections] = useState<HighlightCorrectionConfig>({
+    codex: true,
+    claude: true,
+  });
   const [wsNonce, setWsNonce] = useState(0);
   const pending = useRef(
     new Map<
@@ -297,6 +303,10 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     (message: WsServerMessage) => {
       lastHealthAtRef.current = Date.now();
       if (message.type === "server.health") {
+        const nextHighlight = message.data.clientConfig?.screen?.highlightCorrection;
+        if (nextHighlight) {
+          setHighlightCorrections((prev) => ({ ...prev, ...nextHighlight }));
+        }
         return;
       }
       if (message.type === "sessions.snapshot") {
@@ -587,6 +597,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         connected,
         connectionIssue,
         readOnly,
+        highlightCorrections,
         reconnect,
         refreshSessions,
         requestDiffSummary,

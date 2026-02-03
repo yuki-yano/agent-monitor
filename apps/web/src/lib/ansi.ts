@@ -1,3 +1,4 @@
+import type { HighlightCorrectionConfig } from "@vde-monitor/shared";
 import AnsiToHtml from "ansi-to-html";
 
 import type { Theme } from "@/lib/theme";
@@ -72,10 +73,22 @@ const fallbackByTheme: Record<Theme, { background: string; text: string }> = {
 
 type RenderAnsiOptions = {
   agent?: "codex" | "claude" | "unknown";
+  highlightCorrections?: HighlightCorrectionConfig;
+};
+
+const isHighlightCorrectionEnabled = (
+  options: RenderAnsiOptions | undefined,
+  agent: "codex" | "claude",
+) => {
+  const value = options?.highlightCorrections?.[agent];
+  return value !== false;
 };
 
 const needsLowContrastAdjust = (html: string, theme: Theme, options?: RenderAnsiOptions) => {
   if (options?.agent !== "claude") {
+    return false;
+  }
+  if (!isHighlightCorrectionEnabled(options, "claude")) {
     return false;
   }
   if (html.includes("background-color")) {
@@ -216,6 +229,9 @@ const normalizeCodexBackgrounds = (
   options?: RenderAnsiOptions,
 ): string => {
   if (options?.agent !== "codex" || theme !== "latte") {
+    return html;
+  }
+  if (!isHighlightCorrectionEnabled(options, "codex")) {
     return html;
   }
   if (!html.includes("background-color")) {
@@ -453,12 +469,18 @@ export const renderAnsiLines = (
   const converter = buildAnsiToHtml(theme, { stream: false });
   const normalized = text.replace(/\r\n/g, "\n");
   const lines = normalized.split("\n");
-  const shouldPadBackground = options?.agent === "codex";
-  if (options?.agent !== "claude") {
+  const shouldApplyCodexHighlight =
+    options?.agent === "codex" && isHighlightCorrectionEnabled(options, "codex");
+  const shouldApplyClaudeHighlight =
+    options?.agent === "claude" && isHighlightCorrectionEnabled(options, "claude");
+  const shouldPadBackground = shouldApplyCodexHighlight;
+  if (!shouldApplyClaudeHighlight) {
     const rendered = lines.map((line) => {
       const html = converter.toHtml(line);
       const adjusted = adjustLowContrast(html, theme, options);
-      const normalized = normalizeCodexBackgrounds(adjusted, theme, options);
+      const normalized = shouldApplyCodexHighlight
+        ? normalizeCodexBackgrounds(adjusted, theme, options)
+        : adjusted;
       return ensureLineContent(normalized);
     });
     return shouldPadBackground ? applyAdjacentBackgroundPadding(rendered, lines) : rendered;

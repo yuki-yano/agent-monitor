@@ -46,6 +46,15 @@ export const createWsServer = ({
     ws.send(JSON.stringify(message));
   };
 
+  const buildHealthPayload = () => ({
+    version: "0.0.1",
+    clientConfig: {
+      screen: {
+        highlightCorrection: config.screen.highlightCorrection,
+      },
+    },
+  });
+
   const closeAllWsClients = (code: number, reason: string) => {
     wsClients.forEach((ws) => {
       try {
@@ -74,7 +83,7 @@ export const createWsServer = ({
     onOpen: (_event, ws) => {
       wsClients.add(ws);
       sendWs(ws, buildEnvelope("sessions.snapshot", { sessions: monitor.registry.snapshot() }));
-      sendWs(ws, buildEnvelope("server.health", { version: "0.0.1" }));
+      sendWs(ws, buildEnvelope("server.health", buildHealthPayload()));
     },
     onClose: (_event, ws) => {
       wsClients.delete(ws);
@@ -109,7 +118,7 @@ export const createWsServer = ({
       const message = parsed.data;
       const reqId = message.reqId;
       if (message.type === "client.ping") {
-        sendWs(ws, buildEnvelope("server.health", { version: "0.0.1" }, reqId));
+        sendWs(ws, buildEnvelope("server.health", buildHealthPayload(), reqId));
         return;
       }
 

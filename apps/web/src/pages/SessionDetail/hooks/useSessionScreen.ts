@@ -1,4 +1,4 @@
-import type { ScreenResponse } from "@vde-monitor/shared";
+import type { HighlightCorrectionConfig, ScreenResponse } from "@vde-monitor/shared";
 import {
   startTransition,
   useCallback,
@@ -32,6 +32,7 @@ type UseSessionScreenParams = {
   ) => Promise<ScreenResponse>;
   resolvedTheme: Theme;
   agent?: string | null;
+  highlightCorrections?: HighlightCorrectionConfig;
 };
 
 export const useSessionScreen = ({
@@ -41,6 +42,7 @@ export const useSessionScreen = ({
   requestScreen,
   resolvedTheme,
   agent,
+  highlightCorrections,
 }: UseSessionScreenParams) => {
   const [mode, setMode] = useState<ScreenMode>("text");
   const [screen, setScreen] = useState<string>("");
@@ -84,8 +86,9 @@ export const useSessionScreen = ({
     }
     return renderAnsiLines(screen || "No screen data", resolvedTheme, {
       agent: resolvedAgent,
+      highlightCorrections,
     });
-  }, [mode, screen, resolvedAgent, resolvedTheme]);
+  }, [mode, screen, resolvedAgent, resolvedTheme, highlightCorrections]);
 
   const flushPendingScreen = useCallback(() => {
     const pending = pendingScreenRef.current;

@@ -42,6 +42,7 @@ export const SessionDetailPage = () => {
     touchSession,
     updateSessionTitle,
     readOnly,
+    highlightCorrections,
   } = useSessions();
   const { resolvedTheme } = useTheme();
   const session = getSessionDetail(paneId);
@@ -72,6 +73,7 @@ export const SessionDetailPage = () => {
     requestScreen,
     resolvedTheme,
     agent: session?.agent,
+    highlightCorrections,
   });
 
   const {
@@ -156,6 +158,7 @@ export const SessionDetailPage = () => {
     sessions,
     requestScreen,
     resolvedTheme,
+    highlightCorrections,
   });
 
   const {

@@ -213,7 +213,7 @@ export type WsServerMessage =
   | WsEnvelope<"sessions.snapshot", { sessions: SessionSummary[] }>
   | WsEnvelope<"session.updated", { session: SessionSummary }>
   | WsEnvelope<"session.removed", { paneId: string }>
-  | WsEnvelope<"server.health", { version: string }>
+  | WsEnvelope<"server.health", ServerHealth>
   | WsEnvelope<"screen.response", ScreenResponse>
   | WsEnvelope<"command.response", CommandResponse>;
 
@@ -228,6 +228,24 @@ export type ClaudeHookEvent = {
   transcript_path?: string;
   fallback?: { cwd?: string; transcript_path?: string };
   payload: { raw: string };
+};
+
+export type HighlightCorrectionConfig = {
+  codex: boolean;
+  claude: boolean;
+};
+
+export type ClientScreenConfig = {
+  highlightCorrection: HighlightCorrectionConfig;
+};
+
+export type ClientConfig = {
+  screen: ClientScreenConfig;
+};
+
+export type ServerHealth = {
+  version: string;
+  clientConfig?: ClientConfig;
 };
 
 export type AgentMonitorConfigBase = {
@@ -260,6 +278,7 @@ export type AgentMonitorConfigBase = {
     joinLines: boolean;
     ansi: boolean;
     altScreen: "auto" | "on" | "off";
+    highlightCorrection: HighlightCorrectionConfig;
     image: {
       enabled: boolean;
       backend: "alacritty" | "terminal" | "iterm" | "wezterm" | "ghostty";

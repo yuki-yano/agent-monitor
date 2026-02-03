@@ -1,4 +1,8 @@
-import type { ScreenResponse, SessionSummary } from "@vde-monitor/shared";
+import type {
+  HighlightCorrectionConfig,
+  ScreenResponse,
+  SessionSummary,
+} from "@vde-monitor/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { renderAnsiLines } from "@/lib/ansi";
@@ -21,6 +25,7 @@ type UseSessionLogsParams = {
     options: { lines?: number; mode?: "text" | "image"; cursor?: string },
   ) => Promise<ScreenResponse>;
   resolvedTheme: Theme;
+  highlightCorrections?: HighlightCorrectionConfig;
 };
 
 export const useSessionLogs = ({
@@ -29,6 +34,7 @@ export const useSessionLogs = ({
   sessions,
   requestScreen,
   resolvedTheme,
+  highlightCorrections,
 }: UseSessionLogsParams) => {
   const [quickPanelOpen, setQuickPanelOpen] = useState(false);
   const [logModalOpen, setLogModalOpen] = useState(false);
@@ -57,8 +63,8 @@ export const useSessionLogs = ({
       selectedSession?.agent === "codex" || selectedSession?.agent === "claude"
         ? selectedSession.agent
         : "unknown";
-    return renderAnsiLines(text, resolvedTheme, { agent });
-  }, [selectedLogEntry, resolvedTheme, selectedSession?.agent]);
+    return renderAnsiLines(text, resolvedTheme, { agent, highlightCorrections });
+  }, [selectedLogEntry, resolvedTheme, selectedSession?.agent, highlightCorrections]);
 
   const selectedLogLoading = Boolean(selectedPaneId && logLoading[selectedPaneId]);
   const selectedLogError = selectedPaneId ? (logError[selectedPaneId] ?? null) : null;

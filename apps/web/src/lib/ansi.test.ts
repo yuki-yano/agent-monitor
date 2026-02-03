@@ -91,4 +91,24 @@ describe("renderAnsiLines", () => {
     expect(lines[0]).toContain("rgb(230, 233, 239)");
     expect(lines[0]).not.toContain("background-color:#4c4f69");
   });
+
+  it("skips Claude highlight corrections when disabled", () => {
+    const text = ["Update(file)", "  10 +foo", "  11 -bar"].join("\n");
+    const lines = renderAnsiLines(text, "latte", {
+      agent: "claude",
+      highlightCorrections: { codex: true, claude: false },
+    });
+    expect(lines[1]).not.toContain("text-latte-green");
+    expect(lines[2]).not.toContain("text-latte-red");
+  });
+
+  it("skips codex highlight padding when disabled", () => {
+    const text = ["\u001b[41mfirst", "second"].join("\n");
+    const lines = renderAnsiLines(text, "latte", {
+      agent: "codex",
+      highlightCorrections: { codex: false, claude: true },
+    });
+    expect(lines[0]).toContain("background-color");
+    expect(lines[1]).not.toContain("background-color");
+  });
 });

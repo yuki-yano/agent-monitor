@@ -270,6 +270,18 @@ describe("wsServerMessageSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts server.health payloads with client config", () => {
+    const result = wsServerMessageSchema.safeParse({
+      type: "server.health",
+      ts: "2025-01-01T00:00:00Z",
+      data: {
+        version: "0.0.1",
+        clientConfig: { screen: { highlightCorrection: { codex: false, claude: true } } },
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("accepts command.response payloads with error", () => {
     const result = wsServerMessageSchema.safeParse({
       type: "command.response",
