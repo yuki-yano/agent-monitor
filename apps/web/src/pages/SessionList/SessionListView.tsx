@@ -69,63 +69,69 @@ export const SessionListView = ({
         className="animate-fade-in-up w-full px-4 pb-10 pt-6 md:pl-[calc(var(--sidebar-width)+32px)] md:pr-6"
         style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
       >
-        <div className="flex items-center justify-between gap-3">
-          <div />
-          <ThemeToggle />
-        </div>
-        <SessionListHeader
-          connected={connected}
-          connectionIssue={connectionIssue}
-          readOnly={readOnly}
-          filter={filter}
-          filterOptions={filterOptions}
-          onFilterChange={onFilterChange}
-          onRefresh={onRefresh}
-          onReconnect={onReconnect}
-        />
-
         <div className="flex flex-col gap-6">
-          <div className="flex min-w-0 flex-1 flex-col gap-6">
-            {sessions.length === 0 && (
-              <EmptyCard
-                icon={<MonitorX className="text-latte-overlay1 h-10 w-10" />}
-                title="No Active Sessions"
-                description="Start a tmux session with Codex or Claude Code to see it here. Sessions will appear automatically when detected."
-                className="py-16"
-                iconWrapperClassName="bg-latte-surface1/50 h-20 w-20"
-                titleClassName="text-xl"
-                descriptionClassName="max-w-sm"
-                action={
-                  <Button variant="ghost" size="sm" onClick={onRefresh} className="mt-2">
-                    <RefreshCw className="h-4 w-4" />
-                    Check Again
-                  </Button>
-                }
-              />
-            )}
-            {sessions.length > 0 && groups.length === 0 && (
-              <EmptyCard
-                icon={<Search className="text-latte-overlay1 h-8 w-8" />}
-                title="No Matching Sessions"
-                description="No sessions match the selected filter. Try selecting a different status."
-                className="py-12"
-                iconWrapperClassName="bg-latte-surface1/50 h-16 w-16"
-                titleClassName="text-lg"
-                action={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onFilterChange("ALL")}
-                    className="mt-2"
-                  >
-                    Show All Sessions
-                  </Button>
-                }
-              />
-            )}
-            {groups.map((group) => (
-              <SessionGroupSection key={group.repoRoot ?? "no-repo"} group={group} nowMs={nowMs} />
-            ))}
+          <div className="flex items-center justify-between gap-3">
+            <div />
+            <ThemeToggle />
+          </div>
+          <SessionListHeader
+            connected={connected}
+            connectionIssue={connectionIssue}
+            readOnly={readOnly}
+            filter={filter}
+            filterOptions={filterOptions}
+            onFilterChange={onFilterChange}
+            onRefresh={onRefresh}
+            onReconnect={onReconnect}
+          />
+
+          <div className="flex flex-col gap-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
+              {sessions.length === 0 && (
+                <EmptyCard
+                  icon={<MonitorX className="text-latte-overlay1 h-10 w-10" />}
+                  title="No Active Sessions"
+                  description="Start a tmux session with Codex or Claude Code to see it here. Sessions will appear automatically when detected."
+                  className="py-16"
+                  iconWrapperClassName="bg-latte-surface1/50 h-20 w-20"
+                  titleClassName="text-xl"
+                  descriptionClassName="max-w-sm"
+                  action={
+                    <Button variant="ghost" size="sm" onClick={onRefresh} className="mt-2">
+                      <RefreshCw className="h-4 w-4" />
+                      Check Again
+                    </Button>
+                  }
+                />
+              )}
+              {sessions.length > 0 && groups.length === 0 && (
+                <EmptyCard
+                  icon={<Search className="text-latte-overlay1 h-8 w-8" />}
+                  title="No Matching Sessions"
+                  description="No sessions match the selected filter. Try selecting a different status."
+                  className="py-12"
+                  iconWrapperClassName="bg-latte-surface1/50 h-16 w-16"
+                  titleClassName="text-lg"
+                  action={
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onFilterChange("ALL")}
+                      className="mt-2"
+                    >
+                      Show All Sessions
+                    </Button>
+                  }
+                />
+              )}
+              {groups.map((group) => (
+                <SessionGroupSection
+                  key={group.repoRoot ?? "no-repo"}
+                  group={group}
+                  nowMs={nowMs}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
