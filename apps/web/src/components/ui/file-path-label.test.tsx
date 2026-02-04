@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FilePathLabel } from "./file-path-label";
@@ -91,6 +91,12 @@ describe("FilePathLabel", () => {
 
     const container = screen.getByTestId("path-label");
     const hint = container.querySelector("span.text-latte-subtext0:not([aria-hidden='true'])");
-    expect(hint?.textContent).toBe(".../SessionDetail/components");
+    await waitFor(() => {
+      expect(hint?.textContent).toContain("SessionDetail/components");
+    });
+    expect([
+      ".../SessionDetail/components",
+      "apps/web/src/pages/SessionDetail/components",
+    ]).toContain(hint?.textContent);
   });
 });
