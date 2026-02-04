@@ -1,0 +1,154 @@
+import { MonitorX, RefreshCw, Search } from "lucide-react";
+import type { CSSProperties } from "react";
+
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Button, EmptyCard } from "@/components/ui";
+import { LogModal } from "@/pages/SessionDetail/components/LogModal";
+import { QuickPanel } from "@/pages/SessionDetail/components/QuickPanel";
+import { SessionSidebar } from "@/pages/SessionDetail/components/SessionSidebar";
+
+import { SessionGroupSection } from "./components/SessionGroupSection";
+import { SessionListHeader } from "./components/SessionListHeader";
+import type { SessionListVM } from "./useSessionListVM";
+
+export type SessionListViewProps = SessionListVM;
+
+export const SessionListView = ({
+  sessions,
+  groups,
+  quickPanelGroups,
+  filter,
+  filterOptions,
+  connected,
+  connectionIssue,
+  readOnly,
+  nowMs,
+  sidebarWidth,
+  onFilterChange,
+  onRefresh,
+  onReconnect,
+  onSidebarResizeStart,
+  quickPanelOpen,
+  logModalOpen,
+  selectedSession,
+  selectedLogLines,
+  selectedLogLoading,
+  selectedLogError,
+  onOpenLogModal,
+  onCloseLogModal,
+  onToggleQuickPanel,
+  onCloseQuickPanel,
+  onOpenHere,
+  onOpenNewTab,
+}: SessionListViewProps) => {
+  return (
+    <>
+      <div
+        className="fixed left-0 top-0 z-40 hidden h-screen md:flex"
+        style={{ width: `${sidebarWidth}px` }}
+      >
+        <SessionSidebar
+          sessionGroups={quickPanelGroups}
+          nowMs={nowMs}
+          currentPaneId={null}
+          className="border-latte-surface1/80 h-full w-full rounded-none rounded-r-3xl border-r"
+        />
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize sidebar"
+          className="absolute right-0 top-0 h-full w-2 cursor-col-resize touch-none"
+          onPointerDown={onSidebarResizeStart}
+        />
+      </div>
+
+      <div
+        className="animate-fade-in-up w-full px-4 pb-10 pt-6 md:pl-[calc(var(--sidebar-width)+32px)] md:pr-6"
+        style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div />
+          <ThemeToggle />
+        </div>
+        <SessionListHeader
+          connected={connected}
+          connectionIssue={connectionIssue}
+          readOnly={readOnly}
+          filter={filter}
+          filterOptions={filterOptions}
+          onFilterChange={onFilterChange}
+          onRefresh={onRefresh}
+          onReconnect={onReconnect}
+        />
+
+        <div className="flex flex-col gap-6">
+          <div className="flex min-w-0 flex-1 flex-col gap-6">
+            {sessions.length === 0 && (
+              <EmptyCard
+                icon={<MonitorX className="text-latte-overlay1 h-10 w-10" />}
+                title="No Active Sessions"
+                description="Start a tmux session with Codex or Claude Code to see it here. Sessions will appear automatically when detected."
+                className="py-16"
+                iconWrapperClassName="bg-latte-surface1/50 h-20 w-20"
+                titleClassName="text-xl"
+                descriptionClassName="max-w-sm"
+                action={
+                  <Button variant="ghost" size="sm" onClick={onRefresh} className="mt-2">
+                    <RefreshCw className="h-4 w-4" />
+                    Check Again
+                  </Button>
+                }
+              />
+            )}
+            {sessions.length > 0 && groups.length === 0 && (
+              <EmptyCard
+                icon={<Search className="text-latte-overlay1 h-8 w-8" />}
+                title="No Matching Sessions"
+                description="No sessions match the selected filter. Try selecting a different status."
+                className="py-12"
+                iconWrapperClassName="bg-latte-surface1/50 h-16 w-16"
+                titleClassName="text-lg"
+                action={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onFilterChange("ALL")}
+                    className="mt-2"
+                  >
+                    Show All Sessions
+                  </Button>
+                }
+              />
+            )}
+            {groups.map((group) => (
+              <SessionGroupSection key={group.repoRoot ?? "no-repo"} group={group} nowMs={nowMs} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="md:hidden">
+        <QuickPanel
+          open={quickPanelOpen}
+          sessionGroups={quickPanelGroups}
+          nowMs={nowMs}
+          currentPaneId={null}
+          onOpenLogModal={onOpenLogModal}
+          onClose={onCloseQuickPanel}
+          onToggle={onToggleQuickPanel}
+        />
+      </div>
+
+      <LogModal
+        open={logModalOpen}
+        session={selectedSession}
+        logLines={selectedLogLines}
+        loading={selectedLogLoading}
+        error={selectedLogError}
+        onClose={onCloseLogModal}
+        onOpenHere={onOpenHere}
+        onOpenNewTab={onOpenNewTab}
+      />
+    </>
+  );
+};
