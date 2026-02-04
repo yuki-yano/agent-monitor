@@ -1,6 +1,7 @@
 import { type CommandResponse, defaultDangerKeys } from "@vde-monitor/shared";
 import { useCallback, useRef, useState } from "react";
 
+import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import type { ScreenMode } from "@/lib/screen-loading";
 
 import { isDangerousText } from "../sessionDetailUtils";
@@ -65,7 +66,7 @@ export const useSessionControls = ({
       }
       const result = await sendKeys(paneId, [mapped]);
       if (!result.ok) {
-        setScreenError(result.error?.message ?? "Failed to send keys");
+        setScreenError(result.error?.message ?? API_ERROR_MESSAGES.sendKeys);
       }
     },
     [mapKeyWithModifiers, paneId, readOnly, sendKeys, setScreenError],
@@ -81,7 +82,7 @@ export const useSessionControls = ({
     }
     const result = await sendText(paneId, currentValue, autoEnter);
     if (!result.ok) {
-      setScreenError(result.error?.message ?? "Failed to send text");
+      setScreenError(result.error?.message ?? API_ERROR_MESSAGES.sendText);
       return;
     }
     if (textInputRef.current) {

@@ -24,6 +24,7 @@ import {
   SectionHeader,
   TagPill,
 } from "@/components/ui";
+import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 
 import { diffLineClass, diffStatusClass, formatPath, formatTimestamp } from "../sessionDetailUtils";
 
@@ -214,7 +215,7 @@ export const CommitSection = memo(
         )}
         {commitLog?.reason === "error" && (
           <Callout tone="error" size="xs">
-            Failed to load commit log.
+            {API_ERROR_MESSAGES.commitLog}.
           </Callout>
         )}
         {commitError && (

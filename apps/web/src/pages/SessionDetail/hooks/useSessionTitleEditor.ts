@@ -1,6 +1,8 @@
 import type { SessionDetail } from "@vde-monitor/shared";
 import { useCallback, useEffect, useState } from "react";
 
+import { API_ERROR_MESSAGES } from "@/lib/api-messages";
+
 type UseSessionTitleEditorParams = {
   session: SessionDetail | null;
   paneId: string;
@@ -63,7 +65,7 @@ export const useSessionTitleEditor = ({
       setTitleEditing(false);
       setTitleError(null);
     } catch (err) {
-      setTitleError(err instanceof Error ? err.message : "Failed to update title");
+      setTitleError(err instanceof Error ? err.message : API_ERROR_MESSAGES.updateTitle);
     } finally {
       setTitleSaving(false);
     }
@@ -78,7 +80,7 @@ export const useSessionTitleEditor = ({
       setTitleDraft("");
       setTitleError(null);
     } catch (err) {
-      setTitleError(err instanceof Error ? err.message : "Failed to update title");
+      setTitleError(err instanceof Error ? err.message : API_ERROR_MESSAGES.updateTitle);
     } finally {
       setTitleSaving(false);
     }

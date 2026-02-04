@@ -12,6 +12,7 @@ import {
 import type { VirtuosoHandle } from "react-virtuoso";
 
 import { renderAnsiLines } from "@/lib/ansi";
+import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import { applyScreenDeltas } from "@/lib/screen-delta";
 import {
   initialScreenLoadingState,
@@ -218,7 +219,7 @@ export const useSessionScreen = ({
         return;
       }
       if (!response.ok) {
-        setError(response.error?.message ?? "Failed to capture screen");
+        setError(response.error?.message ?? API_ERROR_MESSAGES.screenCapture);
         return;
       }
       setFallbackReason(response.fallbackReason ?? null);
@@ -278,7 +279,7 @@ export const useSessionScreen = ({
       }
       setModeLoaded((prev) => ({ ...prev, [mode]: true }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Screen request failed");
+      setError(err instanceof Error ? err.message : API_ERROR_MESSAGES.screenRequestFailed);
     } finally {
       if (refreshInFlightRef.current?.id === requestId) {
         refreshInFlightRef.current = null;

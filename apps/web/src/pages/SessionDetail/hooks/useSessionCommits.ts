@@ -1,6 +1,8 @@
 import type { CommitDetail, CommitFileDiff, CommitLog } from "@vde-monitor/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { API_ERROR_MESSAGES } from "@/lib/api-messages";
+
 import { AUTO_REFRESH_INTERVAL_MS, buildCommitLogSignature } from "../sessionDetailUtils";
 
 type UseSessionCommitsParams = {
@@ -146,7 +148,7 @@ export const useSessionCommits = ({
         applyCommitLog(log, { append, updateSignature: !append });
       } catch (err) {
         if (!append) {
-          setCommitError(err instanceof Error ? err.message : "Failed to load commit log");
+          setCommitError(err instanceof Error ? err.message : API_ERROR_MESSAGES.commitLog);
         }
       } finally {
         if (append) {
@@ -167,7 +169,7 @@ export const useSessionCommits = ({
         const detail = await requestCommitDetail(paneId, hash, { force: true });
         setCommitDetails((prev) => ({ ...prev, [hash]: detail }));
       } catch (err) {
-        setCommitError(err instanceof Error ? err.message : "Failed to load commit detail");
+        setCommitError(err instanceof Error ? err.message : API_ERROR_MESSAGES.commitDetail);
       } finally {
         setCommitLoadingDetails((prev) => ({ ...prev, [hash]: false }));
       }
@@ -185,7 +187,7 @@ export const useSessionCommits = ({
         const file = await requestCommitFile(paneId, hash, path, { force: true });
         setCommitFileDetails((prev) => ({ ...prev, [key]: file }));
       } catch (err) {
-        setCommitError(err instanceof Error ? err.message : "Failed to load commit file");
+        setCommitError(err instanceof Error ? err.message : API_ERROR_MESSAGES.commitFile);
       } finally {
         setCommitFileLoading((prev) => ({ ...prev, [key]: false }));
       }

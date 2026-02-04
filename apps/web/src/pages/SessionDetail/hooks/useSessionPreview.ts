@@ -1,6 +1,8 @@
 import type { ScreenResponse } from "@vde-monitor/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { API_ERROR_MESSAGES } from "@/lib/api-messages";
+
 import { DISCONNECTED_MESSAGE } from "../sessionDetailUtils";
 
 type PreviewCacheEntry = {
@@ -71,7 +73,7 @@ export const useSessionPreview = ({
         if (!response.ok) {
           setPreviewError((prev) => ({
             ...prev,
-            [paneId]: response.error?.message ?? "Failed to load preview",
+            [paneId]: response.error?.message ?? API_ERROR_MESSAGES.previewLoad,
           }));
           return;
         }
@@ -90,7 +92,7 @@ export const useSessionPreview = ({
         }
         setPreviewError((prev) => ({
           ...prev,
-          [paneId]: err instanceof Error ? err.message : "Preview request failed",
+          [paneId]: err instanceof Error ? err.message : API_ERROR_MESSAGES.previewRequestFailed,
         }));
       } finally {
         inflightRef.current.delete(paneId);

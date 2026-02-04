@@ -164,6 +164,10 @@ export type ApiError = {
   message: string;
 };
 
+export type ApiEnvelope<T> = T & {
+  error?: ApiError;
+};
+
 export type ScreenResponse = {
   ok: boolean;
   paneId: string;

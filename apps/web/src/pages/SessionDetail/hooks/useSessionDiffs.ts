@@ -1,6 +1,8 @@
 import type { DiffFile, DiffSummary } from "@vde-monitor/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { API_ERROR_MESSAGES } from "@/lib/api-messages";
+
 import { AUTO_REFRESH_INTERVAL_MS, buildDiffSummarySignature } from "../sessionDetailUtils";
 
 type UseSessionDiffsParams = {
@@ -58,7 +60,7 @@ export const useSessionDiffs = ({
               const file = await requestDiffFile(paneId, path, summary.rev, { force: true });
               setDiffFiles((prev) => ({ ...prev, [path]: file }));
             } catch (err) {
-              setDiffError(err instanceof Error ? err.message : "Failed to load diff file");
+              setDiffError(err instanceof Error ? err.message : API_ERROR_MESSAGES.diffFile);
             }
           }),
         );
@@ -75,7 +77,7 @@ export const useSessionDiffs = ({
       const summary = await requestDiffSummary(paneId, { force: true });
       await applyDiffSummary(summary, true);
     } catch (err) {
-      setDiffError(err instanceof Error ? err.message : "Failed to load diff summary");
+      setDiffError(err instanceof Error ? err.message : API_ERROR_MESSAGES.diffSummary);
     } finally {
       setDiffLoading(false);
     }
@@ -105,7 +107,7 @@ export const useSessionDiffs = ({
         const file = await requestDiffFile(paneId, path, diffSummary.rev, { force: true });
         setDiffFiles((prev) => ({ ...prev, [path]: file }));
       } catch (err) {
-        setDiffError(err instanceof Error ? err.message : "Failed to load diff file");
+        setDiffError(err instanceof Error ? err.message : API_ERROR_MESSAGES.diffFile);
       } finally {
         setDiffLoadingFiles((prev) => ({ ...prev, [path]: false }));
       }

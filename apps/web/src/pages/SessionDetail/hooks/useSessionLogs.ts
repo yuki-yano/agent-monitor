@@ -6,6 +6,7 @@ import type {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { renderAnsiLines } from "@/lib/ansi";
+import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import type { Theme } from "@/lib/theme";
 
 import { DISCONNECTED_MESSAGE } from "../sessionDetailUtils";
@@ -102,7 +103,7 @@ export const useSessionLogs = ({
         if (!response.ok) {
           setLogError((prev) => ({
             ...prev,
-            [paneId]: response.error?.message ?? "Failed to load log",
+            [paneId]: response.error?.message ?? API_ERROR_MESSAGES.logLoad,
           }));
           return;
         }
@@ -120,7 +121,7 @@ export const useSessionLogs = ({
         }
         setLogError((prev) => ({
           ...prev,
-          [paneId]: err instanceof Error ? err.message : "Log request failed",
+          [paneId]: err instanceof Error ? err.message : API_ERROR_MESSAGES.logRequestFailed,
         }));
       } finally {
         logInflightRef.current.delete(paneId);

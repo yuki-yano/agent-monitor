@@ -16,6 +16,7 @@ import {
   SectionHeader,
   TagPill,
 } from "@/components/ui";
+import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 
 import {
   diffLineClass,
@@ -179,7 +180,7 @@ export const DiffSection = memo(
         )}
         {diffSummary?.reason === "error" && (
           <Callout tone="error" size="xs">
-            Failed to load git status.
+            {API_ERROR_MESSAGES.diffSummary}.
           </Callout>
         )}
         {diffError && (
