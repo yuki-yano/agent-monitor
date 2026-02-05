@@ -13,6 +13,17 @@ export const stateTone = (state: string) => {
   }
 };
 
+export const formatStateLabel = (state: string) => {
+  switch (state) {
+    case "WAITING_INPUT":
+      return "WAITING";
+    case "WAITING_PERMISSION":
+      return "PERMISSION";
+    default:
+      return state.replace(/_/g, " ");
+  }
+};
+
 export const agentToneFor = (agent: string | null | undefined) => {
   switch (agent) {
     case "codex":
@@ -23,6 +34,9 @@ export const agentToneFor = (agent: string | null | undefined) => {
       return "unknown" as const;
   }
 };
+
+export const isKnownAgent = (agent: string | null | undefined) =>
+  agent === "codex" || agent === "claude";
 
 export const agentLabelFor = (agent: string | null | undefined) => {
   switch (agent) {

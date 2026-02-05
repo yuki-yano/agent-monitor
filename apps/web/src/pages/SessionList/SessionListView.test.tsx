@@ -108,29 +108,14 @@ const filterOptions = filterValues.map((value) => ({
   label: value.replace("_", " "),
 }));
 
-const statusOrder = ["RUNNING", "WAITING_INPUT", "WAITING_PERMISSION", "SHELL", "UNKNOWN"] as const;
-
-const buildStatusSections = (sessions: SessionSummary[]) => {
-  return statusOrder
-    .map((state) => {
-      const filtered = sessions.filter((session) => session.state === state);
-      return {
-        state,
-        count: filtered.length,
-        groups: buildSessionGroups(filtered),
-      };
-    })
-    .filter((section) => section.count > 0);
-};
-
 const createViewProps = (overrides: Partial<SessionListViewProps> = {}): SessionListViewProps => {
   const sessions = overrides.sessions ?? [];
-  const statusSections = overrides.statusSections ?? buildStatusSections(sessions);
+  const groups = overrides.groups ?? buildSessionGroups(sessions);
   const quickPanelGroups = overrides.quickPanelGroups ?? buildSessionGroups(sessions);
   const visibleSessionCount = overrides.visibleSessionCount ?? sessions.length;
   return {
     sessions,
-    statusSections,
+    groups,
     visibleSessionCount,
     quickPanelGroups,
     filter: "AGENT",
@@ -164,7 +149,7 @@ describe("SessionListView", () => {
   it("renders empty state when no sessions", () => {
     const props = createViewProps({
       sessions: [],
-      statusSections: [],
+      groups: [],
       visibleSessionCount: 0,
       quickPanelGroups: [],
     });
@@ -180,7 +165,7 @@ describe("SessionListView", () => {
     const onFilterChange = vi.fn();
     const props = createViewProps({
       sessions: [session],
-      statusSections: [],
+      groups: [],
       visibleSessionCount: 0,
       onFilterChange,
     });
@@ -227,15 +212,14 @@ describe("SessionListView", () => {
     expect(screen.getByRole("button", { name: "UNKNOWN" })).toBeTruthy();
   });
 
-  it("renders repo group and session card", () => {
+  it("renders window group and session card", () => {
     const session = buildSession({
-      repoRoot: "/Users/test/my-repo",
       customTitle: "Custom Session",
     });
     const props = createViewProps({ sessions: [session] });
     renderWithRouter(<SessionListView {...props} />);
 
-    expect(screen.getByText("my-repo")).toBeTruthy();
+    expect(screen.getAllByText("Window 1").length).toBeGreaterThan(0);
     expect(screen.getByText("Custom Session")).toBeTruthy();
     const cardLink = screen.getByText("Custom Session").closest("a");
     expect(cardLink).toBeTruthy();

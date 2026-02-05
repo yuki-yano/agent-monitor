@@ -45,6 +45,31 @@ describe("updatePaneOutputState", () => {
     expect(state.hookState).toBeNull();
   });
 
+  it("keeps waiting hook state even when output advances", async () => {
+    const state = createState({
+      hookState: { state: "WAITING_INPUT", reason: "hook:stop", at: "2024-01-01T00:00:00.000Z" },
+    });
+    const result = await updatePaneOutputState({
+      pane: basePane,
+      paneState: state,
+      logPath: "/tmp/log",
+      inactiveThresholdMs: 1000,
+      deps: {
+        statLogMtime: async () => "2024-01-02T00:00:00.000Z",
+        resolveActivityAt: () => null,
+        captureFingerprint: async () => null,
+        now: () => new Date("2024-01-03T00:00:00.000Z"),
+      },
+    });
+
+    expect(result.outputAt).toBe("2024-01-02T00:00:00.000Z");
+    expect(result.hookState).toEqual({
+      state: "WAITING_INPUT",
+      reason: "hook:stop",
+      at: "2024-01-01T00:00:00.000Z",
+    });
+  });
+
   it("uses fallback timestamp when no activity is available", async () => {
     const state = createState();
     const now = new Date("2024-01-03T00:00:10.000Z");

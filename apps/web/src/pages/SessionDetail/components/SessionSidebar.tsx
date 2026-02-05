@@ -16,6 +16,7 @@ import {
   agentToneFor,
   formatRelativeTime,
   getLastInputTone,
+  isKnownAgent,
 } from "../sessionDetailUtils";
 
 type SessionSidebarState = {
@@ -162,9 +163,11 @@ const SessionSidebarItem = memo(
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={agentToneFor(item.agent)} size="sm">
-              {agentLabelFor(item.agent)}
-            </Badge>
+            {isKnownAgent(item.agent) && (
+              <Badge tone={agentToneFor(item.agent)} size="sm">
+                {agentLabelFor(item.agent)}
+              </Badge>
+            )}
             <LastInputPill
               tone={lastInputTone}
               label={<Clock className="h-3 w-3" />}

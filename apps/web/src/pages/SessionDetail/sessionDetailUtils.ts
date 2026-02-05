@@ -10,7 +10,9 @@ export {
   agentToneFor,
   formatPath,
   formatRelativeTime,
+  formatStateLabel,
   getLastInputTone,
+  isKnownAgent,
   stateTone,
 } from "@/lib/session-format";
 

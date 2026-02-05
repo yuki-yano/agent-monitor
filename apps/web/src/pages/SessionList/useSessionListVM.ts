@@ -1,5 +1,4 @@
 import { useNavigate } from "@tanstack/react-router";
-import type { SessionStateValue } from "@vde-monitor/shared";
 import { useCallback, useMemo, useState } from "react";
 
 import { buildSessionGroups } from "@/lib/session-group";
@@ -18,14 +17,6 @@ const FILTER_OPTIONS = FILTER_VALUES.map((value) => ({
   value,
   label: value.replace("_", " "),
 }));
-
-const STATUS_ORDER: SessionStateValue[] = [
-  "RUNNING",
-  "WAITING_INPUT",
-  "WAITING_PERMISSION",
-  "SHELL",
-  "UNKNOWN",
-];
 
 export const useSessionListVM = () => {
   const {
@@ -54,27 +45,7 @@ export const useSessionListVM = () => {
     });
   }, [filter, sessions]);
 
-  const statusSections = useMemo(() => {
-    const buckets = new Map<SessionStateValue, typeof visibleSessions>();
-    STATUS_ORDER.forEach((state) => {
-      buckets.set(state, []);
-    });
-    visibleSessions.forEach((session) => {
-      const bucket = buckets.get(session.state);
-      if (bucket) {
-        bucket.push(session);
-      }
-    });
-    return STATUS_ORDER.map((state) => {
-      const sessionsForState = buckets.get(state) ?? [];
-      return {
-        state,
-        count: sessionsForState.length,
-        groups: buildSessionGroups(sessionsForState),
-      };
-    }).filter((section) => section.count > 0);
-  }, [visibleSessions]);
-
+  const groups = useMemo(() => buildSessionGroups(visibleSessions), [visibleSessions]);
   const quickPanelGroups = useMemo(() => buildSessionGroups(visibleSessions), [visibleSessions]);
 
   const {
@@ -125,7 +96,7 @@ export const useSessionListVM = () => {
 
   return {
     sessions,
-    statusSections,
+    groups,
     visibleSessionCount: visibleSessions.length,
     quickPanelGroups,
     filter,

@@ -4,8 +4,9 @@ import { GlassPanel, GlowCard, LastInputPill, TagPill } from "@/components/ui";
 import { formatRelativeTime, getLastInputTone } from "@/lib/session-format";
 import type { SessionGroup } from "@/lib/session-group";
 
+import { buildSessionWindowGroups } from "../session-window-group";
 import { formatRepoName, formatRepoPath } from "../sessionListFormat";
-import { SessionCard } from "./SessionCard";
+import { SessionWindowSection } from "./SessionWindowSection";
 
 type SessionGroupSectionProps = {
   group: SessionGroup;
@@ -16,6 +17,7 @@ export const SessionGroupSection = ({ group, nowMs }: SessionGroupSectionProps) 
   const groupTone = getLastInputTone(group.lastInputAt, nowMs);
   const repoName = formatRepoName(group.repoRoot);
   const repoPath = formatRepoPath(group.repoRoot);
+  const windowGroups = buildSessionWindowGroups(group.sessions);
 
   return (
     <GlowCard contentClassName="gap-3 sm:gap-4">
@@ -42,7 +44,10 @@ export const SessionGroupSection = ({ group, nowMs }: SessionGroupSectionProps) 
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           <TagPill tone="neutral" className="text-[11px]">
-            {group.sessions.length} sessions
+            {windowGroups.length} windows
+          </TagPill>
+          <TagPill tone="neutral" className="text-[11px]">
+            {group.sessions.length} panes
           </TagPill>
           <LastInputPill
             tone={groupTone}
@@ -55,9 +60,13 @@ export const SessionGroupSection = ({ group, nowMs }: SessionGroupSectionProps) 
           />
         </div>
       </GlassPanel>
-      <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-        {group.sessions.map((session) => (
-          <SessionCard key={session.paneId} session={session} nowMs={nowMs} />
+      <div className="flex flex-col gap-3 sm:gap-4">
+        {windowGroups.map((windowGroup) => (
+          <SessionWindowSection
+            key={`${windowGroup.sessionName}:${windowGroup.windowIndex}`}
+            group={windowGroup}
+            nowMs={nowMs}
+          />
         ))}
       </div>
     </GlowCard>

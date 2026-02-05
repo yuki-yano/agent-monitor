@@ -7,15 +7,15 @@ import { LogModal } from "@/pages/SessionDetail/components/LogModal";
 import { QuickPanel } from "@/pages/SessionDetail/components/QuickPanel";
 import { SessionSidebar } from "@/pages/SessionDetail/components/SessionSidebar";
 
+import { SessionGroupSection } from "./components/SessionGroupSection";
 import { SessionListHeader } from "./components/SessionListHeader";
-import { SessionStatusSection } from "./components/SessionStatusSection";
 import type { SessionListVM } from "./useSessionListVM";
 
 export type SessionListViewProps = SessionListVM;
 
 export const SessionListView = ({
   sessions,
-  statusSections,
+  groups,
   visibleSessionCount,
   quickPanelGroups,
   filter,
@@ -125,12 +125,10 @@ export const SessionListView = ({
                   }
                 />
               )}
-              {statusSections.map((section) => (
-                <SessionStatusSection
-                  key={section.state}
-                  state={section.state}
-                  groups={section.groups}
-                  count={section.count}
+              {groups.map((group) => (
+                <SessionGroupSection
+                  key={group.repoRoot ?? "no-repo"}
+                  group={group}
                   nowMs={nowMs}
                 />
               ))}

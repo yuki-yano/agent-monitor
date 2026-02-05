@@ -11,7 +11,9 @@ import {
   backLinkClass,
   formatPath,
   formatRelativeTime,
+  formatStateLabel,
   getLastInputTone,
+  isKnownAgent,
   stateTone,
 } from "../sessionDetailUtils";
 
@@ -56,6 +58,7 @@ export const SessionHeader = ({ state, actions }: SessionHeaderProps) => {
   const sessionAutoTitle = session.title ?? session.sessionName ?? "";
   const sessionDisplayTitle = sessionCustomTitle ?? sessionAutoTitle;
   const lastInputTone = getLastInputTone(session.lastInputAt ?? null, nowMs);
+  const showAgentBadge = isKnownAgent(session.agent);
   const agentTone = agentToneFor(session.agent);
   const agentLabel = agentLabelFor(session.agent);
 
@@ -136,11 +139,13 @@ export const SessionHeader = ({ state, actions }: SessionHeaderProps) => {
           {titleError && <p className="text-latte-red text-xs">{titleError}</p>}
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={stateTone(session.state)} size="sm">
-              {session.state.replace(/_/g, " ")}
+              {formatStateLabel(session.state)}
             </Badge>
-            <Badge tone={agentTone} size="sm">
-              {agentLabel}
-            </Badge>
+            {showAgentBadge && (
+              <Badge tone={agentTone} size="sm">
+                {agentLabel}
+              </Badge>
+            )}
             <LastInputPill
               tone={lastInputTone}
               label={<Clock className="h-2.5 w-2.5" />}

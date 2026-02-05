@@ -84,11 +84,13 @@ export const updatePaneOutputState = async ({
 
   let hookState = paneState.hookState;
   if (hookState && outputAt) {
-    const hookTs = Date.parse(hookState.at);
-    const outputTs = Date.parse(outputAt);
-    if (!Number.isNaN(hookTs) && !Number.isNaN(outputTs) && outputTs > hookTs) {
-      paneState.hookState = null;
-      hookState = null;
+    if (hookState.state !== "WAITING_INPUT" && hookState.state !== "WAITING_PERMISSION") {
+      const hookTs = Date.parse(hookState.at);
+      const outputTs = Date.parse(outputAt);
+      if (!Number.isNaN(hookTs) && !Number.isNaN(outputTs) && outputTs > hookTs) {
+        paneState.hookState = null;
+        hookState = null;
+      }
     }
   }
 

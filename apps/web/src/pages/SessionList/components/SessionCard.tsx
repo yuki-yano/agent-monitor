@@ -9,7 +9,9 @@ import {
   agentToneFor,
   formatPath,
   formatRelativeTime,
+  formatStateLabel,
   getLastInputTone,
+  isKnownAgent,
   stateTone,
 } from "@/lib/session-format";
 
@@ -47,11 +49,13 @@ export const SessionCard = ({ session, nowMs }: SessionCardProps) => {
 
         <div className="relative flex flex-wrap items-center gap-2">
           <Badge tone={stateTone(session.state)} size="sm">
-            {session.state.replace(/_/g, " ")}
+            {formatStateLabel(session.state)}
           </Badge>
-          <Badge tone={agentToneFor(session.agent)} size="sm">
-            {agentLabelFor(session.agent)}
-          </Badge>
+          {isKnownAgent(session.agent) && (
+            <Badge tone={agentToneFor(session.agent)} size="sm">
+              {agentLabelFor(session.agent)}
+            </Badge>
+          )}
           {session.pipeConflict && (
             <TagPill tone="danger" className="text-[9px]">
               Conflict

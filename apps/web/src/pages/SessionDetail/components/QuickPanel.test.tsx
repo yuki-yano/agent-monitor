@@ -38,7 +38,7 @@ describe("QuickPanel", () => {
     const actions = buildActions();
     render(<QuickPanel state={state} actions={actions} />);
 
-    expect(screen.getByText("No sessions available.")).toBeTruthy();
+    expect(screen.getByText("No agent sessions available.")).toBeTruthy();
   });
 
   it("opens log modal for selected session", () => {
