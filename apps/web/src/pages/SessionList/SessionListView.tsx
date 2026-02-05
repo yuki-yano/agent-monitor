@@ -141,6 +141,7 @@ export const SessionListView = ({
           state={{
             open: quickPanelOpen,
             sessionGroups: quickPanelGroups,
+            allSessions: sessions,
             nowMs,
             currentPaneId: null,
           }}

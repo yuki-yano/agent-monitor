@@ -258,6 +258,7 @@ export const SessionDetailView = ({
       state: {
         open: quickPanelOpen,
         sessionGroups,
+        allSessions: sessionGroups.flatMap((group) => group.sessions),
         nowMs,
         currentPaneId: paneId,
       },

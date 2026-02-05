@@ -20,6 +20,7 @@ import {
 type QuickPanelState = {
   open: boolean;
   sessionGroups: SessionGroup[];
+  allSessions: SessionGroup["sessions"];
   nowMs: number;
   currentPaneId?: string | null;
 };
@@ -36,7 +37,7 @@ type QuickPanelProps = {
 };
 
 export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
-  const { open, sessionGroups, nowMs, currentPaneId } = state;
+  const { open, sessionGroups, allSessions, nowMs, currentPaneId } = state;
   const { onOpenLogModal, onClose, onToggle } = actions;
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const touchStartYRef = useRef<number | null>(null);
@@ -142,9 +143,15 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
                 </div>
               )}
               {agentGroups.map((group) => {
-                const groupTotalPanes = group.windowGroups.reduce(
-                  (total, windowGroup) => total + windowGroup.sessions.length,
-                  0,
+                const repoSessions = allSessions.filter(
+                  (session) => (session.repoRoot ?? null) === group.repoRoot,
+                );
+                const totalWindowGroups = buildSessionWindowGroups(repoSessions);
+                const totalPaneMap = new Map(
+                  totalWindowGroups.map((windowGroup) => [
+                    `${windowGroup.sessionName}:${windowGroup.windowIndex}`,
+                    windowGroup.sessions.length,
+                  ]),
                 );
                 return (
                   <div key={group.repoRoot ?? "no-repo"} className="space-y-3">
@@ -173,7 +180,11 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
                               </p>
                             </div>
                             <TagPill tone="neutral" className="text-[9px]">
-                              {windowGroup.sessions.length} / {groupTotalPanes} panes
+                              {windowGroup.sessions.length} /{" "}
+                              {totalPaneMap.get(
+                                `${windowGroup.sessionName}:${windowGroup.windowIndex}`,
+                              ) ?? windowGroup.sessions.length}{" "}
+                              panes
                             </TagPill>
                           </div>
                           <div className="mt-2 space-y-2">
