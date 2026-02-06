@@ -82,4 +82,36 @@ describe("useSessionDiffs", () => {
       });
     });
   });
+
+  it("reloads diff summary when reconnected", async () => {
+    const diffSummary = createDiffSummary();
+    const requestDiffSummary = vi.fn().mockResolvedValue(diffSummary);
+    const requestDiffFile = vi.fn().mockResolvedValue(createDiffFile());
+
+    const wrapper = createWrapper();
+    const { rerender } = renderHook(
+      ({ connected }) =>
+        useSessionDiffs({
+          paneId: "pane-1",
+          connected,
+          requestDiffSummary,
+          requestDiffFile,
+        }),
+      {
+        wrapper,
+        initialProps: { connected: false },
+      },
+    );
+
+    await waitFor(() => {
+      expect(requestDiffSummary).toHaveBeenCalledTimes(1);
+    });
+
+    rerender({ connected: true });
+
+    await waitFor(() => {
+      expect(requestDiffSummary).toHaveBeenCalledTimes(2);
+    });
+    expect(requestDiffSummary).toHaveBeenLastCalledWith("pane-1", { force: true });
+  });
 });

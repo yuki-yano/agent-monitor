@@ -110,4 +110,42 @@ describe("useSessionCommits", () => {
 
     expect(writeText).toHaveBeenCalledWith("abc123");
   });
+
+  it("reloads commit log when reconnected", async () => {
+    const commitLog = createCommitLog();
+    const requestCommitLog = vi.fn().mockResolvedValue(commitLog);
+    const requestCommitDetail = vi.fn().mockResolvedValue(createCommitDetail());
+    const requestCommitFile = vi.fn().mockResolvedValue(createCommitFileDiff());
+
+    const wrapper = createWrapper();
+    const { rerender } = renderHook(
+      ({ connected }) =>
+        useSessionCommits({
+          paneId: "pane-1",
+          connected,
+          requestCommitLog,
+          requestCommitDetail,
+          requestCommitFile,
+        }),
+      {
+        wrapper,
+        initialProps: { connected: false },
+      },
+    );
+
+    await waitFor(() => {
+      expect(requestCommitLog).toHaveBeenCalledTimes(1);
+    });
+
+    rerender({ connected: true });
+
+    await waitFor(() => {
+      expect(requestCommitLog).toHaveBeenCalledTimes(2);
+    });
+    expect(requestCommitLog).toHaveBeenLastCalledWith("pane-1", {
+      limit: 10,
+      skip: 0,
+      force: true,
+    });
+  });
 });

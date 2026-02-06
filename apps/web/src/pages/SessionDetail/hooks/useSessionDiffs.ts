@@ -42,6 +42,7 @@ export const useSessionDiffs = ({
 
   const diffOpenRef = useRef<Record<string, boolean>>({});
   const diffSignatureRef = useRef<string | null>(null);
+  const prevConnectedRef = useRef<boolean | null>(null);
 
   const applyDiffSummary = useCallback(
     async (summary: DiffSummary, refreshOpenFiles: boolean) => {
@@ -152,6 +153,13 @@ export const useSessionDiffs = ({
   useEffect(() => {
     loadDiffSummary();
   }, [loadDiffSummary]);
+
+  useEffect(() => {
+    if (prevConnectedRef.current === false && connected) {
+      void loadDiffSummary();
+    }
+    prevConnectedRef.current = connected;
+  }, [connected, loadDiffSummary]);
 
   useVisibilityPolling({
     enabled: Boolean(paneId) && connected,

@@ -229,6 +229,7 @@ export const useSessionCommits = ({
   const commitLogRef = useRef<CommitLog | null>(null);
   const commitSignatureRef = useRef<string | null>(null);
   const commitCopyTimeoutRef = useRef<number | null>(null);
+  const prevConnectedRef = useRef<boolean | null>(null);
 
   const applyCommitLog = useCallback(
     (log: CommitLog, options: { append: boolean; updateSignature: boolean }) => {
@@ -399,6 +400,13 @@ export const useSessionCommits = ({
   useEffect(() => {
     loadCommitLog({ force: true });
   }, [loadCommitLog]);
+
+  useEffect(() => {
+    if (prevConnectedRef.current === false && connected) {
+      void loadCommitLog({ force: true });
+    }
+    prevConnectedRef.current = connected;
+  }, [connected, loadCommitLog]);
 
   useVisibilityPolling({
     enabled: Boolean(paneId) && connected,
