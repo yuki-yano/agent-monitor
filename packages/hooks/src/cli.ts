@@ -2,8 +2,33 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { resolveConfigDir, resolveServerKey } from "@vde-monitor/shared";
+
+type HookPayload = Record<string, unknown>;
+
+type HookPayloadFields = {
+  sessionId?: string;
+  cwd?: string;
+  tty?: string;
+  tmuxPane: string | null;
+  notificationType?: string;
+  transcriptPath?: string | null;
+};
+
+export type HookEvent = {
+  ts: string;
+  hook_event_name: string;
+  notification_type?: string;
+  session_id: string;
+  cwd?: string;
+  tty?: string;
+  tmux_pane: string | null;
+  transcript_path?: string;
+  fallback?: { cwd?: string; transcript_path?: string };
+  payload: { raw: string };
+};
 
 const readStdin = (): string => {
   try {
@@ -17,7 +42,7 @@ const encodeClaudeCwd = (cwd: string): string => {
   return cwd.replace(/[/.]/g, "-");
 };
 
-const resolveTranscriptPath = (
+export const resolveTranscriptPath = (
   cwd: string | undefined,
   sessionId: string | undefined,
 ): string | null => {
@@ -42,6 +67,84 @@ const ensureDir = (dir: string) => {
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
 };
 
+const toOptionalString = (value: unknown) => (typeof value === "string" ? value : undefined);
+
+const parsePayload = (rawInput: string): HookPayload | null => {
+  try {
+    return JSON.parse(rawInput) as HookPayload;
+  } catch {
+    return null;
+  }
+};
+
+export const extractPayloadFields = (
+  payload: HookPayload,
+  env: NodeJS.ProcessEnv = process.env,
+): HookPayloadFields => {
+  const sessionId = toOptionalString(payload.session_id);
+  const cwd = toOptionalString(payload.cwd);
+  const transcriptPath =
+    toOptionalString(payload.transcript_path) ?? resolveTranscriptPath(cwd, sessionId);
+  return {
+    sessionId,
+    cwd,
+    tty: toOptionalString(payload.tty),
+    tmuxPane: toOptionalString(payload.tmux_pane) ?? env.TMUX_PANE ?? null,
+    notificationType: toOptionalString(payload.notification_type),
+    transcriptPath,
+  };
+};
+
+const buildFallback = (fields: HookPayloadFields): HookEvent["fallback"] => {
+  if (fields.tmuxPane !== null) {
+    return undefined;
+  }
+  return {
+    cwd: fields.cwd,
+    transcript_path: fields.transcriptPath ?? undefined,
+  };
+};
+
+export const buildHookEvent = (
+  hookEventName: string,
+  rawInput: string,
+  fields: HookPayloadFields,
+): HookEvent => ({
+  ts: new Date().toISOString(),
+  hook_event_name: hookEventName,
+  notification_type: fields.notificationType,
+  session_id: fields.sessionId ?? "",
+  cwd: fields.cwd,
+  tty: fields.tty,
+  tmux_pane: fields.tmuxPane,
+  transcript_path: fields.transcriptPath ?? undefined,
+  fallback: buildFallback(fields),
+  payload: {
+    raw: rawInput,
+  },
+});
+
+const appendEvent = (event: HookEvent) => {
+  const config = loadConfig();
+  const serverKey = resolveServerKey(
+    config?.tmux?.socketName ?? null,
+    config?.tmux?.socketPath ?? null,
+  );
+  const baseDir = path.join(os.homedir(), ".vde-monitor");
+  const eventsDir = path.join(baseDir, "events", serverKey);
+  const eventsPath = path.join(eventsDir, "claude.jsonl");
+  ensureDir(eventsDir);
+  fs.appendFileSync(eventsPath, `${JSON.stringify(event)}\n`, "utf8");
+};
+
+const isMainModule = () => {
+  const mainPath = process.argv[1];
+  if (!mainPath) {
+    return false;
+  }
+  return import.meta.url === pathToFileURL(mainPath).href;
+};
+
 const main = () => {
   const hookEventName = process.argv[2];
   if (!hookEventName) {
@@ -54,58 +157,17 @@ const main = () => {
     process.exit(0);
   }
 
-  let payload: Record<string, unknown> = {};
-  try {
-    payload = JSON.parse(rawInput) as Record<string, unknown>;
-  } catch {
+  const payload = parsePayload(rawInput);
+  if (!payload) {
     console.error("Invalid JSON payload");
     process.exit(1);
   }
 
-  const sessionId = typeof payload.session_id === "string" ? payload.session_id : undefined;
-  const cwd = typeof payload.cwd === "string" ? payload.cwd : undefined;
-  const tty = typeof payload.tty === "string" ? payload.tty : undefined;
-  const tmuxPane =
-    typeof payload.tmux_pane === "string" ? payload.tmux_pane : (process.env.TMUX_PANE ?? null);
-  const notificationType =
-    typeof payload.notification_type === "string" ? payload.notification_type : undefined;
-  const transcriptPath =
-    typeof payload.transcript_path === "string"
-      ? payload.transcript_path
-      : resolveTranscriptPath(cwd, sessionId);
-
-  const event = {
-    ts: new Date().toISOString(),
-    hook_event_name: hookEventName,
-    notification_type: notificationType,
-    session_id: sessionId ?? "",
-    cwd,
-    tty,
-    tmux_pane: tmuxPane ?? null,
-    transcript_path: transcriptPath ?? undefined,
-    fallback:
-      tmuxPane === null
-        ? {
-            cwd,
-            transcript_path: transcriptPath ?? undefined,
-          }
-        : undefined,
-    payload: {
-      raw: rawInput,
-    },
-  };
-
-  const config = loadConfig();
-  const serverKey = resolveServerKey(
-    config?.tmux?.socketName ?? null,
-    config?.tmux?.socketPath ?? null,
-  );
-  const baseDir = path.join(os.homedir(), ".vde-monitor");
-  const eventsDir = path.join(baseDir, "events", serverKey);
-  const eventsPath = path.join(eventsDir, "claude.jsonl");
-
-  ensureDir(eventsDir);
-  fs.appendFileSync(eventsPath, `${JSON.stringify(event)}\n`, "utf8");
+  const fields = extractPayloadFields(payload);
+  const event = buildHookEvent(hookEventName, rawInput, fields);
+  appendEvent(event);
 };
 
-main();
+if (isMainModule()) {
+  main();
+}

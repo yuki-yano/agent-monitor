@@ -11,15 +11,31 @@ import {
 import { cn } from "@/lib/cn";
 
 type FilePathLabelSize = "sm" | "xs";
+type DirTruncateMode = "start" | "end" | "segments";
 
 type FilePathLabelProps = HTMLAttributes<HTMLDivElement> & {
   path: string;
   renamedFrom?: string | null;
   size?: FilePathLabelSize;
   tailSegments?: number;
-  dirTruncate?: "start" | "end" | "segments";
+  dirTruncate?: DirTruncateMode;
   dirReservePx?: number;
   measureRef?: RefObject<HTMLElement | null>;
+};
+
+type HintModel = {
+  label: string;
+  measureText: string;
+  measureRef: RefObject<HTMLSpanElement | null>;
+};
+
+type HintRowProps = {
+  displayText: string;
+  hint: HintModel;
+  hintClass: string;
+  measureClass: string;
+  measureWrapperClass: string;
+  isSegmentTruncate: boolean;
 };
 
 const sizeClass = {
@@ -32,6 +48,122 @@ const sizeClass = {
     hint: "text-[10px]",
   },
 };
+
+const isStartTruncate = (mode: DirTruncateMode) => mode === "start";
+const isSegmentTruncateMode = (mode: DirTruncateMode) => mode === "segments";
+
+const buildHintClasses = (mode: DirTruncateMode, size: FilePathLabelSize) => {
+  const startClass = isStartTruncate(mode)
+    ? "text-left [direction:rtl] [unicode-bidi:plaintext]"
+    : "";
+  return {
+    hintClass: cn(
+      "text-latte-subtext0 block truncate",
+      startClass,
+      isSegmentTruncateMode(mode) ? "w-full" : "",
+      sizeClass[size].hint,
+    ),
+    measureClass: cn(
+      "text-latte-subtext0 block whitespace-nowrap",
+      startClass,
+      sizeClass[size].hint,
+    ),
+    measureWrapperClass: isSegmentTruncateMode(mode)
+      ? "pointer-events-none invisible absolute left-0 top-0 w-max"
+      : "pointer-events-none invisible absolute inset-0",
+  };
+};
+
+const buildFallbackHintLabel = (value: string, tailSegments: number) => {
+  const info = buildPathInfo(value, tailSegments);
+  if (!info.hint) {
+    return info.base;
+  }
+  return `${info.hint}/${info.base}`;
+};
+
+const resolveHintLabel = ({
+  mode,
+  fullText,
+  segmentedLabel,
+  overflowFallback,
+  truncate,
+}: {
+  mode: DirTruncateMode;
+  fullText: string;
+  segmentedLabel: string;
+  overflowFallback: string;
+  truncate: boolean;
+}) => {
+  if (isStartTruncate(mode)) {
+    return fullText;
+  }
+  if (isSegmentTruncateMode(mode)) {
+    return segmentedLabel;
+  }
+  return truncate ? overflowFallback : fullText;
+};
+
+const usePathHint = ({
+  mode,
+  fullText,
+  segments,
+  overflowMeasureText,
+  overflowFallback,
+  reservePx,
+  containerRef,
+  measureRef,
+}: {
+  mode: DirTruncateMode;
+  fullText: string;
+  segments: string[];
+  overflowMeasureText: string;
+  overflowFallback: string;
+  reservePx: number;
+  containerRef: RefObject<HTMLElement | null>;
+  measureRef?: RefObject<HTMLElement | null>;
+}): HintModel => {
+  const { ref: overflowRef, truncate } = useOverflowTruncate(overflowMeasureText);
+  const segmented = useSegmentTruncate({
+    text: fullText,
+    segments,
+    reservePx,
+    containerRef,
+    fallbackRef: measureRef,
+  });
+  const label = resolveHintLabel({
+    mode,
+    fullText,
+    segmentedLabel: segmented.label,
+    overflowFallback,
+    truncate,
+  });
+  return {
+    label,
+    measureText: isSegmentTruncateMode(mode) ? fullText : overflowMeasureText,
+    measureRef: isSegmentTruncateMode(mode) ? segmented.measureRef : overflowRef,
+  };
+};
+
+const HintRow = ({
+  displayText,
+  hint,
+  hintClass,
+  measureClass,
+  measureWrapperClass,
+  isSegmentTruncate,
+}: HintRowProps) => (
+  <div className="relative min-w-0">
+    <span
+      ref={hint.measureRef}
+      aria-hidden
+      className={cn(isSegmentTruncate ? measureClass : hintClass, measureWrapperClass)}
+    >
+      {hint.measureText}
+    </span>
+    <span className={hintClass}>{displayText}</span>
+  </div>
+);
 
 const FilePathLabel = ({
   path,
@@ -47,64 +179,38 @@ const FilePathLabel = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const baseInfo = buildPathInfo(path, tailSegments);
   const fullDir = buildFullDir(path);
-  const dirSegments = useMemo(() => fullDir.split("/").filter(Boolean), [fullDir]);
-  const { ref: dirMeasureRef, truncate: truncateDir } = useOverflowTruncate(fullDir);
-  const dirSegmented = useSegmentTruncate({
-    text: fullDir,
-    segments: dirSegments,
-    reservePx: dirReservePx,
-    containerRef: containerRef,
-    fallbackRef: measureRef,
-  });
-  const dirLabel =
-    dirTruncate === "start"
-      ? fullDir
-      : dirTruncate === "segments"
-        ? dirSegmented.label
-        : truncateDir
-          ? baseInfo.hint
-          : fullDir;
-
-  const fromInfo = renamedFrom ? buildPathInfo(renamedFrom, tailSegments) : null;
   const fullLabel = renamedFrom ? `${renamedFrom} → ${path}` : path;
-  const fromFullLabel = renamedFrom ? normalizePath(renamedFrom) : "";
-  const fromShortLabel = fromInfo
-    ? `${fromInfo.hint ? `${fromInfo.hint}/` : ""}${fromInfo.base}`
-    : (renamedFrom ?? "");
-  const fromMeasureText = renamedFrom ? `from ${fromFullLabel}` : "";
-  const { ref: fromMeasureRef, truncate: truncateFrom } = useOverflowTruncate(fromMeasureText);
-  const fromSegments = useMemo(() => fromFullLabel.split("/").filter(Boolean), [fromFullLabel]);
-  const fromSegmented = useSegmentTruncate({
-    text: fromFullLabel,
-    segments: fromSegments,
-    reservePx: dirReservePx,
-    containerRef: containerRef,
-    fallbackRef: measureRef,
-  });
-  const fromLabel =
-    dirTruncate === "start"
-      ? fromFullLabel
-      : dirTruncate === "segments"
-        ? fromSegmented.label
-        : truncateFrom
-          ? fromShortLabel
-          : fromFullLabel;
+  const fromFullLabel = normalizePath(renamedFrom ?? "");
 
-  const hintClass = cn(
-    "text-latte-subtext0 block truncate",
-    dirTruncate === "start" ? "text-left [direction:rtl] [unicode-bidi:plaintext]" : "",
-    dirTruncate === "segments" ? "w-full" : "",
-    sizeClass[size].hint,
+  const dirSegments = useMemo(() => fullDir.split("/").filter(Boolean), [fullDir]);
+  const fromSegments = useMemo(() => fromFullLabel.split("/").filter(Boolean), [fromFullLabel]);
+  const fromFallback = useMemo(
+    () => (renamedFrom ? buildFallbackHintLabel(renamedFrom, tailSegments) : ""),
+    [renamedFrom, tailSegments],
   );
-  const measureClass = cn(
-    "text-latte-subtext0 block whitespace-nowrap",
-    dirTruncate === "start" ? "text-left [direction:rtl] [unicode-bidi:plaintext]" : "",
-    sizeClass[size].hint,
-  );
-  const measureWrapperClass =
-    dirTruncate === "segments"
-      ? "pointer-events-none invisible absolute left-0 top-0 w-max"
-      : "pointer-events-none invisible absolute inset-0";
+
+  const dirHint = usePathHint({
+    mode: dirTruncate,
+    fullText: fullDir,
+    segments: dirSegments,
+    overflowMeasureText: fullDir,
+    overflowFallback: baseInfo.hint,
+    reservePx: dirReservePx,
+    containerRef,
+    measureRef,
+  });
+  const fromHint = usePathHint({
+    mode: dirTruncate,
+    fullText: fromFullLabel,
+    segments: fromSegments,
+    overflowMeasureText: renamedFrom ? `from ${fromFullLabel}` : "",
+    overflowFallback: fromFallback,
+    reservePx: dirReservePx,
+    containerRef,
+    measureRef,
+  });
+
+  const classes = buildHintClasses(dirTruncate, size);
 
   return (
     <div ref={containerRef} className={cn("min-w-0", className)} {...props}>
@@ -117,36 +223,24 @@ const FilePathLabel = ({
         {baseInfo.base}
       </span>
       {renamedFrom ? (
-        <div className="relative min-w-0">
-          <span
-            ref={dirTruncate === "segments" ? fromSegmented.measureRef : fromMeasureRef}
-            aria-hidden
-            className={cn(
-              dirTruncate === "segments" ? measureClass : hintClass,
-              measureWrapperClass,
-            )}
-          >
-            {dirTruncate === "segments" ? fromFullLabel : fromMeasureText}
-          </span>
-          <span className={hintClass}>from {fromLabel}</span>
-        </div>
-      ) : (
-        dirLabel && (
-          <div className="relative min-w-0">
-            <span
-              ref={dirTruncate === "segments" ? dirSegmented.measureRef : dirMeasureRef}
-              aria-hidden
-              className={cn(
-                dirTruncate === "segments" ? measureClass : hintClass,
-                measureWrapperClass,
-              )}
-            >
-              {fullDir}
-            </span>
-            <span className={hintClass}>{dirLabel}</span>
-          </div>
-        )
-      )}
+        <HintRow
+          displayText={`from ${fromHint.label}`}
+          hint={fromHint}
+          hintClass={classes.hintClass}
+          measureClass={classes.measureClass}
+          measureWrapperClass={classes.measureWrapperClass}
+          isSegmentTruncate={isSegmentTruncateMode(dirTruncate)}
+        />
+      ) : dirHint.label ? (
+        <HintRow
+          displayText={dirHint.label}
+          hint={dirHint}
+          hintClass={classes.hintClass}
+          measureClass={classes.measureClass}
+          measureWrapperClass={classes.measureWrapperClass}
+          isSegmentTruncate={isSegmentTruncateMode(dirTruncate)}
+        />
+      ) : null}
       <span className="sr-only">{fullLabel}</span>
     </div>
   );

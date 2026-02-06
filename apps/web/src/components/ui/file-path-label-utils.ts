@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import type { MutableRefObject, RefObject } from "react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 export const normalizePath = (value: string) => value.replace(/\\/g, "/");
@@ -27,6 +27,85 @@ const buildSegmentedLabel = (segments: string[], count: number) => {
   const body = segments.slice(-count).join("/");
   if (!body) return "";
   return count < segments.length ? `.../${body}` : body;
+};
+
+const SEGMENT_RETRY_LIMIT = 5;
+const SEGMENT_RETRY_DELAY_MS = 60;
+
+const measureElementWidth = (element: HTMLElement) =>
+  element.getBoundingClientRect().width || element.scrollWidth || element.clientWidth;
+
+const getContainerWidth = (
+  primary: HTMLElement | null | undefined,
+  fallback: HTMLElement | null | undefined,
+) => {
+  const primaryWidth = primary?.getBoundingClientRect().width || primary?.clientWidth || 0;
+  const fallbackWidth = fallback?.getBoundingClientRect().width || fallback?.clientWidth || 0;
+  return Math.max(primaryWidth, fallbackWidth);
+};
+
+const scheduleRetry = (
+  retryRef: MutableRefObject<number>,
+  callback: () => void,
+  setTimeoutId: (timeoutId: number) => void,
+) => {
+  if (retryRef.current >= SEGMENT_RETRY_LIMIT) {
+    return;
+  }
+  retryRef.current += 1;
+  const timeoutId = window.setTimeout(callback, SEGMENT_RETRY_DELAY_MS);
+  setTimeoutId(timeoutId);
+};
+
+const findSegmentLabel = (
+  text: string,
+  segments: string[],
+  available: number,
+  measureEl: HTMLSpanElement,
+) => {
+  measureEl.textContent = text;
+  const fullWidth = measureElementWidth(measureEl);
+  if (!fullWidth) {
+    return null;
+  }
+  if (fullWidth <= available) {
+    return text;
+  }
+  let next = buildSegmentedLabel(segments, 1);
+  for (let count = segments.length; count >= 1; count -= 1) {
+    const candidate = buildSegmentedLabel(segments, count);
+    measureEl.textContent = candidate;
+    if (measureElementWidth(measureEl) <= available) {
+      next = candidate;
+      break;
+    }
+  }
+  return next;
+};
+
+const observeResize = (
+  primary: HTMLElement | null | undefined,
+  fallback: HTMLElement | null | undefined,
+  schedule: () => void,
+) => {
+  if (typeof ResizeObserver === "undefined") {
+    return null;
+  }
+  const observer = new ResizeObserver(schedule);
+  if (primary) {
+    observer.observe(primary);
+  }
+  if (fallback && fallback !== primary) {
+    observer.observe(fallback);
+  }
+  return observer;
+};
+
+const scheduleOnFontReady = (schedule: () => void) => {
+  if (typeof document === "undefined" || !("fonts" in document)) {
+    return;
+  }
+  document.fonts.ready.then(schedule).catch(() => undefined);
 };
 
 export const useOverflowTruncate = (text: string) => {
@@ -81,67 +160,47 @@ export const useSegmentTruncate = ({
 
     let rafId: number | null = null;
     let timeoutId: number | null = null;
+    const setRetryTimeout = (nextTimeoutId: number) => {
+      timeoutId = nextTimeoutId;
+    };
     const update = () => {
       if (!text || segments.length === 0) {
         setLabel("");
         return;
       }
-      const primaryWidth = primary?.getBoundingClientRect().width || primary?.clientWidth || 0;
-      const fallbackWidth = fallback?.getBoundingClientRect().width || fallback?.clientWidth || 0;
-      const containerWidth = Math.max(primaryWidth, fallbackWidth);
+      const containerWidth = getContainerWidth(primary, fallback);
       if (!containerWidth) {
-        if (retryRef.current < 5) {
-          retryRef.current += 1;
-          timeoutId = window.setTimeout(update, 60);
-        }
+        scheduleRetry(retryRef, update, setRetryTimeout);
         return;
       }
       retryRef.current = 0;
       const available = Math.max(0, containerWidth - reservePx);
-      const measureWidth = () =>
-        measureEl.getBoundingClientRect().width || measureEl.scrollWidth || measureEl.clientWidth;
-      measureEl.textContent = text;
-      const fullWidth = measureWidth();
-      if (!fullWidth) {
-        if (retryRef.current < 5) {
-          retryRef.current += 1;
-          timeoutId = window.setTimeout(update, 60);
-        }
+      const nextLabel = findSegmentLabel(text, segments, available, measureEl);
+      if (nextLabel === null) {
+        scheduleRetry(retryRef, update, setRetryTimeout);
         return;
       }
-      if (fullWidth <= available) {
-        setLabel(text);
-        return;
-      }
-      let next = buildSegmentedLabel(segments, 1);
-      for (let count = segments.length; count >= 1; count -= 1) {
-        const candidate = buildSegmentedLabel(segments, count);
-        measureEl.textContent = candidate;
-        if (measureWidth() <= available) {
-          next = candidate;
-          break;
-        }
-      }
-      setLabel(next);
+      setLabel(nextLabel);
     };
 
     const schedule = () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
       rafId = requestAnimationFrame(update);
     };
 
     schedule();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(schedule);
-    if (primary) observer.observe(primary);
-    if (fallback && fallback !== primary) observer.observe(fallback);
-    if (typeof document !== "undefined" && "fonts" in document) {
-      document.fonts.ready.then(schedule).catch(() => undefined);
-    }
+    const observer = observeResize(primary, fallback, schedule);
+    scheduleOnFontReady(schedule);
     return () => {
-      observer.disconnect();
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      observer?.disconnect();
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
     };
   }, [containerRef, fallbackRef, reservePx, segments, segments.length, segmentsKey, text]);
 

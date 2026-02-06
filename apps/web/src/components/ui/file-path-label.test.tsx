@@ -99,4 +99,41 @@ describe("FilePathLabel", () => {
       "apps/web/src/pages/SessionDetail/components",
     ]).toContain(hint?.textContent);
   });
+
+  it("keeps full label when dirTruncate is start", async () => {
+    render(
+      <FilePathLabel
+        data-testid="path-label"
+        data-width="80"
+        path="apps/web/src/lib/use-sidebar-width.ts"
+        dirTruncate="start"
+      />,
+    );
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    const container = screen.getByTestId("path-label");
+    const hint = container.querySelector("span.text-latte-subtext0:not([aria-hidden='true'])");
+    expect(hint?.textContent).toBe("apps/web/src/lib");
+  });
+
+  it("shows renamed-from path hint", async () => {
+    render(
+      <FilePathLabel
+        data-testid="path-label"
+        data-width="500"
+        path="apps/web/src/lib/new-name.ts"
+        renamedFrom="apps/web/src/lib/old-name.ts"
+        dirTruncate="segments"
+      />,
+    );
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    const container = screen.getByTestId("path-label");
+    const hint = container.querySelector("span.text-latte-subtext0:not([aria-hidden='true'])");
+    expect(hint?.textContent).toBe("from apps/web/src/lib/old-name.ts");
+  });
 });

@@ -43,6 +43,9 @@ type CommitAction =
   | { type: "setCopiedHash"; hash: string | null }
   | { type: "clearCopiedHash"; hash: string };
 
+type CommitDispatch = (action: CommitAction) => void;
+type CommitActionByType<T extends CommitAction["type"]> = Extract<CommitAction, { type: T }>;
+
 const filterByCommitSet = <T>(record: Record<string, T>, commitSet: Set<string>) => {
   const next: Record<string, T> = {};
   Object.entries(record).forEach(([key, value]) => {
@@ -64,88 +67,121 @@ const filterByCommitFileSet = <T>(record: Record<string, T>, commitSet: Set<stri
   return next;
 };
 
-const commitReducer = (state: CommitState, action: CommitAction): CommitState => {
-  switch (action.type) {
-    case "reset":
-      return initialCommitState;
-    case "setCommitError":
-      return { ...state, commitError: action.error };
-    case "startLogLoad":
-      return action.append
-        ? { ...state, commitLoadingMore: true }
-        : { ...state, commitLoading: true };
-    case "finishLogLoad":
-      return action.append
-        ? { ...state, commitLoadingMore: false }
-        : { ...state, commitLoading: false };
-    case "applyCommitLog": {
-      const prevCommits = action.append && state.commitLog ? state.commitLog.commits : [];
-      const merged = action.append ? [...prevCommits, ...action.log.commits] : action.log.commits;
-      const unique = new Map<string, (typeof merged)[number]>();
-      merged.forEach((commit) => {
-        if (!unique.has(commit.hash)) {
-          unique.set(commit.hash, commit);
-        }
-      });
-      let nextState: CommitState = {
-        ...state,
-        commitLog: { ...action.log, commits: Array.from(unique.values()) },
-        commitHasMore: action.log.commits.length === action.pageSize,
-      };
-      if (!action.append) {
-        const commitSet = new Set(action.log.commits.map((commit) => commit.hash));
-        nextState = {
-          ...nextState,
-          commitDetails: filterByCommitSet(state.commitDetails, commitSet),
-          commitFileDetails: filterByCommitFileSet(state.commitFileDetails, commitSet),
-          commitFileOpen: filterByCommitFileSet(state.commitFileOpen, commitSet),
-          commitFileLoading: filterByCommitFileSet(state.commitFileLoading, commitSet),
-          commitOpen:
-            action.log.commits.length === 0 ? {} : filterByCommitSet(state.commitOpen, commitSet),
-        };
-      }
-      return nextState;
+const mergeCommits = (
+  current: CommitLog["commits"],
+  incoming: CommitLog["commits"],
+  append: boolean,
+) => {
+  const source = append ? [...current, ...incoming] : incoming;
+  const unique = new Map<string, (typeof source)[number]>();
+  source.forEach((commit) => {
+    if (!unique.has(commit.hash)) {
+      unique.set(commit.hash, commit);
     }
-    case "setCommitDetail":
-      return {
-        ...state,
-        commitDetails: { ...state.commitDetails, [action.hash]: action.detail },
-      };
-    case "setCommitFileDetail":
-      return {
-        ...state,
-        commitFileDetails: { ...state.commitFileDetails, [action.key]: action.file },
-      };
-    case "setCommitOpen":
-      return {
-        ...state,
-        commitOpen: { ...state.commitOpen, [action.hash]: action.open },
-      };
-    case "setCommitFileOpen":
-      return {
-        ...state,
-        commitFileOpen: { ...state.commitFileOpen, [action.key]: action.open },
-      };
-    case "setCommitLoadingDetails":
-      return {
-        ...state,
-        commitLoadingDetails: { ...state.commitLoadingDetails, [action.hash]: action.loading },
-      };
-    case "setCommitFileLoading":
-      return {
-        ...state,
-        commitFileLoading: { ...state.commitFileLoading, [action.key]: action.loading },
-      };
-    case "setCopiedHash":
-      return { ...state, copiedHash: action.hash };
-    case "clearCopiedHash":
-      if (state.copiedHash !== action.hash) {
-        return state;
-      }
-      return { ...state, copiedHash: null };
-    default:
-      return state;
+  });
+  return Array.from(unique.values());
+};
+
+const pruneStateToCommitSet = (state: CommitState, commits: CommitLog["commits"]): CommitState => {
+  if (commits.length === 0) {
+    return { ...state, commitOpen: {} };
   }
+  const commitSet = new Set(commits.map((commit) => commit.hash));
+  return {
+    ...state,
+    commitDetails: filterByCommitSet(state.commitDetails, commitSet),
+    commitFileDetails: filterByCommitFileSet(state.commitFileDetails, commitSet),
+    commitFileOpen: filterByCommitFileSet(state.commitFileOpen, commitSet),
+    commitFileLoading: filterByCommitFileSet(state.commitFileLoading, commitSet),
+    commitOpen: filterByCommitSet(state.commitOpen, commitSet),
+  };
+};
+
+const applyCommitLogState = (
+  state: CommitState,
+  action: CommitActionByType<"applyCommitLog">,
+): CommitState => {
+  const prevCommits = action.append && state.commitLog ? state.commitLog.commits : [];
+  const commits = mergeCommits(prevCommits, action.log.commits, action.append);
+  const nextState: CommitState = {
+    ...state,
+    commitLog: { ...action.log, commits },
+    commitHasMore: action.log.commits.length === action.pageSize,
+  };
+  if (action.append) {
+    return nextState;
+  }
+  return pruneStateToCommitSet(nextState, action.log.commits);
+};
+
+const commitReducerHandlers = {
+  reset: () => initialCommitState,
+  setCommitError: (state: CommitState, action: CommitActionByType<"setCommitError">) => ({
+    ...state,
+    commitError: action.error,
+  }),
+  startLogLoad: (state: CommitState, action: CommitActionByType<"startLogLoad">) =>
+    action.append ? { ...state, commitLoadingMore: true } : { ...state, commitLoading: true },
+  finishLogLoad: (state: CommitState, action: CommitActionByType<"finishLogLoad">) =>
+    action.append ? { ...state, commitLoadingMore: false } : { ...state, commitLoading: false },
+  applyCommitLog: (state: CommitState, action: CommitActionByType<"applyCommitLog">) =>
+    applyCommitLogState(state, action),
+  setCommitDetail: (state: CommitState, action: CommitActionByType<"setCommitDetail">) => ({
+    ...state,
+    commitDetails: { ...state.commitDetails, [action.hash]: action.detail },
+  }),
+  setCommitFileDetail: (state: CommitState, action: CommitActionByType<"setCommitFileDetail">) => ({
+    ...state,
+    commitFileDetails: { ...state.commitFileDetails, [action.key]: action.file },
+  }),
+  setCommitOpen: (state: CommitState, action: CommitActionByType<"setCommitOpen">) => ({
+    ...state,
+    commitOpen: { ...state.commitOpen, [action.hash]: action.open },
+  }),
+  setCommitFileOpen: (state: CommitState, action: CommitActionByType<"setCommitFileOpen">) => ({
+    ...state,
+    commitFileOpen: { ...state.commitFileOpen, [action.key]: action.open },
+  }),
+  setCommitLoadingDetails: (
+    state: CommitState,
+    action: CommitActionByType<"setCommitLoadingDetails">,
+  ) => ({
+    ...state,
+    commitLoadingDetails: { ...state.commitLoadingDetails, [action.hash]: action.loading },
+  }),
+  setCommitFileLoading: (
+    state: CommitState,
+    action: CommitActionByType<"setCommitFileLoading">,
+  ) => ({
+    ...state,
+    commitFileLoading: { ...state.commitFileLoading, [action.key]: action.loading },
+  }),
+  setCopiedHash: (state: CommitState, action: CommitActionByType<"setCopiedHash">) => ({
+    ...state,
+    copiedHash: action.hash,
+  }),
+  clearCopiedHash: (state: CommitState, action: CommitActionByType<"clearCopiedHash">) =>
+    state.copiedHash === action.hash ? { ...state, copiedHash: null } : state,
+} satisfies {
+  [K in CommitAction["type"]]: (state: CommitState, action: CommitActionByType<K>) => CommitState;
+};
+
+const commitReducer = (state: CommitState, action: CommitAction): CommitState => {
+  const handler = commitReducerHandlers[action.type] as (
+    current: CommitState,
+    nextAction: CommitAction,
+  ) => CommitState;
+  return handler(state, action);
+};
+
+const resolveCommitLogError = (err: unknown) =>
+  err instanceof Error ? err.message : API_ERROR_MESSAGES.commitLog;
+
+const dispatchCommitLogError = (dispatch: CommitDispatch, append: boolean, err: unknown) => {
+  if (append) {
+    return;
+  }
+  dispatch({ type: "setCommitError", error: resolveCommitLogError(err) });
 };
 
 export const useSessionCommits = ({
@@ -207,12 +243,7 @@ export const useSessionCommits = ({
         });
         applyCommitLog(log, { append, updateSignature: !append });
       } catch (err) {
-        if (!append) {
-          dispatch({
-            type: "setCommitError",
-            error: err instanceof Error ? err.message : API_ERROR_MESSAGES.commitLog,
-          });
-        }
+        dispatchCommitLogError(dispatch, append, err);
       } finally {
         dispatch({ type: "finishLogLoad", append });
       }

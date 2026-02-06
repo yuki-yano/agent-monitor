@@ -89,6 +89,63 @@ const parseBind = (value: FlagValue) => {
   return value;
 };
 
+const resolveTailscaleIP = (enabled: boolean, getTailscaleIP: () => string | null) => {
+  if (!enabled) {
+    return null;
+  }
+  const tailscaleIP = getTailscaleIP();
+  if (!tailscaleIP) {
+    throw new Error("Tailscale IP not found. Is Tailscale running?");
+  }
+  return tailscaleIP;
+};
+
+const resolveBindHost = ({
+  bindFlag,
+  publicBind,
+  tailscaleIP,
+  configBind,
+}: {
+  bindFlag: string | null;
+  publicBind: boolean;
+  tailscaleIP: string | null;
+  configBind: AgentMonitorConfig["bind"];
+}) => {
+  if (bindFlag) {
+    return bindFlag;
+  }
+  if (publicBind) {
+    return "0.0.0.0";
+  }
+  if (tailscaleIP) {
+    return tailscaleIP;
+  }
+  return configBind;
+};
+
+const resolveDisplayHost = ({
+  bindHost,
+  bindFlag,
+  tailscaleIP,
+  getLocalIP,
+}: {
+  bindHost: string;
+  bindFlag: string | null;
+  tailscaleIP: string | null;
+  getLocalIP: () => string;
+}) => {
+  if (tailscaleIP) {
+    return tailscaleIP;
+  }
+  if (bindHost === "0.0.0.0") {
+    return getLocalIP();
+  }
+  if (bindFlag) {
+    return bindHost;
+  }
+  return bindHost === "127.0.0.1" ? "localhost" : bindHost;
+};
+
 export const resolveHosts = ({
   flags,
   configBind,
@@ -103,21 +160,19 @@ export const resolveHosts = ({
     throw new Error("--bind and --tailscale cannot be used together.");
   }
 
-  const tailscaleIP = tailscale ? getTailscaleIP() : null;
-  if (tailscale && !tailscaleIP) {
-    throw new Error("Tailscale IP not found. Is Tailscale running?");
-  }
-
-  const bindHost = bindFlag ?? (publicBind ? "0.0.0.0" : tailscale ? tailscaleIP! : configBind);
-  const displayHost = tailscale
-    ? tailscaleIP!
-    : bindHost === "0.0.0.0"
-      ? getLocalIP()
-      : bindFlag
-        ? bindHost
-        : bindHost === "127.0.0.1"
-          ? "localhost"
-          : bindHost;
+  const tailscaleIP = resolveTailscaleIP(tailscale, getTailscaleIP);
+  const bindHost = resolveBindHost({
+    bindFlag,
+    publicBind,
+    tailscaleIP,
+    configBind,
+  });
+  const displayHost = resolveDisplayHost({
+    bindHost,
+    bindFlag,
+    tailscaleIP,
+    getLocalIP,
+  });
 
   return { bindHost, displayHost };
 };
