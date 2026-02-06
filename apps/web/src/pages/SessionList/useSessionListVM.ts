@@ -82,12 +82,19 @@ export const useSessionListVM = () => {
     window.open(`/sessions/${encoded}`, "_blank", "noopener,noreferrer");
   }, [selectedPaneId]);
 
+  const handleOpenPaneHere = useCallback(
+    (targetPaneId: string) => {
+      closeQuickPanel();
+      navigate({ to: "/sessions/$paneId", params: { paneId: targetPaneId } });
+      closeLogModal();
+    },
+    [closeLogModal, closeQuickPanel, navigate],
+  );
+
   const handleOpenHere = useCallback(() => {
     if (!selectedPaneId) return;
-    closeQuickPanel();
-    navigate({ to: "/sessions/$paneId", params: { paneId: selectedPaneId } });
-    closeLogModal();
-  }, [closeLogModal, closeQuickPanel, navigate, selectedPaneId]);
+    handleOpenPaneHere(selectedPaneId);
+  }, [handleOpenPaneHere, selectedPaneId]);
 
   const handleFilterChange = useCallback(
     (value: string) => {
@@ -130,6 +137,7 @@ export const useSessionListVM = () => {
     onCloseLogModal: closeLogModal,
     onToggleQuickPanel: toggleQuickPanel,
     onCloseQuickPanel: closeQuickPanel,
+    onOpenPaneHere: handleOpenPaneHere,
     onOpenHere: handleOpenHere,
     onOpenNewTab: handleOpenInNewTab,
   };

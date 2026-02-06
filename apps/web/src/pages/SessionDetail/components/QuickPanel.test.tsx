@@ -21,6 +21,7 @@ describe("QuickPanel", () => {
 
   const buildActions = (overrides: Partial<QuickPanelActions> = {}): QuickPanelActions => ({
     onOpenLogModal: vi.fn(),
+    onOpenSessionLink: vi.fn(),
     onClose: vi.fn(),
     onToggle: vi.fn(),
     ...overrides,
@@ -63,6 +64,27 @@ describe("QuickPanel", () => {
 
     fireEvent.click(screen.getByText("Session Title"));
     expect(onOpenLogModal).toHaveBeenCalledWith("pane-1");
+  });
+
+  it("opens session link directly from row action", () => {
+    const session = createSessionDetail();
+    const onOpenSessionLink = vi.fn();
+    const state = buildState({
+      open: true,
+      sessionGroups: [
+        {
+          repoRoot: session.repoRoot,
+          sessions: [session],
+          lastInputAt: session.lastInputAt,
+        },
+      ],
+      allSessions: [session],
+    });
+    const actions = buildActions({ onOpenSessionLink });
+    render(<QuickPanel state={state} actions={actions} />);
+
+    fireEvent.click(screen.getByLabelText("Open session link"));
+    expect(onOpenSessionLink).toHaveBeenCalledWith("pane-1");
   });
 
   it("uses window-level pane totals from all sessions", () => {

@@ -38,6 +38,7 @@ export const SessionListView = ({
   onCloseLogModal,
   onToggleQuickPanel,
   onCloseQuickPanel,
+  onOpenPaneHere,
   onOpenHere,
   onOpenNewTab,
 }: SessionListViewProps) => {
@@ -147,6 +148,7 @@ export const SessionListView = ({
           }}
           actions={{
             onOpenLogModal,
+            onOpenSessionLink: onOpenPaneHere,
             onClose: onCloseQuickPanel,
             onToggle: onToggleQuickPanel,
           }}

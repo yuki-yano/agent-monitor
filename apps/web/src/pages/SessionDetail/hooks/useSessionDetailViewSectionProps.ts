@@ -120,7 +120,7 @@ export const useSessionDetailViewSectionProps = ({
     saveTitle,
     clearTitle,
   } = title;
-  const { handleOpenHere, handleOpenInNewTab } = actions;
+  const { handleOpenPaneHere, handleOpenHere, handleOpenInNewTab } = actions;
 
   const diffSectionProps = useMemo(
     () => ({
@@ -281,11 +281,21 @@ export const useSessionDetailViewSectionProps = ({
       },
       actions: {
         onOpenLogModal: openLogModal,
+        onOpenSessionLink: handleOpenPaneHere,
         onClose: closeQuickPanel,
         onToggle: toggleQuickPanel,
       },
     }),
-    [quickPanelOpen, sessionGroups, nowMs, paneId, openLogModal, closeQuickPanel, toggleQuickPanel],
+    [
+      quickPanelOpen,
+      sessionGroups,
+      nowMs,
+      paneId,
+      openLogModal,
+      handleOpenPaneHere,
+      closeQuickPanel,
+      toggleQuickPanel,
+    ],
   );
 
   const logModalProps = useMemo(

@@ -1,4 +1,4 @@
-import { Clock, List, X } from "lucide-react";
+import { Clock, ExternalLink, List, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { Badge, Card, IconButton, LastInputPill, SurfaceButton, TagPill } from "@/components/ui";
@@ -27,6 +27,7 @@ type QuickPanelState = {
 
 type QuickPanelActions = {
   onOpenLogModal: (paneId: string) => void;
+  onOpenSessionLink: (paneId: string) => void;
   onClose: () => void;
   onToggle: () => void;
 };
@@ -38,7 +39,7 @@ type QuickPanelProps = {
 
 export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
   const { open, sessionGroups, allSessions, nowMs, currentPaneId } = state;
-  const { onOpenLogModal, onClose, onToggle } = actions;
+  const { onOpenLogModal, onOpenSessionLink, onClose, onToggle } = actions;
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const touchStartYRef = useRef<number | null>(null);
   const agentGroups = sessionGroups
@@ -199,47 +200,58 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
                               const StatusIcon = statusMeta.icon;
                               const isCurrent = currentPaneId === item.paneId;
                               return (
-                                <SurfaceButton
-                                  key={item.paneId}
-                                  type="button"
-                                  onClick={() => onOpenLogModal(item.paneId)}
-                                  aria-current={isCurrent ? "true" : undefined}
-                                  className={`flex flex-col gap-1.5 ${
-                                    isCurrent
-                                      ? "border-latte-lavender/70 bg-latte-lavender/10 shadow-[0_0_0_1px_rgba(114,135,253,0.35),0_10px_20px_-12px_rgba(114,135,253,0.35)]"
-                                      : ""
-                                  }`}
-                                >
-                                  <div className="flex min-w-0 items-center gap-2">
-                                    <span
-                                      className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${statusMeta.wrap}`}
-                                      aria-label={statusMeta.label}
-                                    >
-                                      <StatusIcon
-                                        className={`h-3.5 w-3.5 ${statusMeta.className}`}
+                                <div key={item.paneId} className="relative pr-10">
+                                  <SurfaceButton
+                                    type="button"
+                                    onClick={() => onOpenLogModal(item.paneId)}
+                                    aria-current={isCurrent ? "true" : undefined}
+                                    className={`flex w-full min-w-0 flex-col gap-2.5 ${
+                                      isCurrent
+                                        ? "border-latte-lavender/70 bg-latte-lavender/10 shadow-[0_0_0_1px_rgba(114,135,253,0.35),0_10px_20px_-12px_rgba(114,135,253,0.35)]"
+                                        : ""
+                                    }`}
+                                  >
+                                    <div className="flex min-w-0 items-center gap-2">
+                                      <span
+                                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${statusMeta.wrap}`}
+                                        aria-label={statusMeta.label}
+                                      >
+                                        <StatusIcon
+                                          className={`h-3.5 w-3.5 ${statusMeta.className}`}
+                                        />
+                                      </span>
+                                      <span className="text-latte-text min-w-0 truncate text-sm font-semibold">
+                                        {displayTitle}
+                                      </span>
+                                    </div>
+                                    <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-2">
+                                      {isKnownAgent(item.agent) && (
+                                        <Badge tone={agentToneFor(item.agent)} size="sm">
+                                          {agentLabelFor(item.agent)}
+                                        </Badge>
+                                      )}
+                                      <LastInputPill
+                                        tone={lastInputTone}
+                                        label={<Clock className="h-3 w-3" />}
+                                        srLabel="Last input"
+                                        value={formatRelativeTime(item.lastInputAt, nowMs)}
+                                        size="xs"
+                                        showDot={false}
+                                        className="ml-auto"
                                       />
-                                    </span>
-                                    <span className="text-latte-text min-w-0 truncate text-sm font-semibold">
-                                      {displayTitle}
-                                    </span>
-                                  </div>
-                                  <div className="flex w-full items-center gap-2">
-                                    {isKnownAgent(item.agent) && (
-                                      <Badge tone={agentToneFor(item.agent)} size="sm">
-                                        {agentLabelFor(item.agent)}
-                                      </Badge>
-                                    )}
-                                    <LastInputPill
-                                      tone={lastInputTone}
-                                      label={<Clock className="h-3 w-3" />}
-                                      srLabel="Last input"
-                                      value={formatRelativeTime(item.lastInputAt, nowMs)}
-                                      size="xs"
-                                      showDot={false}
-                                      className="ml-auto"
-                                    />
-                                  </div>
-                                </SurfaceButton>
+                                    </div>
+                                  </SurfaceButton>
+                                  <IconButton
+                                    type="button"
+                                    onClick={() => onOpenSessionLink(item.paneId)}
+                                    variant={isCurrent ? "lavenderStrong" : "lavender"}
+                                    size="sm"
+                                    aria-label="Open session link"
+                                    className="absolute right-0 top-1/2 -translate-y-1/2 shadow-md"
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                  </IconButton>
+                                </div>
                               );
                             })}
                           </div>

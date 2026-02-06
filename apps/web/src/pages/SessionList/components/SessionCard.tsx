@@ -77,7 +77,7 @@ export const SessionCard = ({ session, nowMs }: SessionCardProps) => {
           )}
         />
 
-        <div className="relative flex flex-wrap items-center gap-2">
+        <div className="relative flex flex-wrap items-center gap-x-3 gap-y-2">
           <Badge tone={stateTone(session.state)} size="sm">
             {formatStateLabel(session.state)}
           </Badge>

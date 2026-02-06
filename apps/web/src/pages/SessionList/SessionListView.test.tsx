@@ -32,11 +32,18 @@ vi.mock("@/pages/SessionDetail/components/QuickPanel", () => ({
     actions,
   }: {
     state: { open: boolean };
-    actions: { onOpenLogModal: (paneId: string) => void; onToggle: () => void };
+    actions: {
+      onOpenLogModal: (paneId: string) => void;
+      onOpenSessionLink: (paneId: string) => void;
+      onToggle: () => void;
+    };
   }) => (
     <div data-testid="quick-panel" data-open={String(state.open)}>
       <button type="button" onClick={() => actions.onOpenLogModal("pane-quick")}>
         open-log
+      </button>
+      <button type="button" onClick={() => actions.onOpenSessionLink("pane-quick-link")}>
+        open-link
       </button>
       <button type="button" onClick={actions.onToggle}>
         toggle-panel
@@ -138,6 +145,7 @@ const createViewProps = (overrides: Partial<SessionListViewProps> = {}): Session
     onCloseLogModal: vi.fn(),
     onToggleQuickPanel: vi.fn(),
     onCloseQuickPanel: vi.fn(),
+    onOpenPaneHere: vi.fn(),
     onOpenHere: vi.fn(),
     onOpenNewTab: vi.fn(),
     ...overrides,
@@ -284,17 +292,21 @@ describe("SessionListView", () => {
 
   it("wires QuickPanel handlers", () => {
     const onOpenLogModal = vi.fn();
+    const onOpenPaneHere = vi.fn();
     const onToggleQuickPanel = vi.fn();
     const props = createViewProps({
       quickPanelOpen: true,
       onOpenLogModal,
+      onOpenPaneHere,
       onToggleQuickPanel,
     });
     renderWithRouter(<SessionListView {...props} />);
 
     fireEvent.click(screen.getByRole("button", { name: "open-log" }));
+    fireEvent.click(screen.getByRole("button", { name: "open-link" }));
     fireEvent.click(screen.getByRole("button", { name: "toggle-panel" }));
     expect(onOpenLogModal).toHaveBeenCalledWith("pane-quick");
+    expect(onOpenPaneHere).toHaveBeenCalledWith("pane-quick-link");
     expect(onToggleQuickPanel).toHaveBeenCalled();
   });
 });

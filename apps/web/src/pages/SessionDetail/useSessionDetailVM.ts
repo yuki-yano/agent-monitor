@@ -239,12 +239,19 @@ export const useSessionDetailVM = (paneId: string) => {
     void touchSession(paneId).catch(() => null);
   }, [paneId, touchSession]);
 
+  const handleOpenPaneHere = useCallback(
+    (targetPaneId: string) => {
+      closeQuickPanel();
+      navigate({ to: "/sessions/$paneId", params: { paneId: targetPaneId } });
+      closeLogModal();
+    },
+    [closeLogModal, closeQuickPanel, navigate],
+  );
+
   const handleOpenHere = useCallback(() => {
     if (!selectedPaneId) return;
-    closeQuickPanel();
-    navigate({ to: "/sessions/$paneId", params: { paneId: selectedPaneId } });
-    closeLogModal();
-  }, [closeLogModal, closeQuickPanel, navigate, selectedPaneId]);
+    handleOpenPaneHere(selectedPaneId);
+  }, [handleOpenPaneHere, selectedPaneId]);
 
   return {
     meta: {
@@ -371,6 +378,7 @@ export const useSessionDetailVM = (paneId: string) => {
       clearTitle,
     },
     actions: {
+      handleOpenPaneHere,
       handleOpenHere,
       handleOpenInNewTab,
     },
