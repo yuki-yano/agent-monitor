@@ -1,3 +1,7 @@
+import { mkdtemp, realpath, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
 import { type AgentMonitorConfig, defaultConfig, type SessionDetail } from "@vde-monitor/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -7,6 +11,10 @@ import type { createSessionMonitor } from "../monitor.js";
 import { createSessionRegistry } from "../session-registry.js";
 import type { createTmuxActions } from "../tmux-actions.js";
 import { createApiRouter } from "./api-router.js";
+import {
+  IMAGE_ATTACHMENT_MAX_BYTES,
+  IMAGE_ATTACHMENT_MAX_CONTENT_LENGTH_BYTES,
+} from "./image-attachment.js";
 
 vi.mock("../git-diff.js", () => ({
   fetchDiffSummary: vi.fn(),
@@ -97,6 +105,32 @@ const createTestContext = (configOverrides: Partial<AgentMonitorConfig> = {}) =>
 
 const authHeaders = {
   Authorization: "Bearer token",
+};
+
+const createMultipartImagePayload = ({
+  fieldName = "image",
+  fileName = "sample.png",
+  mimeType = "image/png",
+  content = "png-data",
+  boundary = "----vde-monitor-test-boundary",
+}: {
+  fieldName?: string;
+  fileName?: string;
+  mimeType?: string;
+  content?: string;
+  boundary?: string;
+} = {}) => {
+  const body =
+    `--${boundary}\r\n` +
+    `Content-Disposition: form-data; name="${fieldName}"; filename="${fileName}"\r\n` +
+    `Content-Type: ${mimeType}\r\n\r\n` +
+    `${content}\r\n` +
+    `--${boundary}--\r\n`;
+  return {
+    body,
+    boundary,
+    byteLength: Buffer.byteLength(body),
+  };
 };
 
 describe("createApiRouter", () => {
@@ -346,5 +380,164 @@ describe("createApiRouter", () => {
       headers: authHeaders,
     });
     expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when image attachment content-length is missing", async () => {
+    const { api } = createTestContext();
+    const payload = createMultipartImagePayload();
+    const res = await api.request("/sessions/pane-1/attachments/image", {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+        "content-type": `multipart/form-data; boundary=${payload.boundary}`,
+      },
+      body: payload.body,
+    });
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error.code).toBe("INVALID_PAYLOAD");
+    expect(data.error.message).toBe("content-length header is required");
+  });
+
+  it("returns 400 when image attachment content-length is invalid", async () => {
+    const { api } = createTestContext();
+    const payload = createMultipartImagePayload();
+    const res = await api.request("/sessions/pane-1/attachments/image", {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+        "content-type": `multipart/form-data; boundary=${payload.boundary}`,
+        "x-content-length": "abc",
+      },
+      body: payload.body,
+    });
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error.code).toBe("INVALID_PAYLOAD");
+    expect(data.error.message).toBe("invalid content-length");
+  });
+
+  it("returns 400 when image attachment content-length exceeds limit", async () => {
+    const { api } = createTestContext();
+    const payload = createMultipartImagePayload();
+    const res = await api.request("/sessions/pane-1/attachments/image", {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+        "content-type": `multipart/form-data; boundary=${payload.boundary}`,
+        "x-content-length": String(IMAGE_ATTACHMENT_MAX_CONTENT_LENGTH_BYTES + 1),
+      },
+      body: payload.body,
+    });
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error.code).toBe("INVALID_PAYLOAD");
+    expect(data.error.message).toBe("attachment exceeds content-length limit");
+  });
+
+  it("returns read-only error on image attachment upload", async () => {
+    const { api } = createTestContext({ readOnly: true });
+    const res = await api.request("/sessions/pane-1/attachments/image", {
+      method: "POST",
+      headers: authHeaders,
+    });
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error.code).toBe("READ_ONLY");
+  });
+
+  it("returns 400 when image field is missing", async () => {
+    const { api } = createTestContext();
+    const formData = new FormData();
+    formData.set(
+      "file",
+      new File([new TextEncoder().encode("png-data")], "sample.png", {
+        type: "image/png",
+      }),
+    );
+    const res = await api.request("/sessions/pane-1/attachments/image", {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+        "x-content-length": "128",
+      },
+      body: formData,
+    });
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error.code).toBe("INVALID_PAYLOAD");
+    expect(data.error.message).toBe("image field is required");
+  });
+
+  it("stores uploaded image and returns attachment metadata", async () => {
+    const { api } = createTestContext();
+    const formData = new FormData();
+    formData.set(
+      "image",
+      new File([new TextEncoder().encode("png-data")], "sample.png", {
+        type: "image/png",
+      }),
+    );
+    const originalTmpDir = process.env.TMPDIR;
+    const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "vde-monitor-api-router-"));
+    process.env.TMPDIR = tmpRoot;
+
+    try {
+      const res = await api.request("/sessions/pane-1/attachments/image", {
+        method: "POST",
+        headers: {
+          ...authHeaders,
+          "x-content-length": "128",
+        },
+        body: formData,
+      });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      const realTmpRoot = await realpath(tmpRoot);
+      expect(data.attachment.mimeType).toBe("image/png");
+      expect(data.attachment.size).toBeGreaterThan(0);
+      expect(data.attachment.size).toBeLessThanOrEqual(IMAGE_ATTACHMENT_MAX_BYTES);
+      expect(
+        data.attachment.path.startsWith(path.join(realTmpRoot, "vde-monitor", "attachments")),
+      ).toBe(true);
+      expect(data.attachment.insertText).toBe(`${data.attachment.path} `);
+    } finally {
+      process.env.TMPDIR = originalTmpDir;
+      await rm(tmpRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("accepts a 10MB file even when multipart content-length is larger than 10MB", async () => {
+    const { api } = createTestContext();
+    const formData = new FormData();
+    formData.set(
+      "image",
+      new File([new Uint8Array(IMAGE_ATTACHMENT_MAX_BYTES).fill(1)], "sample.png", {
+        type: "image/png",
+      }),
+    );
+    const simulatedContentLength = IMAGE_ATTACHMENT_MAX_BYTES + 1024;
+    expect(simulatedContentLength).toBeLessThanOrEqual(IMAGE_ATTACHMENT_MAX_CONTENT_LENGTH_BYTES);
+
+    const originalTmpDir = process.env.TMPDIR;
+    const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "vde-monitor-api-router-"));
+    process.env.TMPDIR = tmpRoot;
+
+    try {
+      const res = await api.request("/sessions/pane-1/attachments/image", {
+        method: "POST",
+        headers: {
+          ...authHeaders,
+          "x-content-length": String(simulatedContentLength),
+        },
+        body: formData,
+      });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.attachment.size).toBe(IMAGE_ATTACHMENT_MAX_BYTES);
+    } finally {
+      process.env.TMPDIR = originalTmpDir;
+      await rm(tmpRoot, { recursive: true, force: true });
+    }
   });
 });

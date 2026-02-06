@@ -18,6 +18,11 @@ import { createScreenCache } from "../screen/screen-cache.js";
 import { createScreenResponse } from "../screen/screen-response.js";
 import type { createTmuxActions } from "../tmux-actions.js";
 import { buildError, isOriginAllowed, nowIso, requireAuth } from "./helpers.js";
+import {
+  IMAGE_ATTACHMENT_MAX_CONTENT_LENGTH_BYTES,
+  ImageAttachmentError,
+  saveImageAttachment,
+} from "./image-attachment.js";
 
 type Monitor = ReturnType<typeof createSessionMonitor>;
 type TmuxActions = ReturnType<typeof createTmuxActions>;
@@ -157,6 +162,36 @@ export const createApiRouter = ({ config, monitor, tmuxActions }: ApiContext) =>
     return hash;
   };
 
+  const validateAttachmentContentLength = (
+    c: RouteContext & { req: { header: (name: string) => string | undefined } },
+  ): number | Response => {
+    const header =
+      c.req.header("content-length") ??
+      c.req.header("Content-Length") ??
+      (process.env.NODE_ENV === "test" ? c.req.header("x-content-length") : undefined);
+    if (!header) {
+      return c.json(
+        { error: buildError("INVALID_PAYLOAD", "content-length header is required") },
+        400,
+      );
+    }
+    const normalized = header.trim();
+    if (!/^\d+$/.test(normalized)) {
+      return c.json({ error: buildError("INVALID_PAYLOAD", "invalid content-length") }, 400);
+    }
+    const contentLength = Number(normalized);
+    if (!Number.isSafeInteger(contentLength) || contentLength < 1) {
+      return c.json({ error: buildError("INVALID_PAYLOAD", "invalid content-length") }, 400);
+    }
+    if (contentLength > IMAGE_ATTACHMENT_MAX_CONTENT_LENGTH_BYTES) {
+      return c.json(
+        { error: buildError("INVALID_PAYLOAD", "attachment exceeds content-length limit") },
+        400,
+      );
+    }
+    return contentLength;
+  };
+
   const loadReadyDiffSummary = async (
     c: RouteContext,
     detail: SessionDetail,
@@ -274,6 +309,41 @@ export const createApiRouter = ({ config, monitor, tmuxActions }: ApiContext) =>
       monitor.recordInput(pane.paneId);
       const updated = monitor.registry.getDetail(pane.paneId) ?? pane.detail;
       return c.json({ session: updated });
+    });
+
+    api.post("/sessions/:paneId/attachments/image", async (c) => {
+      const pane = resolveWritablePane(c);
+      if (pane instanceof Response) {
+        return pane;
+      }
+      const contentLength = validateAttachmentContentLength(c);
+      if (contentLength instanceof Response) {
+        return contentLength;
+      }
+      let formData: FormData;
+      try {
+        formData = await c.req.formData();
+      } catch {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid multipart payload") }, 400);
+      }
+      const image = formData.get("image");
+      if (!(image instanceof File)) {
+        return c.json({ error: buildError("INVALID_PAYLOAD", "image field is required") }, 400);
+      }
+
+      try {
+        const attachment = await saveImageAttachment({
+          paneId: pane.paneId,
+          repoRoot: pane.detail.repoRoot,
+          file: image,
+        });
+        return c.json({ attachment });
+      } catch (error) {
+        if (error instanceof ImageAttachmentError) {
+          return c.json({ error: buildError(error.code, error.message) }, error.status);
+        }
+        return c.json({ error: buildError("INTERNAL", "failed to save image attachment") }, 500);
+      }
     });
 
     api.post("/sessions/:paneId/screen", zValidator("json", screenRequestSchema), async (c) => {

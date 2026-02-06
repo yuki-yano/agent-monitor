@@ -115,6 +115,7 @@ const createViewProps = (overrides: SessionDetailViewOverrides = {}): SessionDet
       allowDangerKeys: false,
       handleSendKey: vi.fn(),
       handleSendText: vi.fn(),
+      handleUploadImage: vi.fn(),
       handleRawBeforeInput: vi.fn(),
       handleRawInput: vi.fn(),
       handleRawKeyDown: vi.fn(),

@@ -1,6 +1,6 @@
 import type { SessionSummary } from "@vde-monitor/shared";
 import { useAtom } from "jotai";
-import { ArrowDown, CornerDownLeft, ExternalLink, X } from "lucide-react";
+import { ArrowDown, ArrowRight, ExternalLink, X } from "lucide-react";
 import {
   type ClipboardEvent,
   forwardRef,
@@ -176,7 +176,7 @@ export const LogModal = ({ state, actions }: LogModalProps) => {
               aria-label="Open here"
               className="border-latte-lavender/40 text-latte-lavender hover:border-latte-lavender/60 hover:bg-latte-lavender/10"
             >
-              <CornerDownLeft className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"

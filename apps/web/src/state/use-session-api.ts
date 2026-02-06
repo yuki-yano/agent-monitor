@@ -10,6 +10,8 @@ import {
   type DiffSummary,
   encodePaneId,
   type HighlightCorrectionConfig,
+  type ImageAttachment,
+  imageAttachmentSchema,
   type RawItem,
   type ScreenResponse,
   type SessionStateTimeline,
@@ -150,6 +152,7 @@ export const useSessionApi = ({
       try {
         const { res, data } = await requestJson<ApiEnvelope<T>>(request);
         if (!res.ok) {
+          notifyReadOnly(data);
           handleSessionMissing(paneId, res, data);
           const message = extractErrorMessage(res, data, fallbackMessage, { includeStatus });
           throw new Error(message);
@@ -163,7 +166,7 @@ export const useSessionApi = ({
         throw err instanceof Error ? err : new Error(message);
       }
     },
-    [ensureToken, handleSessionMissing, onConnectionIssue],
+    [ensureToken, handleSessionMissing, notifyReadOnly, onConnectionIssue],
   );
 
   const mutateSession = useCallback(
@@ -461,6 +464,30 @@ export const useSessionApi = ({
     [apiClient, requestCommand],
   );
 
+  const uploadImageAttachment = useCallback(
+    async (paneId: string, file: File): Promise<ImageAttachment> => {
+      const param = { paneId: encodePaneId(paneId) };
+      const attachment = await requestSessionField<{ attachment?: unknown }, "attachment">({
+        paneId,
+        request: apiClient.sessions[":paneId"].attachments.image.$post({
+          param,
+          form: { image: file },
+        }),
+        field: "attachment",
+        fallbackMessage: API_ERROR_MESSAGES.uploadImage,
+        includeStatus: true,
+      });
+      const parsed = imageAttachmentSchema.safeParse(attachment);
+      if (!parsed.success) {
+        const message = API_ERROR_MESSAGES.invalidResponse;
+        onConnectionIssue(message);
+        throw new Error(message);
+      }
+      return parsed.data;
+    },
+    [apiClient, onConnectionIssue, requestSessionField],
+  );
+
   const sendKeys = useCallback(
     async (paneId: string, keys: AllowedKey[]): Promise<CommandResponse> => {
       const param = { paneId: encodePaneId(paneId) };
@@ -522,6 +549,7 @@ export const useSessionApi = ({
     requestStateTimeline,
     requestScreen,
     sendText,
+    uploadImageAttachment,
     sendKeys,
     sendRaw,
     updateSessionTitle,

@@ -7,6 +7,7 @@ import type {
   DiffFile,
   DiffSummary,
   HighlightCorrectionConfig,
+  ImageAttachment,
   RawItem,
   ScreenResponse,
   SessionStateTimeline,
@@ -49,6 +50,7 @@ export type SessionApi = {
     paneId: string,
     options: { lines?: number; mode?: "text" | "image"; cursor?: string },
   ) => Promise<ScreenResponse>;
+  uploadImageAttachment: (paneId: string, file: File) => Promise<ImageAttachment>;
   sendText: (paneId: string, text: string, enter?: boolean) => Promise<CommandResponse>;
   sendKeys: (paneId: string, keys: AllowedKey[]) => Promise<CommandResponse>;
   sendRaw: (paneId: string, items: RawItem[], unsafe?: boolean) => Promise<CommandResponse>;

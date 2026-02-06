@@ -12,6 +12,7 @@ export type SendTextJson = { text: string; enter: boolean };
 export type SendKeysJson = { keys: AllowedKey[] };
 export type SendRawJson = { items: RawItem[]; unsafe: boolean };
 export type UpdateTitleJson = { title: string | null };
+export type UploadImageForm = { image: File | Blob };
 
 export type ApiClientContract = {
   sessions: {
@@ -37,6 +38,11 @@ export type ApiClientContract = {
       };
       screen: {
         $post: (args: { param: PaneParam; json: ScreenRequestJson }) => Promise<Response>;
+      };
+      attachments: {
+        image: {
+          $post: (args: { param: PaneParam; form: UploadImageForm }) => Promise<Response>;
+        };
       };
       send: {
         text: {

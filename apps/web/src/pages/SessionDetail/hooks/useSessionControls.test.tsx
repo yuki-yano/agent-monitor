@@ -5,6 +5,8 @@ import type { ReactNode } from "react";
 import type { FormEvent } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { API_ERROR_MESSAGES } from "@/lib/api-messages";
+
 import {
   controlsAllowDangerKeysAtom,
   controlsAutoEnterAtom,
@@ -16,6 +18,11 @@ import {
 import { useSessionControls } from "./useSessionControls";
 
 describe("useSessionControls", () => {
+  const createImageFile = () =>
+    new File([new Uint8Array([1, 2, 3])], "sample.png", {
+      type: "image/png",
+    });
+
   const createWrapper = () => {
     const store = createStore();
     store.set(controlsAutoEnterAtom, true);
@@ -73,6 +80,222 @@ describe("useSessionControls", () => {
     expect(sendText).toHaveBeenCalledWith("pane-1", "echo hello", false);
     expect(textarea.value).toBe("");
     expect(scrollToBottom).toHaveBeenCalledWith("auto");
+  });
+
+  it("inserts uploaded image path at the current caret position", async () => {
+    const sendText = vi.fn().mockResolvedValue({ ok: true });
+    const sendKeys = vi.fn().mockResolvedValue({ ok: true });
+    const sendRaw = vi.fn().mockResolvedValue({ ok: true });
+    const uploadImageAttachment = vi.fn().mockResolvedValue({
+      path: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png",
+      mimeType: "image/png",
+      size: 3,
+      createdAt: "2026-02-06T00:00:00.000Z",
+      insertText: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png ",
+    });
+    const setScreenError = vi.fn();
+    const scrollToBottom = vi.fn();
+    const wrapper = createWrapper();
+    const { result } = renderHook(
+      () =>
+        useSessionControls({
+          paneId: "pane-1",
+          readOnly: false,
+          mode: "text",
+          sendText,
+          sendKeys,
+          sendRaw,
+          uploadImageAttachment,
+          setScreenError,
+          scrollToBottom,
+        }),
+      { wrapper },
+    );
+
+    const textarea = document.createElement("textarea");
+    textarea.value = "hello world";
+    textarea.selectionStart = 5;
+    textarea.selectionEnd = 5;
+
+    act(() => {
+      result.current.textInputRef.current = textarea;
+    });
+
+    const file = createImageFile();
+    await act(async () => {
+      await result.current.handleUploadImage(file);
+    });
+
+    expect(uploadImageAttachment).toHaveBeenCalledWith("pane-1", file);
+    expect(textarea.value).toBe(
+      "hello/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png  world",
+    );
+    expect(textarea.selectionStart).toBe(textarea.selectionEnd);
+    expect(textarea.selectionStart).toBe(
+      "hello/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png ".length,
+    );
+  });
+
+  it("replaces selected prompt text with uploaded image path", async () => {
+    const sendText = vi.fn().mockResolvedValue({ ok: true });
+    const sendKeys = vi.fn().mockResolvedValue({ ok: true });
+    const sendRaw = vi.fn().mockResolvedValue({ ok: true });
+    const uploadImageAttachment = vi.fn().mockResolvedValue({
+      path: "/tmp/image.png",
+      mimeType: "image/png",
+      size: 3,
+      createdAt: "2026-02-06T00:00:00.000Z",
+      insertText: "/tmp/image.png ",
+    });
+    const setScreenError = vi.fn();
+    const scrollToBottom = vi.fn();
+    const wrapper = createWrapper();
+    const { result } = renderHook(
+      () =>
+        useSessionControls({
+          paneId: "pane-1",
+          readOnly: false,
+          mode: "text",
+          sendText,
+          sendKeys,
+          sendRaw,
+          uploadImageAttachment,
+          setScreenError,
+          scrollToBottom,
+        }),
+      { wrapper },
+    );
+
+    const textarea = document.createElement("textarea");
+    textarea.value = "prefix target suffix";
+    textarea.selectionStart = 7;
+    textarea.selectionEnd = 13;
+
+    act(() => {
+      result.current.textInputRef.current = textarea;
+    });
+
+    await act(async () => {
+      await result.current.handleUploadImage(createImageFile());
+    });
+
+    expect(textarea.value).toBe("prefix /tmp/image.png  suffix");
+    expect(setScreenError).toHaveBeenCalledWith(null);
+  });
+
+  it("shows upload errors and keeps existing prompt text", async () => {
+    const sendText = vi.fn().mockResolvedValue({ ok: true });
+    const sendKeys = vi.fn().mockResolvedValue({ ok: true });
+    const sendRaw = vi.fn().mockResolvedValue({ ok: true });
+    const uploadImageAttachment = vi.fn().mockRejectedValue(new Error("upload failed"));
+    const setScreenError = vi.fn();
+    const scrollToBottom = vi.fn();
+    const wrapper = createWrapper();
+    const { result } = renderHook(
+      () =>
+        useSessionControls({
+          paneId: "pane-1",
+          readOnly: false,
+          mode: "text",
+          sendText,
+          sendKeys,
+          sendRaw,
+          uploadImageAttachment,
+          setScreenError,
+          scrollToBottom,
+        }),
+      { wrapper },
+    );
+
+    const textarea = document.createElement("textarea");
+    textarea.value = "keep this";
+    textarea.selectionStart = textarea.value.length;
+    textarea.selectionEnd = textarea.value.length;
+    act(() => {
+      result.current.textInputRef.current = textarea;
+    });
+
+    await act(async () => {
+      await result.current.handleUploadImage(createImageFile());
+    });
+
+    expect(textarea.value).toBe("keep this");
+    expect(setScreenError).toHaveBeenCalledWith("upload failed");
+  });
+
+  it("shows fallback error when upload API is unavailable", async () => {
+    const sendText = vi.fn().mockResolvedValue({ ok: true });
+    const sendKeys = vi.fn().mockResolvedValue({ ok: true });
+    const sendRaw = vi.fn().mockResolvedValue({ ok: true });
+    const setScreenError = vi.fn();
+    const scrollToBottom = vi.fn();
+    const wrapper = createWrapper();
+    const { result } = renderHook(
+      () =>
+        useSessionControls({
+          paneId: "pane-1",
+          readOnly: false,
+          mode: "text",
+          sendText,
+          sendKeys,
+          sendRaw,
+          setScreenError,
+          scrollToBottom,
+        }),
+      { wrapper },
+    );
+
+    const textarea = document.createElement("textarea");
+    textarea.value = "keep this";
+    act(() => {
+      result.current.textInputRef.current = textarea;
+    });
+
+    await act(async () => {
+      await result.current.handleUploadImage(createImageFile());
+    });
+
+    expect(textarea.value).toBe("keep this");
+    expect(setScreenError).toHaveBeenCalledWith(API_ERROR_MESSAGES.uploadImage);
+  });
+
+  it("ignores image upload when read-only mode is enabled", async () => {
+    const sendText = vi.fn().mockResolvedValue({ ok: true });
+    const sendKeys = vi.fn().mockResolvedValue({ ok: true });
+    const sendRaw = vi.fn().mockResolvedValue({ ok: true });
+    const uploadImageAttachment = vi.fn();
+    const setScreenError = vi.fn();
+    const scrollToBottom = vi.fn();
+    const wrapper = createWrapper();
+    const { result } = renderHook(
+      () =>
+        useSessionControls({
+          paneId: "pane-1",
+          readOnly: true,
+          mode: "text",
+          sendText,
+          sendKeys,
+          sendRaw,
+          uploadImageAttachment,
+          setScreenError,
+          scrollToBottom,
+        }),
+      { wrapper },
+    );
+
+    const textarea = document.createElement("textarea");
+    textarea.value = "keep this";
+    act(() => {
+      result.current.textInputRef.current = textarea;
+    });
+
+    await act(async () => {
+      await result.current.handleUploadImage(createImageFile());
+    });
+
+    expect(uploadImageAttachment).not.toHaveBeenCalled();
+    expect(setScreenError).not.toHaveBeenCalled();
+    expect(textarea.value).toBe("keep this");
   });
 
   it("blocks dangerous text when confirmation is canceled", async () => {

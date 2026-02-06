@@ -249,6 +249,14 @@ export type CommandResponse = {
   error?: ApiError;
 };
 
+export type ImageAttachment = {
+  path: string;
+  mimeType: "image/png" | "image/jpeg" | "image/webp";
+  size: number;
+  createdAt: string;
+  insertText: string;
+};
+
 export type WsEnvelope<TType extends string, TData> = {
   type: TType;
   ts: string;

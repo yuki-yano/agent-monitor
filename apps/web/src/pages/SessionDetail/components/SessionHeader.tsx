@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { SessionSummary } from "@vde-monitor/shared";
-import { ArrowLeft, Clock, X } from "lucide-react";
+import { ArrowLeft, Clock, Pin, X } from "lucide-react";
 import type { KeyboardEvent } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -37,6 +37,7 @@ type SessionHeaderActions = {
   onTitleClear: () => void;
   onOpenTitleEditor: () => void;
   onCloseTitleEditor: () => void;
+  onTouchSession: () => void;
 };
 
 type SessionHeaderProps = {
@@ -257,8 +258,14 @@ export const SessionHeader = ({ state, actions }: SessionHeaderProps) => {
     titleSaving,
     titleError,
   } = state;
-  const { onTitleDraftChange, onTitleSave, onTitleClear, onOpenTitleEditor, onCloseTitleEditor } =
-    actions;
+  const {
+    onTitleDraftChange,
+    onTitleSave,
+    onTitleClear,
+    onOpenTitleEditor,
+    onCloseTitleEditor,
+    onTouchSession,
+  } = actions;
 
   const sessionCustomTitle = session.customTitle ?? null;
   const sessionAutoTitle = session.title ?? session.sessionName ?? "";
@@ -311,6 +318,17 @@ export const SessionHeader = ({ state, actions }: SessionHeaderProps) => {
             <TagPill tone="meta">Session {session.sessionName}</TagPill>
             <TagPill tone="meta">Window {session.windowIndex}</TagPill>
             <TagPill tone="meta">Pane {session.paneId}</TagPill>
+            <IconButton
+              type="button"
+              size="xs"
+              onClick={onTouchSession}
+              disabled={readOnly}
+              className="ml-auto"
+              aria-label="Pin session to top"
+              title="Pin session to top"
+            >
+              <Pin className="h-3.5 w-3.5" />
+            </IconButton>
           </div>
         </div>
         <SessionHeaderAlerts

@@ -4,6 +4,7 @@ import { defaultConfig } from "./constants.js";
 import {
   claudeHookEventSchema,
   configSchema,
+  imageAttachmentSchema,
   screenResponseSchema,
   sessionStateSchema,
   wsClientMessageSchema,
@@ -177,6 +178,30 @@ describe("screenResponseSchema", () => {
       paneId: "%1",
       mode: "video",
       capturedAt: "2025-01-01T00:00:00Z",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("imageAttachmentSchema", () => {
+  it("accepts valid attachment payload", () => {
+    const result = imageAttachmentSchema.safeParse({
+      path: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png",
+      mimeType: "image/png",
+      size: 1024,
+      createdAt: "2026-02-06T00:00:00.000Z",
+      insertText: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png ",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects unsupported mime type", () => {
+    const result = imageAttachmentSchema.safeParse({
+      path: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.gif",
+      mimeType: "image/gif",
+      size: 1024,
+      createdAt: "2026-02-06T00:00:00.000Z",
+      insertText: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.gif ",
     });
     expect(result.success).toBe(false);
   });

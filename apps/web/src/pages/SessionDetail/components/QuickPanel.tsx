@@ -1,4 +1,4 @@
-import { Clock, ExternalLink, List, X } from "lucide-react";
+import { ArrowRight, Clock, List, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { Badge, Card, IconButton, LastInputPill, SurfaceButton, TagPill } from "@/components/ui";
@@ -249,7 +249,7 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
                                     aria-label="Open session link"
                                     className="absolute right-0 top-1/2 -translate-y-1/2 shadow-md"
                                   >
-                                    <ExternalLink className="h-3.5 w-3.5" />
+                                    <ArrowRight className="h-3.5 w-3.5" />
                                   </IconButton>
                                 </div>
                               );

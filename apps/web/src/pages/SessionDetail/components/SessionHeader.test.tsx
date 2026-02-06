@@ -57,6 +57,7 @@ describe("SessionHeader", () => {
     onTitleClear: vi.fn(),
     onOpenTitleEditor: vi.fn(),
     onCloseTitleEditor: vi.fn(),
+    onTouchSession: vi.fn(),
     ...overrides,
   });
 
@@ -121,6 +122,19 @@ describe("SessionHeader", () => {
     expect((titleButton as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(titleButton);
     expect(onOpenTitleEditor).not.toHaveBeenCalled();
+
+    const pinButton = screen.getByLabelText("Pin session to top") as HTMLButtonElement;
+    expect(pinButton.disabled).toBe(true);
+  });
+
+  it("calls touch handler when pin button is pressed", () => {
+    const onTouchSession = vi.fn();
+    const state = buildState({ session: createSessionDetail() });
+    const actions = buildActions({ onTouchSession });
+    renderWithRouter(<SessionHeader state={state} actions={actions} />);
+
+    fireEvent.click(screen.getByLabelText("Pin session to top"));
+    expect(onTouchSession).toHaveBeenCalled();
   });
 
   it("renders alerts when read-only, pipe conflict, or connection issue", () => {

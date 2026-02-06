@@ -55,6 +55,7 @@ export const useSessionDetailViewSectionProps = ({
     interactive,
     handleSendKey,
     handleSendText,
+    handleUploadImage,
     handleRawBeforeInput,
     handleRawInput,
     handleRawKeyDown,
@@ -346,6 +347,7 @@ export const useSessionDetailViewSectionProps = ({
         onTitleClear: clearTitle,
         onOpenTitleEditor: openTitleEditor,
         onCloseTitleEditor: closeTitleEditor,
+        onTouchSession: handleTouchSession,
       },
     };
   }, [
@@ -362,6 +364,7 @@ export const useSessionDetailViewSectionProps = ({
     clearTitle,
     openTitleEditor,
     closeTitleEditor,
+    handleTouchSession,
   ]);
 
   const sessionSidebarProps = useMemo(
@@ -392,6 +395,7 @@ export const useSessionDetailViewSectionProps = ({
       },
       actions: {
         onSendText: handleSendText,
+        onPickImage: handleUploadImage,
         onToggleAutoEnter: toggleAutoEnter,
         onToggleControls: toggleControls,
         onToggleRawMode: toggleRawMode,
@@ -404,7 +408,6 @@ export const useSessionDetailViewSectionProps = ({
         onRawKeyDown: handleRawKeyDown,
         onRawCompositionStart: handleRawCompositionStart,
         onRawCompositionEnd: handleRawCompositionEnd,
-        onTouchSession: handleTouchSession,
       },
     }),
     [
@@ -418,6 +421,7 @@ export const useSessionDetailViewSectionProps = ({
       shiftHeld,
       ctrlHeld,
       handleSendText,
+      handleUploadImage,
       toggleAutoEnter,
       toggleControls,
       toggleRawMode,
@@ -430,7 +434,6 @@ export const useSessionDetailViewSectionProps = ({
       handleRawKeyDown,
       handleRawCompositionStart,
       handleRawCompositionEnd,
-      handleTouchSession,
     ],
   );
 

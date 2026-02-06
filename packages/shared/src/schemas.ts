@@ -55,6 +55,18 @@ export const commandResponseSchema = z.object({
   error: apiErrorSchema.optional(),
 });
 
+export const imageAttachmentSchema = z.object({
+  path: z.string(),
+  mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]),
+  size: z
+    .number()
+    .int()
+    .min(1)
+    .max(10 * 1024 * 1024),
+  createdAt: z.string(),
+  insertText: z.string(),
+});
+
 const rawItemSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("text"), value: z.string() }),
   z.object({ kind: z.literal("key"), value: allowedKeySchema }),

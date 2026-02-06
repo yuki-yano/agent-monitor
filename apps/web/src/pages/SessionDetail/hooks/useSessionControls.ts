@@ -2,6 +2,7 @@ import {
   type AllowedKey,
   type CommandResponse,
   defaultDangerKeys,
+  type ImageAttachment,
   type RawItem,
 } from "@vde-monitor/shared";
 import { useAtom } from "jotai";
@@ -29,6 +30,7 @@ type UseSessionControlsParams = {
   sendText: (paneId: string, text: string, enter?: boolean) => Promise<CommandResponse>;
   sendKeys: (paneId: string, keys: AllowedKey[]) => Promise<CommandResponse>;
   sendRaw: (paneId: string, items: RawItem[], unsafe?: boolean) => Promise<CommandResponse>;
+  uploadImageAttachment?: (paneId: string, file: File) => Promise<ImageAttachment>;
   setScreenError: (error: string | null) => void;
   scrollToBottom: (behavior?: "auto" | "smooth") => void;
 };
@@ -81,6 +83,17 @@ const shouldSkipTextSend = ({
   value: string;
 }) => readOnly || rawMode || !value.trim();
 
+export const insertIntoTextarea = (textarea: HTMLTextAreaElement, insertText: string) => {
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? start;
+  const current = textarea.value;
+  const next = `${current.slice(0, start)}${insertText}${current.slice(end)}`;
+  textarea.value = next;
+  const nextCaret = start + insertText.length;
+  textarea.selectionStart = nextCaret;
+  textarea.selectionEnd = nextCaret;
+};
+
 export const useSessionControls = ({
   paneId,
   readOnly,
@@ -88,6 +101,7 @@ export const useSessionControls = ({
   sendText,
   sendKeys,
   sendRaw,
+  uploadImageAttachment,
   setScreenError,
   scrollToBottom,
 }: UseSessionControlsParams) => {
@@ -158,6 +172,30 @@ export const useSessionControls = ({
     }
   }, [autoEnter, mode, paneId, rawMode, readOnly, scrollToBottom, sendText, setScreenError]);
 
+  const handleUploadImage = useCallback(
+    async (file: File) => {
+      if (readOnly) {
+        return;
+      }
+      const textarea = textInputRef.current;
+      if (!textarea) {
+        return;
+      }
+      if (!uploadImageAttachment) {
+        setScreenError(API_ERROR_MESSAGES.uploadImage);
+        return;
+      }
+      try {
+        const attachment = await uploadImageAttachment(paneId, file);
+        insertIntoTextarea(textarea, attachment.insertText);
+        setScreenError(null);
+      } catch (error) {
+        setScreenError(error instanceof Error ? error.message : API_ERROR_MESSAGES.uploadImage);
+      }
+    },
+    [paneId, readOnly, setScreenError, uploadImageAttachment],
+  );
+
   const toggleAutoEnter = useCallback(() => {
     setAutoEnter((prev) => !prev);
   }, [setAutoEnter]);
@@ -218,6 +256,7 @@ export const useSessionControls = ({
     allowDangerKeys,
     handleSendKey,
     handleSendText,
+    handleUploadImage,
     handleRawBeforeInput,
     handleRawInput,
     handleRawKeyDown,

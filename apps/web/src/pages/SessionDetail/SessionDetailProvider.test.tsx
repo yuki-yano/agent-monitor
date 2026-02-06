@@ -30,6 +30,7 @@ const mockSessionsContext = {
   requestCommitFile: vi.fn(),
   requestStateTimeline: vi.fn(),
   requestScreen: vi.fn(),
+  uploadImageAttachment: vi.fn(),
   sendText: vi.fn(),
   sendKeys: vi.fn(),
   sendRaw: vi.fn(),

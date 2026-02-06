@@ -6,7 +6,7 @@ import {
   ChevronDown,
   ChevronUp,
   CornerDownLeft,
-  Pin,
+  ImagePlus,
   Send,
 } from "lucide-react";
 import {
@@ -20,7 +20,8 @@ import {
   useRef,
 } from "react";
 
-import { Button, Callout, IconButton, ModifierToggle, PillToggle, Toolbar } from "@/components/ui";
+import { Button, Callout, ModifierToggle, PillToggle } from "@/components/ui";
+import { cn } from "@/lib/cn";
 
 type ControlsPanelState = {
   readOnly: boolean;
@@ -36,6 +37,7 @@ type ControlsPanelState = {
 
 type ControlsPanelActions = {
   onSendText: () => void;
+  onPickImage: (file: File) => void | Promise<void>;
   onToggleAutoEnter: () => void;
   onToggleControls: () => void;
   onToggleRawMode: () => void;
@@ -48,7 +50,6 @@ type ControlsPanelActions = {
   onRawKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onRawCompositionStart: (event: CompositionEvent<HTMLTextAreaElement>) => void;
   onRawCompositionEnd: (event: CompositionEvent<HTMLTextAreaElement>) => void;
-  onTouchSession: () => void;
 };
 
 type ControlsPanelProps = {
@@ -58,31 +59,6 @@ type ControlsPanelProps = {
 
 const PROMPT_SCALE = 0.875;
 const PROMPT_SCALE_INVERSE = 1 / PROMPT_SCALE;
-
-const KeyButton = ({
-  label,
-  onClick,
-  danger,
-  disabled,
-  ariaLabel,
-}: {
-  label: ReactNode;
-  onClick: () => void;
-  danger?: boolean;
-  disabled?: boolean;
-  ariaLabel?: string;
-}) => (
-  <Button
-    variant={danger ? "danger" : "ghost"}
-    size="sm"
-    onClick={onClick}
-    className="h-8 min-w-[44px] px-2 text-[10px] tracking-[0.12em]"
-    disabled={disabled}
-    aria-label={ariaLabel}
-  >
-    {label}
-  </Button>
-);
 
 const RAW_MODE_INPUT_CLASS_DANGER =
   "border-latte-red/70 bg-latte-red/10 focus-within:border-latte-red/80 focus-within:ring-2 focus-within:ring-latte-red/30";
@@ -100,6 +76,10 @@ const DANGER_TOGGLE_CLASS_DEFAULT =
   "border-latte-surface2/70 bg-transparent text-latte-subtext0 shadow-none hover:border-latte-overlay1 hover:bg-latte-surface0/50 hover:text-latte-text";
 const MODIFIER_DOT_CLASS_ACTIVE = "bg-latte-lavender";
 const MODIFIER_DOT_CLASS_DEFAULT = "bg-latte-surface2";
+
+const COMPOSER_PILL_CLASS = "h-8 px-1.5 text-[10px] tracking-[0.18em]";
+const MODIFIER_TOGGLE_CLASS = "h-8 px-2.5 py-0.5 text-[10px] tracking-[0.16em]";
+const KEY_BUTTON_CLASS = "h-8 min-w-[44px] px-2 text-[10px] tracking-[0.12em]";
 
 const resolveRawModeInputClass = (rawMode: boolean, allowDangerKeys: boolean) => {
   if (!rawMode) return RAW_MODE_INPUT_CLASS_DEFAULT;
@@ -159,206 +139,206 @@ const handlePromptKeyDown = ({
   onSend();
 };
 
-export const ControlsPanel = ({ state, actions }: ControlsPanelProps) => {
+const KeyButton = ({
+  label,
+  onClick,
+  danger,
+  disabled,
+  ariaLabel,
+}: {
+  label: ReactNode;
+  onClick: () => void;
+  danger?: boolean;
+  disabled?: boolean;
+  ariaLabel?: string;
+}) => (
+  <Button
+    variant={danger ? "danger" : "ghost"}
+    size="sm"
+    onClick={onClick}
+    className={KEY_BUTTON_CLASS}
+    disabled={disabled}
+    aria-label={ariaLabel}
+  >
+    {label}
+  </Button>
+);
+
+const ComposerPill = ({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof PillToggle>) => (
+  <PillToggle className={cn(COMPOSER_PILL_CLASS, className)} {...props} />
+);
+
+const ModifierKeyToggle = ({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof ModifierToggle>) => (
+  <ModifierToggle className={cn(MODIFIER_TOGGLE_CLASS, className)} {...props} />
+);
+
+type ComposerActionsRowState = {
+  interactive: boolean;
+  rawMode: boolean;
+  autoEnter: boolean;
+  allowDangerKeys: boolean;
+  rawModeToggleClass: string | undefined;
+  dangerToggleClass: string;
+};
+
+type ComposerActionsRowActions = {
+  onPickImage: () => void;
+  onToggleAllowDangerKeys: () => void;
+  onToggleRawMode: () => void;
+  onToggleAutoEnter: () => void;
+  onSendText: () => void;
+};
+
+const ComposerActionsRow = ({
+  state,
+  actions,
+}: {
+  state: ComposerActionsRowState;
+  actions: ComposerActionsRowActions;
+}) => {
   const {
-    readOnly,
     interactive,
-    textInputRef,
-    autoEnter,
-    controlsOpen,
     rawMode,
+    autoEnter,
     allowDangerKeys,
-    shiftHeld,
-    ctrlHeld,
+    rawModeToggleClass,
+    dangerToggleClass,
   } = state;
-  const {
-    onSendText,
-    onToggleAutoEnter,
-    onToggleControls,
-    onToggleRawMode,
-    onToggleAllowDangerKeys,
-    onToggleShift,
-    onToggleCtrl,
-    onSendKey,
-    onRawBeforeInput,
-    onRawInput,
-    onRawKeyDown,
-    onRawCompositionStart,
-    onRawCompositionEnd,
-    onTouchSession,
-  } = actions;
-  const tabLabel = "Tab";
-  const inputWrapperRef = useRef<HTMLDivElement | null>(null);
-  const placeholder = rawMode ? "Raw input (sent immediately)..." : "Type a prompt…";
-  const rawModeInputClass = resolveRawModeInputClass(rawMode, allowDangerKeys);
-  const rawModeToggleClass = resolveRawModeToggleClass(rawMode, allowDangerKeys);
-  const dangerToggleClass = resolveDangerToggleClass(allowDangerKeys);
-  const shiftDotClass = resolveModifierDotClass(shiftHeld);
-  const ctrlDotClass = resolveModifierDotClass(ctrlHeld);
-
-  const syncPromptHeight = useCallback((textarea: HTMLTextAreaElement) => {
-    textarea.style.height = "auto";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-    if (inputWrapperRef.current) {
-      inputWrapperRef.current.style.height = `${textarea.scrollHeight * PROMPT_SCALE}px`;
-    }
-  }, []);
-
-  const handleTextareaInput = (e: FormEvent<HTMLTextAreaElement>) =>
-    handlePromptInput({ event: e, rawMode, onRawInput, syncPromptHeight });
-
-  const handleTextareaKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) =>
-    handlePromptKeyDown({ event, rawMode, onRawKeyDown, onSend: handleSendText });
-
-  const handleSendText = () => {
-    const result = onSendText();
-    void Promise.resolve(result).finally(() => {
-      if (textInputRef.current) {
-        syncPromptHeight(textInputRef.current);
-      }
-    });
-  };
-
-  useEffect(() => {
-    if (textInputRef.current) {
-      syncPromptHeight(textInputRef.current);
-    }
-  }, [syncPromptHeight, textInputRef]);
-
-  if (readOnly) {
-    return (
-      <Callout tone="warning" size="sm">
-        Read-only mode is active. Interactive controls are hidden.
-      </Callout>
-    );
-  }
+  const { onPickImage, onToggleAllowDangerKeys, onToggleRawMode, onToggleAutoEnter, onSendText } =
+    actions;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start gap-4">
-        <div
-          ref={inputWrapperRef}
-          className={`min-h-[56px] min-w-0 flex-1 overflow-hidden rounded-2xl border transition ${
-            rawModeInputClass
-          }`}
+    <div className="border-latte-surface2/70 bg-latte-mantle/50 flex items-center justify-between border-t px-2 py-1">
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          onClick={onPickImage}
+          aria-label="Attach image"
+          className="text-latte-subtext1 hover:text-latte-text h-8 gap-1 px-2 py-0.5"
+          disabled={!interactive}
+          variant="ghost"
+          size="sm"
         >
-          <textarea
-            placeholder={placeholder}
-            ref={textInputRef}
-            rows={2}
-            disabled={!interactive}
-            onBeforeInput={onRawBeforeInput}
-            onCompositionStart={onRawCompositionStart}
-            onCompositionEnd={onRawCompositionEnd}
-            onInput={handleTextareaInput}
-            onKeyDown={handleTextareaKeyDown}
-            style={{
-              transform: `scale(${PROMPT_SCALE})`,
-              transformOrigin: "top left",
-              width: `${PROMPT_SCALE_INVERSE * 100}%`,
-            }}
-            className="text-latte-text min-h-[64px] w-full resize-none rounded-2xl bg-transparent px-4 py-2 text-base outline-none disabled:cursor-not-allowed disabled:opacity-60"
-          />
-        </div>
-        <div className="flex shrink-0 items-center self-center">
-          <Button
-            onClick={handleSendText}
-            aria-label="Send"
-            className="h-11 w-11 p-0"
-            disabled={rawMode || !interactive}
-          >
-            <Send className="h-4 w-4" />
-            <span className="sr-only">Send</span>
-          </Button>
-        </div>
+          <ImagePlus className="h-4 w-4" />
+        </Button>
+        <span className="text-latte-subtext0 hidden text-[10px] tracking-[0.12em] sm:inline">
+          PNG / JPEG / WEBP
+        </span>
       </div>
-      <Toolbar>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggleControls}
-            aria-expanded={controlsOpen}
-            aria-controls="session-controls"
-            className="text-latte-subtext0 flex items-center gap-2 px-2.5 py-1 text-[10px] uppercase tracking-[0.3em]"
-          >
-            {controlsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            Keys
-          </Button>
-          <PillToggle
+      <div className="flex items-center gap-1">
+        {rawMode ? (
+          <ComposerPill
             type="button"
-            onClick={onToggleRawMode}
-            active={rawMode}
-            disabled={!interactive}
-            title="Raw input mode"
-            className={rawModeToggleClass}
+            onClick={onToggleAllowDangerKeys}
+            active={allowDangerKeys}
+            title="Allow dangerous keys"
+            className={dangerToggleClass}
           >
-            Raw
-          </PillToggle>
-          {rawMode && (
-            <PillToggle
-              type="button"
-              onClick={onToggleAllowDangerKeys}
-              active={allowDangerKeys}
-              title="Allow dangerous keys"
-              className={dangerToggleClass}
-            >
-              Danger
-            </PillToggle>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <IconButton
-            type="button"
-            size="sm"
-            onClick={onTouchSession}
-            disabled={!interactive}
-            aria-label="Pin session to top"
-            title="Pin session to top"
-          >
-            <Pin className="h-4 w-4" />
-          </IconButton>
-          <PillToggle
-            type="button"
-            onClick={onToggleAutoEnter}
-            active={autoEnter}
-            disabled={rawMode}
-            title="Auto-enter after send"
-            className="group"
-          >
-            <span className="text-[9px] font-semibold tracking-[0.3em]">Auto</span>
-            <CornerDownLeft className="h-3.5 w-3.5" />
-            <span className="sr-only">Auto-enter</span>
-          </PillToggle>
-        </div>
-      </Toolbar>
-      {controlsOpen && (
-        <div id="session-controls" className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <ModifierToggle
-              type="button"
-              onClick={onToggleShift}
-              active={shiftHeld}
-              className="px-2.5 py-1 text-[10px] tracking-[0.18em]"
-            >
+            Danger
+          </ComposerPill>
+        ) : null}
+        <ComposerPill
+          type="button"
+          onClick={onToggleRawMode}
+          active={rawMode}
+          disabled={!interactive}
+          title="Raw input mode"
+          className={rawModeToggleClass}
+        >
+          Raw
+        </ComposerPill>
+        <ComposerPill
+          type="button"
+          onClick={onToggleAutoEnter}
+          active={autoEnter}
+          disabled={rawMode}
+          title="Auto-enter after send"
+          className="group"
+        >
+          <span>Auto</span>
+          <CornerDownLeft className="h-3 w-3" />
+          <span className="sr-only">Auto-enter</span>
+        </ComposerPill>
+        <Button
+          onClick={onSendText}
+          aria-label="Send"
+          className="h-8 gap-1 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]"
+          disabled={rawMode || !interactive}
+        >
+          <Send className="h-4 w-4" />
+          <span>Send</span>
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+type KeysSectionState = {
+  controlsOpen: boolean;
+  shiftHeld: boolean;
+  ctrlHeld: boolean;
+  shiftDotClass: string;
+  ctrlDotClass: string;
+};
+
+type KeysSectionActions = {
+  onToggleControls: () => void;
+  onToggleShift: () => void;
+  onToggleCtrl: () => void;
+  onSendKey: (key: string) => void;
+};
+
+const KeysSection = ({
+  state,
+  actions,
+}: {
+  state: KeysSectionState;
+  actions: KeysSectionActions;
+}) => {
+  const { controlsOpen, shiftHeld, ctrlHeld, shiftDotClass, ctrlDotClass } = state;
+  const { onToggleControls, onToggleShift, onToggleCtrl, onSendKey } = actions;
+
+  return (
+    <div className="border-latte-surface2/50 space-y-1.5 border-t pt-2">
+      <div className="flex items-center justify-between px-0.5">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggleControls}
+          aria-expanded={controlsOpen}
+          aria-controls="session-controls"
+          className="text-latte-subtext0 flex h-8 items-center gap-1.5 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.18em]"
+        >
+          {controlsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          Keys
+        </Button>
+        <span className="text-latte-subtext0 text-[10px] uppercase tracking-[0.16em]">
+          Quick keys
+        </span>
+      </div>
+      {controlsOpen ? (
+        <div id="session-controls" className="space-y-2.5 px-0.5 pb-0.5 pt-1.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <ModifierKeyToggle type="button" onClick={onToggleShift} active={shiftHeld}>
               <span className={`h-2 w-2 rounded-full transition-colors ${shiftDotClass}`} />
               Shift
-            </ModifierToggle>
-            <ModifierToggle
-              type="button"
-              onClick={onToggleCtrl}
-              active={ctrlHeld}
-              className="px-2.5 py-1 text-[10px] tracking-[0.18em]"
-            >
+            </ModifierKeyToggle>
+            <ModifierKeyToggle type="button" onClick={onToggleCtrl} active={ctrlHeld}>
               <span className={`h-2 w-2 rounded-full transition-colors ${ctrlDotClass}`} />
               Ctrl
-            </ModifierToggle>
+            </ModifierKeyToggle>
           </div>
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
               {[
                 { label: "Esc", key: "Escape" },
-                { label: tabLabel, key: "Tab" },
+                { label: "Tab", key: "Tab" },
                 { label: "Backspace", key: "BSpace" },
                 { label: "Enter", key: "Enter" },
               ].map((item) => (
@@ -367,7 +347,7 @@ export const ControlsPanel = ({ state, actions }: ControlsPanelProps) => {
             </div>
           </div>
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               {[
                 {
                   label: (
@@ -420,7 +400,176 @@ export const ControlsPanel = ({ state, actions }: ControlsPanelProps) => {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
+    </div>
+  );
+};
+
+export const ControlsPanel = ({ state, actions }: ControlsPanelProps) => {
+  const {
+    readOnly,
+    interactive,
+    textInputRef,
+    autoEnter,
+    controlsOpen,
+    rawMode,
+    allowDangerKeys,
+    shiftHeld,
+    ctrlHeld,
+  } = state;
+  const {
+    onSendText,
+    onPickImage,
+    onToggleAutoEnter,
+    onToggleControls,
+    onToggleRawMode,
+    onToggleAllowDangerKeys,
+    onToggleShift,
+    onToggleCtrl,
+    onSendKey,
+    onRawBeforeInput,
+    onRawInput,
+    onRawKeyDown,
+    onRawCompositionStart,
+    onRawCompositionEnd,
+  } = actions;
+
+  const inputWrapperRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const placeholder = rawMode ? "Raw input (sent immediately)..." : "Type a prompt…";
+  const rawModeInputClass = resolveRawModeInputClass(rawMode, allowDangerKeys);
+  const rawModeToggleClass = resolveRawModeToggleClass(rawMode, allowDangerKeys);
+  const dangerToggleClass = resolveDangerToggleClass(allowDangerKeys);
+  const shiftDotClass = resolveModifierDotClass(shiftHeld);
+  const ctrlDotClass = resolveModifierDotClass(ctrlHeld);
+
+  const syncPromptHeight = useCallback((textarea: HTMLTextAreaElement) => {
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+    if (inputWrapperRef.current) {
+      inputWrapperRef.current.style.height = `${textarea.scrollHeight * PROMPT_SCALE}px`;
+    }
+  }, []);
+
+  const handleTextareaInput = (event: FormEvent<HTMLTextAreaElement>) =>
+    handlePromptInput({ event, rawMode, onRawInput, syncPromptHeight });
+
+  const handleSendText = () => {
+    const result = onSendText();
+    void Promise.resolve(result).finally(() => {
+      if (textInputRef.current) {
+        syncPromptHeight(textInputRef.current);
+      }
+    });
+  };
+
+  const handleTextareaKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) =>
+    handlePromptKeyDown({ event, rawMode, onRawKeyDown, onSend: handleSendText });
+
+  const handlePickImage = () => {
+    if (!interactive) {
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleImageFileChange = (event: FormEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) {
+      return;
+    }
+    const result = onPickImage(file);
+    void Promise.resolve(result).finally(() => {
+      input.value = "";
+      if (textInputRef.current) {
+        syncPromptHeight(textInputRef.current);
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (textInputRef.current) {
+      syncPromptHeight(textInputRef.current);
+    }
+  }, [syncPromptHeight, textInputRef]);
+
+  if (readOnly) {
+    return (
+      <Callout tone="warning" size="sm">
+        Read-only mode is active. Interactive controls are hidden.
+      </Callout>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="min-w-0">
+        <div
+          className={`min-w-0 overflow-hidden rounded-2xl border transition ${rawModeInputClass}`}
+        >
+          <div ref={inputWrapperRef} className="min-h-[56px] overflow-hidden">
+            <textarea
+              placeholder={placeholder}
+              ref={textInputRef}
+              rows={2}
+              disabled={!interactive}
+              onBeforeInput={onRawBeforeInput}
+              onCompositionStart={onRawCompositionStart}
+              onCompositionEnd={onRawCompositionEnd}
+              onInput={handleTextareaInput}
+              onKeyDown={handleTextareaKeyDown}
+              style={{
+                transform: `scale(${PROMPT_SCALE})`,
+                transformOrigin: "top left",
+                width: `${PROMPT_SCALE_INVERSE * 100}%`,
+              }}
+              className="text-latte-text min-h-[52px] w-full resize-none rounded-2xl bg-transparent px-3 py-1.5 text-base outline-none disabled:cursor-not-allowed disabled:opacity-60"
+            />
+          </div>
+          <ComposerActionsRow
+            state={{
+              interactive,
+              rawMode,
+              autoEnter,
+              allowDangerKeys,
+              rawModeToggleClass,
+              dangerToggleClass,
+            }}
+            actions={{
+              onPickImage: handlePickImage,
+              onToggleAllowDangerKeys: onToggleAllowDangerKeys,
+              onToggleRawMode: onToggleRawMode,
+              onToggleAutoEnter: onToggleAutoEnter,
+              onSendText: handleSendText,
+            }}
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            aria-label="Attach image file"
+            className="hidden"
+            disabled={!interactive}
+            onChange={handleImageFileChange}
+          />
+        </div>
+      </div>
+      <KeysSection
+        state={{
+          controlsOpen,
+          shiftHeld,
+          ctrlHeld,
+          shiftDotClass,
+          ctrlDotClass,
+        }}
+        actions={{
+          onToggleControls,
+          onToggleShift,
+          onToggleCtrl,
+          onSendKey,
+        }}
+      />
     </div>
   );
 };

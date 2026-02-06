@@ -12,6 +12,7 @@ export const API_ERROR_MESSAGES = {
   sendKeys: "Failed to send keys",
   sendText: "Failed to send text",
   sendRaw: "Failed to send raw input",
+  uploadImage: "Failed to upload image attachment",
   diffSummary: "Failed to load diff summary",
   diffFile: "Failed to load diff file",
   commitLog: "Failed to load commit log",

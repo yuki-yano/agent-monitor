@@ -16,6 +16,7 @@ const mockApiClient = {
     $get: mockGet,
     ":paneId": {
       screen: { $post: mockPost },
+      attachments: { image: { $post: mockPost } },
       title: { $put: mockPut },
       touch: { $post: mockPost },
       diff: {
@@ -46,6 +47,7 @@ vi.mock("@/lib/api-utils", async () => {
 describe("useSessionApi", () => {
   afterEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("dedupes in-flight screen requests", async () => {
@@ -374,5 +376,143 @@ describe("useSessionApi", () => {
     expect(requestJsonMock).toHaveBeenCalledTimes(2);
     expect(onSessionUpdated).not.toHaveBeenCalled();
     expect(onSessions).toHaveBeenCalledWith([]);
+  });
+
+  it("uploads image attachment and clears connection issue on success", async () => {
+    const requestJsonMock = vi.mocked(requestJson);
+    const onConnectionIssue = vi.fn();
+    requestJsonMock.mockResolvedValueOnce({
+      res: new Response(null, { status: 200 }),
+      data: {
+        attachment: {
+          path: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png",
+          mimeType: "image/png",
+          size: 3,
+          createdAt: "2026-02-06T00:00:00.000Z",
+          insertText: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png ",
+        },
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useSessionApi({
+        token: "token",
+        onSessions: vi.fn(),
+        onConnectionIssue,
+        onReadOnly: vi.fn(),
+        onSessionUpdated: vi.fn(),
+        onSessionRemoved: vi.fn(),
+        onHighlightCorrections: vi.fn(),
+      }),
+    );
+
+    const file = new File([new Uint8Array([1, 2, 3])], "sample.png", { type: "image/png" });
+    await expect(result.current.uploadImageAttachment("pane-1", file)).resolves.toMatchObject({
+      mimeType: "image/png",
+      size: 3,
+    });
+    expect(mockPost).toHaveBeenCalledWith({ param: { paneId: "pane-1" }, form: { image: file } });
+    expect(onConnectionIssue).toHaveBeenCalledWith(null);
+  });
+
+  it("throws upload errors and reports connection issue", async () => {
+    const requestJsonMock = vi.mocked(requestJson);
+    const onConnectionIssue = vi.fn();
+    requestJsonMock.mockResolvedValueOnce({
+      res: new Response(null, { status: 400 }),
+      data: {
+        error: {
+          code: "INVALID_PAYLOAD",
+          message: "unsupported image MIME type",
+        },
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useSessionApi({
+        token: "token",
+        onSessions: vi.fn(),
+        onConnectionIssue,
+        onReadOnly: vi.fn(),
+        onSessionUpdated: vi.fn(),
+        onSessionRemoved: vi.fn(),
+        onHighlightCorrections: vi.fn(),
+      }),
+    );
+
+    const file = new File([new Uint8Array([1, 2, 3])], "sample.gif", { type: "image/gif" });
+    await expect(result.current.uploadImageAttachment("pane-1", file)).rejects.toThrow(
+      "unsupported image MIME type",
+    );
+    expect(onConnectionIssue).toHaveBeenCalledWith("unsupported image MIME type");
+  });
+
+  it("notifies read-only handler when upload is rejected by read-only mode", async () => {
+    const requestJsonMock = vi.mocked(requestJson);
+    const onConnectionIssue = vi.fn();
+    const onReadOnly = vi.fn();
+    requestJsonMock.mockResolvedValueOnce({
+      res: new Response(null, { status: 403 }),
+      data: {
+        error: {
+          code: "READ_ONLY",
+          message: "read-only mode",
+        },
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useSessionApi({
+        token: "token",
+        onSessions: vi.fn(),
+        onConnectionIssue,
+        onReadOnly,
+        onSessionUpdated: vi.fn(),
+        onSessionRemoved: vi.fn(),
+        onHighlightCorrections: vi.fn(),
+      }),
+    );
+
+    const file = new File([new Uint8Array([1, 2, 3])], "sample.png", { type: "image/png" });
+    await expect(result.current.uploadImageAttachment("pane-1", file)).rejects.toThrow(
+      API_ERROR_MESSAGES.unauthorized,
+    );
+    expect(onReadOnly).toHaveBeenCalledTimes(1);
+    expect(onConnectionIssue).toHaveBeenCalledWith(API_ERROR_MESSAGES.unauthorized);
+  });
+
+  it("throws invalid response when upload attachment payload does not match schema", async () => {
+    const requestJsonMock = vi.mocked(requestJson);
+    const onConnectionIssue = vi.fn();
+    requestJsonMock.mockResolvedValueOnce({
+      res: new Response(null, { status: 200 }),
+      data: {
+        attachment: {
+          path: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png",
+          mimeType: "image/png",
+          size: 0,
+          createdAt: "2026-02-06T00:00:00.000Z",
+          insertText: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png ",
+        },
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useSessionApi({
+        token: "token",
+        onSessions: vi.fn(),
+        onConnectionIssue,
+        onReadOnly: vi.fn(),
+        onSessionUpdated: vi.fn(),
+        onSessionRemoved: vi.fn(),
+        onHighlightCorrections: vi.fn(),
+      }),
+    );
+
+    const file = new File([new Uint8Array([1, 2, 3])], "sample.png", { type: "image/png" });
+    await expect(result.current.uploadImageAttachment("pane-1", file)).rejects.toThrow(
+      API_ERROR_MESSAGES.invalidResponse,
+    );
+    expect(onConnectionIssue).toHaveBeenCalledWith(API_ERROR_MESSAGES.invalidResponse);
   });
 });
