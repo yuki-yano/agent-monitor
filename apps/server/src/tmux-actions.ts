@@ -2,6 +2,8 @@ import type { AgentMonitorConfig, ApiError, RawItem } from "@vde-monitor/shared"
 import { allowedKeys, compileDangerPatterns, isDangerousCommand } from "@vde-monitor/shared";
 import type { TmuxAdapter } from "@vde-monitor/tmux";
 
+import { setMapEntryWithLimit } from "./cache.js";
+
 const buildError = (code: ApiError["code"], message: string): ApiError => ({
   code,
   message,
@@ -10,6 +12,7 @@ const buildError = (code: ApiError["code"], message: string): ApiError => ({
 type ActionResult = { ok: true; error?: undefined } | { ok: false; error: ApiError };
 
 export const createTmuxActions = (adapter: TmuxAdapter, config: AgentMonitorConfig) => {
+  const PENDING_COMMANDS_MAX_ENTRIES = 500;
   const dangerPatterns = compileDangerPatterns(config.dangerCommandPatterns);
   const dangerKeys = new Set(config.dangerKeys);
   const allowedKeySet = new Set(allowedKeys);
@@ -168,7 +171,7 @@ export const createTmuxActions = (adapter: TmuxAdapter, config: AgentMonitorConf
       pendingCommands.delete(paneId);
       return okResult();
     }
-    pendingCommands.set(paneId, combined);
+    setMapEntryWithLimit(pendingCommands, paneId, combined, PENDING_COMMANDS_MAX_ENTRIES);
     return okResult();
   };
 

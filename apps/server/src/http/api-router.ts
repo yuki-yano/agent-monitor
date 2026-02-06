@@ -36,6 +36,7 @@ type RouteContext = {
 
 type DiffSummaryResult = Awaited<ReturnType<typeof fetchDiffSummary>>;
 type CommitLogResult = Awaited<ReturnType<typeof fetchCommitLog>>;
+type CommandPayload = Parameters<typeof createCommandResponse>[0]["payload"];
 
 const forceQuerySchema = z.object({ force: z.string().optional() });
 const diffFileQuerySchema = z.object({
@@ -76,6 +77,13 @@ const sendRawSchema = z.object({
   items: z.array(rawItemSchema),
   unsafe: z.boolean().optional(),
 });
+
+const isForceRequested = (force?: string) => force === "1";
+
+const parseQueryInteger = (value: string | undefined, fallback: number) => {
+  const parsed = Number.parseInt(value ?? String(fallback), 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 
 export const createApiRouter = ({ config, monitor, tmuxActions }: ApiContext) => {
   const api = new Hono();
@@ -167,6 +175,20 @@ export const createApiRouter = ({ config, monitor, tmuxActions }: ApiContext) =>
     };
   };
 
+  const executeCommand = (
+    c: { req: { header: (name: string) => string | undefined } },
+    payload: CommandPayload,
+  ) =>
+    createCommandResponse({
+      config,
+      monitor,
+      tmuxActions,
+      payload,
+      limiterKey: getLimiterKey(c),
+      sendLimiter,
+      rawLimiter,
+    });
+
   api.use("*", async (c, next) => {
     c.header("Cache-Control", "no-store");
     const requestId = c.req.header("request-id") ?? c.req.header("x-request-id");
@@ -184,8 +206,8 @@ export const createApiRouter = ({ config, monitor, tmuxActions }: ApiContext) =>
     await next();
   });
 
-  const apiRoutes = api
-    .get("/sessions", (c) => {
+  const registerSessionRoutes = () => {
+    api.get("/sessions", (c) => {
       return c.json({
         sessions: monitor.registry.snapshot(),
         serverTime: nowIso(),
@@ -193,15 +215,17 @@ export const createApiRouter = ({ config, monitor, tmuxActions }: ApiContext) =>
           screen: { highlightCorrection: config.screen.highlightCorrection },
         },
       });
-    })
-    .get("/sessions/:paneId", (c) => {
+    });
+
+    api.get("/sessions/:paneId", (c) => {
       const pane = resolvePane(c);
       if (pane instanceof Response) {
         return pane;
       }
       return c.json({ session: pane.detail });
-    })
-    .put("/sessions/:paneId/title", zValidator("json", titleSchema), async (c) => {
+    });
+
+    api.put("/sessions/:paneId/title", zValidator("json", titleSchema), async (c) => {
       const pane = resolveWritablePane(c);
       if (pane instanceof Response) {
         return pane;
@@ -214,21 +238,19 @@ export const createApiRouter = ({ config, monitor, tmuxActions }: ApiContext) =>
       monitor.setCustomTitle(pane.paneId, titleUpdate.nextTitle);
       const updated = monitor.registry.getDetail(pane.paneId) ?? pane.detail;
       return c.json({ session: updated });
-    })
-    .post("/sessions/:paneId/touch", (c) => {
-      const readOnlyError = ensureWritable(c);
-      if (readOnlyError) {
-        return readOnlyError;
-      }
-      const pane = resolvePane(c);
+    });
+
+    api.post("/sessions/:paneId/touch", (c) => {
+      const pane = resolveWritablePane(c);
       if (pane instanceof Response) {
         return pane;
       }
       monitor.recordInput(pane.paneId);
       const updated = monitor.registry.getDetail(pane.paneId) ?? pane.detail;
       return c.json({ session: updated });
-    })
-    .post("/sessions/:paneId/screen", zValidator("json", screenRequestSchema), async (c) => {
+    });
+
+    api.post("/sessions/:paneId/screen", zValidator("json", screenRequestSchema), async (c) => {
       const pane = resolvePane(c);
       if (pane instanceof Response) {
         return pane;
@@ -246,81 +268,73 @@ export const createApiRouter = ({ config, monitor, tmuxActions }: ApiContext) =>
         buildTextResponse: screenCache.buildTextResponse,
       });
       return c.json({ screen });
-    })
-    .post("/sessions/:paneId/send/text", zValidator("json", sendTextSchema), async (c) => {
+    });
+
+    api.post("/sessions/:paneId/send/text", zValidator("json", sendTextSchema), async (c) => {
       const pane = resolvePane(c);
       if (pane instanceof Response) {
         return pane;
       }
       const body = c.req.valid("json");
-      const command = await createCommandResponse({
-        config,
-        monitor,
-        tmuxActions,
-        payload: { type: "send.text", paneId: pane.paneId, text: body.text, enter: body.enter },
-        limiterKey: getLimiterKey(c),
-        sendLimiter,
-        rawLimiter,
+      const command = await executeCommand(c, {
+        type: "send.text",
+        paneId: pane.paneId,
+        text: body.text,
+        enter: body.enter,
       });
       return c.json({ command });
-    })
-    .post("/sessions/:paneId/send/keys", zValidator("json", sendKeysSchema), async (c) => {
+    });
+
+    api.post("/sessions/:paneId/send/keys", zValidator("json", sendKeysSchema), async (c) => {
       const pane = resolvePane(c);
       if (pane instanceof Response) {
         return pane;
       }
       const body = c.req.valid("json");
-      const command = await createCommandResponse({
-        config,
-        monitor,
-        tmuxActions,
-        payload: { type: "send.keys", paneId: pane.paneId, keys: body.keys },
-        limiterKey: getLimiterKey(c),
-        sendLimiter,
-        rawLimiter,
+      const command = await executeCommand(c, {
+        type: "send.keys",
+        paneId: pane.paneId,
+        keys: body.keys,
       });
       return c.json({ command });
-    })
-    .post("/sessions/:paneId/send/raw", zValidator("json", sendRawSchema), async (c) => {
+    });
+
+    api.post("/sessions/:paneId/send/raw", zValidator("json", sendRawSchema), async (c) => {
       const pane = resolvePane(c);
       if (pane instanceof Response) {
         return pane;
       }
       const body = c.req.valid("json");
-      const command = await createCommandResponse({
-        config,
-        monitor,
-        tmuxActions,
-        payload: {
-          type: "send.raw",
-          paneId: pane.paneId,
-          items: body.items as RawItem[],
-          unsafe: body.unsafe,
-        },
-        limiterKey: getLimiterKey(c),
-        sendLimiter,
-        rawLimiter,
+      const command = await executeCommand(c, {
+        type: "send.raw",
+        paneId: pane.paneId,
+        items: body.items as RawItem[],
+        unsafe: body.unsafe,
       });
       return c.json({ command });
-    })
-    .get("/sessions/:paneId/diff", zValidator("query", forceQuerySchema), async (c) => {
+    });
+  };
+
+  const registerGitRoutes = () => {
+    api.get("/sessions/:paneId/diff", zValidator("query", forceQuerySchema), async (c) => {
       const pane = resolvePane(c);
       if (pane instanceof Response) {
         return pane;
       }
       const query = c.req.valid("query");
-      const force = query.force === "1";
+      const force = isForceRequested(query.force);
       const summary = await fetchDiffSummary(pane.detail.currentPath, { force });
       return c.json({ summary });
-    })
-    .get("/sessions/:paneId/diff/file", zValidator("query", diffFileQuerySchema), async (c) => {
+    });
+
+    api.get("/sessions/:paneId/diff/file", zValidator("query", diffFileQuerySchema), async (c) => {
       const pane = resolvePane(c);
       if (pane instanceof Response) {
         return pane;
       }
       const query = c.req.valid("query");
       const pathParam = query.path;
-      const force = query.force === "1";
+      const force = isForceRequested(query.force);
       const readySummary = await loadReadyDiffSummary(c, pane.detail, force);
       if (readySummary instanceof Response) {
         return readySummary;
@@ -331,24 +345,26 @@ export const createApiRouter = ({ config, monitor, tmuxActions }: ApiContext) =>
       }
       const file = await fetchDiffFile(readySummary.repoRoot, target, readySummary.rev, { force });
       return c.json({ file });
-    })
-    .get("/sessions/:paneId/commits", zValidator("query", commitLogQuerySchema), async (c) => {
+    });
+
+    api.get("/sessions/:paneId/commits", zValidator("query", commitLogQuerySchema), async (c) => {
       const pane = resolvePane(c);
       if (pane instanceof Response) {
         return pane;
       }
       const query = c.req.valid("query");
-      const limit = Number.parseInt(query.limit ?? "10", 10);
-      const skip = Number.parseInt(query.skip ?? "0", 10);
-      const force = query.force === "1";
+      const limit = parseQueryInteger(query.limit, 10);
+      const skip = parseQueryInteger(query.skip, 0);
+      const force = isForceRequested(query.force);
       const log = await fetchCommitLog(pane.detail.currentPath, {
-        limit: Number.isFinite(limit) ? limit : 10,
-        skip: Number.isFinite(skip) ? skip : 0,
+        limit,
+        skip,
         force,
       });
       return c.json({ log });
-    })
-    .get(
+    });
+
+    api.get(
       "/sessions/:paneId/commits/:hash",
       zValidator("query", commitDetailQuerySchema),
       async (c) => {
@@ -366,15 +382,16 @@ export const createApiRouter = ({ config, monitor, tmuxActions }: ApiContext) =>
         }
         const query = c.req.valid("query");
         const commit = await fetchCommitDetail(readyCommitLog.repoRoot, hash, {
-          force: query.force === "1",
+          force: isForceRequested(query.force),
         });
         if (!commit) {
           return c.json({ error: buildError("NOT_FOUND", "commit not found") }, 404);
         }
         return c.json({ commit });
       },
-    )
-    .get(
+    );
+
+    api.get(
       "/sessions/:paneId/commits/:hash/file",
       zValidator("query", commitFileQuerySchema),
       async (c) => {
@@ -392,7 +409,9 @@ export const createApiRouter = ({ config, monitor, tmuxActions }: ApiContext) =>
         if (readyCommitLog instanceof Response) {
           return readyCommitLog;
         }
-        const commit = await fetchCommitDetail(readyCommitLog.repoRoot, hash, { force: true });
+        const commit = await fetchCommitDetail(readyCommitLog.repoRoot, hash, {
+          force: isForceRequested(query.force),
+        });
         if (!commit) {
           return c.json({ error: buildError("NOT_FOUND", "commit not found") }, 404);
         }
@@ -403,13 +422,17 @@ export const createApiRouter = ({ config, monitor, tmuxActions }: ApiContext) =>
           return c.json({ error: buildError("NOT_FOUND", "file not found") }, 404);
         }
         const file = await fetchCommitFile(readyCommitLog.repoRoot, hash, target, {
-          force: query.force === "1",
+          force: isForceRequested(query.force),
         });
         return c.json({ file });
       },
     );
+  };
 
-  return apiRoutes;
+  registerSessionRoutes();
+  registerGitRoutes();
+
+  return api;
 };
 
 export type ApiAppType = ReturnType<typeof createApiRouter>;

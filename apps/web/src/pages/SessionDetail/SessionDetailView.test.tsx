@@ -12,9 +12,14 @@ import type { VirtuosoHandle } from "react-virtuoso";
 import { describe, expect, it, vi } from "vitest";
 
 import { buildSessionGroups } from "@/lib/session-group";
+import { ThemeProvider } from "@/state/theme-context";
 
-import type { SessionDetailViewProps } from "./SessionDetailView";
-import { SessionDetailView } from "./SessionDetailView";
+import { SessionDetailView, type SessionDetailViewProps } from "./SessionDetailView";
+import { createSessionDetail } from "./test-helpers";
+
+vi.mock("./components/SessionSidebar", () => ({
+  SessionSidebar: () => <div data-testid="session-sidebar" />,
+}));
 
 const renderWithRouter = (ui: ReactNode) => {
   const rootRoute = createRootRoute({
@@ -29,7 +34,11 @@ const renderWithRouter = (ui: ReactNode) => {
     routeTree: rootRoute.addChildren([indexRoute]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
-  return render(<RouterContextProvider router={router}>{ui}</RouterContextProvider>);
+  return render(
+    <RouterContextProvider router={router}>
+      <ThemeProvider>{ui}</ThemeProvider>
+    </RouterContextProvider>,
+  );
 };
 
 type SessionDetailViewOverrides = {
@@ -187,5 +196,18 @@ describe("SessionDetailView", () => {
 
     expect(screen.getByText("Session not found.")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to list" })).toBeTruthy();
+  });
+
+  it("renders main sections when session exists", () => {
+    const props = createViewProps({
+      meta: { session: createSessionDetail() },
+    });
+    renderWithRouter(<SessionDetailView {...props} />);
+
+    expect(screen.getByRole("button", { name: "Edit session title" })).toBeTruthy();
+    expect(screen.getByRole("separator", { name: "Resize sidebar" })).toBeTruthy();
+    expect(screen.getByRole("separator", { name: "Resize panels" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Text" })).toBeTruthy();
+    expect(screen.getByLabelText("Toggle session quick panel")).toBeTruthy();
   });
 });

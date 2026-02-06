@@ -18,15 +18,28 @@ export const createMonitorLoop = (
 ) => {
   const rotate = deps.rotateLogIfNeeded ?? rotateLogIfNeeded;
   let timer: NodeJS.Timeout | null = null;
+  let tickRunning = false;
 
-  const tick = () => {
-    updateFromPanes().catch(() => null);
-    rotate(eventLogPath, maxEventLogBytes, retainRotations).catch(() => null);
+  const tick = async () => {
+    if (tickRunning) {
+      return;
+    }
+    tickRunning = true;
+    try {
+      await Promise.allSettled([
+        updateFromPanes(),
+        rotate(eventLogPath, maxEventLogBytes, retainRotations),
+      ]);
+    } finally {
+      tickRunning = false;
+    }
   };
 
   const start = () => {
     if (timer) return;
-    timer = setInterval(tick, intervalMs);
+    timer = setInterval(() => {
+      void tick();
+    }, intervalMs);
   };
 
   const stop = () => {

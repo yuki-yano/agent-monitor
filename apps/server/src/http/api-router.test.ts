@@ -1,7 +1,7 @@
 import { type AgentMonitorConfig, defaultConfig, type SessionDetail } from "@vde-monitor/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { fetchCommitLog } from "../git-commits.js";
+import { fetchCommitDetail, fetchCommitFile, fetchCommitLog } from "../git-commits.js";
 import { fetchDiffSummary } from "../git-diff.js";
 import type { createSessionMonitor } from "../monitor.js";
 import { createSessionRegistry } from "../session-registry.js";
@@ -220,6 +220,90 @@ describe("createApiRouter", () => {
       headers: authHeaders,
     });
     expect(res.status).toBe(400);
+  });
+
+  it("uses force=false by default on commit detail endpoint", async () => {
+    vi.mocked(fetchCommitLog).mockResolvedValueOnce({
+      repoRoot: "/tmp",
+      rev: "HEAD",
+      generatedAt: new Date(0).toISOString(),
+      commits: [],
+    });
+    vi.mocked(fetchCommitDetail).mockResolvedValueOnce({
+      hash: "hash",
+      shortHash: "hash",
+      subject: "subject",
+      body: null,
+      authorName: "tester",
+      authorEmail: "tester@example.com",
+      authoredAt: new Date(0).toISOString(),
+      files: [],
+    });
+    const { api } = createTestContext();
+    const res = await api.request("/sessions/pane-1/commits/hash", {
+      headers: authHeaders,
+    });
+    expect(res.status).toBe(200);
+    expect(fetchCommitDetail).toHaveBeenCalledWith("/tmp", "hash", { force: false });
+  });
+
+  it("uses force flag from query on commit file endpoint", async () => {
+    vi.mocked(fetchCommitLog).mockResolvedValue({
+      repoRoot: "/tmp",
+      rev: "HEAD",
+      generatedAt: new Date(0).toISOString(),
+      commits: [],
+    });
+    vi.mocked(fetchCommitDetail).mockResolvedValue({
+      hash: "hash",
+      shortHash: "hash",
+      subject: "subject",
+      body: null,
+      authorName: "tester",
+      authorEmail: "tester@example.com",
+      authoredAt: new Date(0).toISOString(),
+      files: [
+        {
+          path: "src/index.ts",
+          status: "M",
+          additions: 1,
+          deletions: 0,
+        },
+      ],
+    });
+    vi.mocked(fetchCommitFile).mockResolvedValue({
+      path: "src/index.ts",
+      status: "M",
+      patch: "+line",
+      binary: false,
+      truncated: false,
+    });
+
+    const { api } = createTestContext();
+    const first = await api.request("/sessions/pane-1/commits/hash/file?path=src/index.ts", {
+      headers: authHeaders,
+    });
+    expect(first.status).toBe(200);
+    expect(fetchCommitFile).toHaveBeenLastCalledWith(
+      "/tmp",
+      "hash",
+      expect.objectContaining({ path: "src/index.ts" }),
+      { force: false },
+    );
+
+    const second = await api.request(
+      "/sessions/pane-1/commits/hash/file?path=src/index.ts&force=1",
+      {
+        headers: authHeaders,
+      },
+    );
+    expect(second.status).toBe(200);
+    expect(fetchCommitFile).toHaveBeenLastCalledWith(
+      "/tmp",
+      "hash",
+      expect.objectContaining({ path: "src/index.ts" }),
+      { force: true },
+    );
   });
 
   it("returns 400 when commit log is unavailable on commit file endpoint", async () => {

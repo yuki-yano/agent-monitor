@@ -6,6 +6,7 @@ import type {
   CommitSummary,
 } from "@vde-monitor/shared";
 
+import { setMapEntryWithLimit } from "./cache.js";
 import { isBinaryPatch, parseNumstat, pickStatus } from "./git-parsers.js";
 import { resolveRepoRoot, runGit } from "./git-utils.js";
 
@@ -13,6 +14,9 @@ const LOG_TTL_MS = 3000;
 const DETAIL_TTL_MS = 3000;
 const FILE_TTL_MS = 3000;
 const MAX_PATCH_BYTES = 2_000_000;
+const LOG_CACHE_MAX_ENTRIES = 200;
+const DETAIL_CACHE_MAX_ENTRIES = 500;
+const FILE_CACHE_MAX_ENTRIES = 1000;
 
 const RECORD_SEPARATOR = "\u001e";
 const FIELD_SEPARATOR = "\u001f";
@@ -312,12 +316,17 @@ export const fetchCommitLog = async (
       commits,
       totalCount,
     });
-    logCache.set(cacheKey, {
-      at: nowMs,
-      rev: head,
-      log,
-      signature: buildCommitLogSignature(log),
-    });
+    setMapEntryWithLimit(
+      logCache,
+      cacheKey,
+      {
+        at: nowMs,
+        rev: head,
+        log,
+        signature: buildCommitLogSignature(log),
+      },
+      LOG_CACHE_MAX_ENTRIES,
+    );
     return log;
   } catch {
     return createCommitLog({
@@ -385,7 +394,7 @@ export const fetchCommitDetail = async (
       ...meta,
       files: withStats,
     };
-    detailCache.set(cacheKey, { at: nowMs, detail });
+    setMapEntryWithLimit(detailCache, cacheKey, { at: nowMs, detail }, DETAIL_CACHE_MAX_ENTRIES);
     return detail;
   } catch {
     return null;
@@ -414,6 +423,6 @@ export const fetchCommitFile = async (
     binary,
     truncated,
   };
-  fileCache.set(cacheKey, { at: nowMs, file: diff });
+  setMapEntryWithLimit(fileCache, cacheKey, { at: nowMs, file: diff }, FILE_CACHE_MAX_ENTRIES);
   return diff;
 };

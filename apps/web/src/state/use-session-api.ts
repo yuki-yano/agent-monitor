@@ -2,7 +2,6 @@ import {
   type AllowedKey,
   type ApiEnvelope,
   type ApiError,
-  type ClientConfig,
   type CommandResponse,
   type CommitDetail,
   type CommitFileDiff,
@@ -21,7 +20,24 @@ import { useCallback, useMemo, useRef } from "react";
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import { expectField, extractErrorMessage, requestJson } from "@/lib/api-utils";
 
-import type { ApiAppType } from "../../../server/src/app";
+import type { ApiClientContract } from "./session-api-contract";
+import {
+  applyRefreshSessionsFailure,
+  applyRefreshSessionsSuccess,
+  buildCommitFileQuery,
+  buildCommitLogQuery,
+  buildDiffFileQuery,
+  buildForceQuery,
+  buildScreenErrorResponse,
+  buildScreenRequestJson,
+  buildScreenRequestKeys,
+  type RefreshSessionsResult,
+  resolveInflightScreenRequest,
+  resolveScreenMode,
+  resolveUnknownErrorMessage,
+  runCommandResponseSideEffects,
+  type SessionsResponseEnvelope,
+} from "./session-api-utils";
 
 type UseSessionApiParams = {
   token: string | null;
@@ -33,158 +49,7 @@ type UseSessionApiParams = {
   onHighlightCorrections: (config: HighlightCorrectionConfig) => void;
 };
 
-export type RefreshSessionsResult = {
-  ok: boolean;
-  status?: number;
-  authError?: boolean;
-  rateLimited?: boolean;
-};
-
-const buildRefreshFailureResult = (status: number): RefreshSessionsResult => ({
-  ok: false,
-  status,
-  authError: status === 401 || status === 403,
-  rateLimited: status === 429,
-});
-
-const resolveUnknownErrorMessage = (err: unknown, fallback: string) =>
-  err instanceof Error ? err.message : fallback;
-
-const buildScreenErrorResponse = ({
-  paneId,
-  mode,
-  message,
-  apiError,
-  buildApiError,
-}: {
-  paneId: string;
-  mode: "text" | "image";
-  message: string;
-  apiError?: ApiError;
-  buildApiError: (code: ApiError["code"], message: string) => ApiError;
-}): ScreenResponse => ({
-  ok: false,
-  paneId,
-  mode,
-  capturedAt: new Date().toISOString(),
-  error: apiError ?? buildApiError("INTERNAL", message),
-});
-
-const buildScreenRequestJson = (
-  options: { lines?: number; mode?: "text" | "image"; cursor?: string },
-  normalizedMode: "text" | "image",
-) => {
-  const json: { mode?: "text" | "image"; lines?: number; cursor?: string } = {
-    mode: options.mode,
-    lines: options.lines,
-  };
-  if (normalizedMode !== "image" && options.cursor) {
-    json.cursor = options.cursor;
-  }
-  return json;
-};
-
-const runCommandResponseSideEffects = ({
-  response,
-  onReadOnly,
-  isPaneMissingError,
-  onSessionRemoved,
-  paneId,
-}: {
-  response: CommandResponse;
-  onReadOnly: () => void;
-  isPaneMissingError: (error?: ApiError | null) => boolean;
-  onSessionRemoved: (paneId: string) => void;
-  paneId: string;
-}) => {
-  if (response.error?.code === "READ_ONLY") {
-    onReadOnly();
-  }
-  if (isPaneMissingError(response.error)) {
-    onSessionRemoved(paneId);
-  }
-};
-
-type SessionsResponseEnvelope = ApiEnvelope<{
-  sessions?: SessionSummary[];
-  clientConfig?: ClientConfig;
-}>;
-
-const applyRefreshSessionsSuccess = ({
-  res,
-  data,
-  onSessions,
-  onHighlightCorrections,
-  onConnectionIssue,
-}: {
-  res: Response;
-  data: SessionsResponseEnvelope;
-  onSessions: (sessions: SessionSummary[]) => void;
-  onHighlightCorrections: (config: HighlightCorrectionConfig) => void;
-  onConnectionIssue: (message: string | null) => void;
-}): RefreshSessionsResult => {
-  onSessions(data.sessions ?? []);
-  const nextHighlight = data.clientConfig?.screen?.highlightCorrection;
-  if (nextHighlight) {
-    onHighlightCorrections(nextHighlight);
-  }
-  onConnectionIssue(null);
-  return { ok: true, status: res.status };
-};
-
-const applyRefreshSessionsFailure = ({
-  res,
-  data,
-  onConnectionIssue,
-}: {
-  res: Response;
-  data: SessionsResponseEnvelope | null;
-  onConnectionIssue: (message: string | null) => void;
-}): RefreshSessionsResult => {
-  const fallback = res.ok ? API_ERROR_MESSAGES.invalidResponse : API_ERROR_MESSAGES.requestFailed;
-  onConnectionIssue(extractErrorMessage(res, data, fallback, { includeStatus: !res.ok }));
-  return buildRefreshFailureResult(res.status);
-};
-
-const resolveScreenMode = (options: { mode?: "text" | "image" }) => options.mode ?? "text";
-
-const buildScreenRequestKeys = ({
-  paneId,
-  normalizedMode,
-  lines,
-  cursor,
-}: {
-  paneId: string;
-  normalizedMode: "text" | "image";
-  lines?: number;
-  cursor?: string;
-}) => {
-  const cursorKey = normalizedMode === "text" ? (cursor ?? "") : "";
-  const linesKey = lines ?? "default";
-  const requestKey = `${paneId}:${normalizedMode}:${linesKey}:${cursorKey}`;
-  const fallbackKey =
-    normalizedMode === "text" && cursorKey ? `${paneId}:${normalizedMode}:${linesKey}:` : null;
-  return { requestKey, fallbackKey };
-};
-
-const resolveInflightScreenRequest = ({
-  inFlightMap,
-  requestKey,
-  fallbackKey,
-}: {
-  inFlightMap: Map<string, Promise<ScreenResponse>>;
-  requestKey: string;
-  fallbackKey: string | null;
-}) => {
-  const direct = inFlightMap.get(requestKey);
-  if (direct) {
-    return direct;
-  }
-  if (!fallbackKey) {
-    return null;
-  }
-  return inFlightMap.get(fallbackKey) ?? null;
-};
+export type { RefreshSessionsResult } from "./session-api-utils";
 
 export const useSessionApi = ({
   token,
@@ -236,9 +101,9 @@ export const useSessionApi = ({
   );
   const apiClient = useMemo(
     () =>
-      hc<ApiAppType>("/api", {
+      hc("/api", {
         headers: authHeaders,
-      }),
+      }) as unknown as ApiClientContract,
     [authHeaders],
   );
   const screenInFlightRef = useRef(new Map<string, Promise<ScreenResponse>>());
@@ -336,7 +201,7 @@ export const useSessionApi = ({
   const requestDiffSummary = useCallback(
     async (paneId: string, options?: { force?: boolean }) => {
       const param = { paneId: encodePaneId(paneId) };
-      const query = options?.force ? { force: "1" } : {};
+      const query = buildForceQuery(options);
       return requestSessionField<{ summary?: DiffSummary }, "summary">({
         paneId,
         request: apiClient.sessions[":paneId"].diff.$get({ param, query }),
@@ -356,13 +221,7 @@ export const useSessionApi = ({
       options?: { force?: boolean },
     ) => {
       const param = { paneId: encodePaneId(paneId) };
-      const query: { path: string; rev?: string; force?: string } = { path: filePath };
-      if (rev) {
-        query.rev = rev;
-      }
-      if (options?.force) {
-        query.force = "1";
-      }
+      const query = buildDiffFileQuery(filePath, rev, options);
       return requestSessionField<{ file?: DiffFile }, "file">({
         paneId,
         request: apiClient.sessions[":paneId"].diff.file.$get({ param, query }),
@@ -377,16 +236,7 @@ export const useSessionApi = ({
   const requestCommitLog = useCallback(
     async (paneId: string, options?: { limit?: number; skip?: number; force?: boolean }) => {
       const param = { paneId: encodePaneId(paneId) };
-      const query: { limit?: string; skip?: string; force?: string } = {};
-      if (options?.limit) {
-        query.limit = String(options.limit);
-      }
-      if (options?.skip) {
-        query.skip = String(options.skip);
-      }
-      if (options?.force) {
-        query.force = "1";
-      }
+      const query = buildCommitLogQuery(options);
       return requestSessionField<{ log?: CommitLog }, "log">({
         paneId,
         request: apiClient.sessions[":paneId"].commits.$get({ param, query }),
@@ -401,7 +251,7 @@ export const useSessionApi = ({
   const requestCommitDetail = useCallback(
     async (paneId: string, hash: string, options?: { force?: boolean }) => {
       const param = { paneId: encodePaneId(paneId), hash };
-      const query = options?.force ? { force: "1" } : {};
+      const query = buildForceQuery(options);
       return requestSessionField<{ commit?: CommitDetail }, "commit">({
         paneId,
         request: apiClient.sessions[":paneId"].commits[":hash"].$get({ param, query }),
@@ -416,10 +266,7 @@ export const useSessionApi = ({
   const requestCommitFile = useCallback(
     async (paneId: string, hash: string, path: string, options?: { force?: boolean }) => {
       const param = { paneId: encodePaneId(paneId), hash };
-      const query: { path: string; force?: string } = { path };
-      if (options?.force) {
-        query.force = "1";
-      }
+      const query = buildCommitFileQuery(path, options);
       return requestSessionField<{ file?: CommitFileDiff }, "file">({
         paneId,
         request: apiClient.sessions[":paneId"].commits[":hash"].file.$get({

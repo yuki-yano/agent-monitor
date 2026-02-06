@@ -1,11 +1,14 @@
 import { execa } from "execa";
 
+import { setMapEntryWithLimit } from "../cache.js";
 import { type AgentType, buildAgent, normalizeTty } from "./agent-resolver-utils.js";
 
 const runPs = async (args: string[], timeout: number) =>
   execa("ps", args, { reject: false, timeout });
 
 const processCacheTtlMs = 5000;
+const PROCESS_COMMAND_CACHE_MAX_ENTRIES = 1000;
+const TTY_AGENT_CACHE_MAX_ENTRIES = 500;
 const processCommandCache = new Map<number, { command: string; at: number }>();
 const ttyAgentCache = new Map<string, { agent: AgentType; at: number }>();
 const processSnapshotCache = {
@@ -75,7 +78,12 @@ export const getProcessCommand = async (pid: number | null) => {
     if (command.length === 0) {
       return null;
     }
-    processCommandCache.set(pid, { command, at: nowMs });
+    setMapEntryWithLimit(
+      processCommandCache,
+      pid,
+      { command, at: nowMs },
+      PROCESS_COMMAND_CACHE_MAX_ENTRIES,
+    );
     return command;
   } catch {
     return null;
@@ -146,7 +154,12 @@ export const getAgentFromTty = async (tty: string | null) => {
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
     const agent = buildAgent(lines.join(" "));
-    ttyAgentCache.set(normalized, { agent, at: nowMs });
+    setMapEntryWithLimit(
+      ttyAgentCache,
+      normalized,
+      { agent, at: nowMs },
+      TTY_AGENT_CACHE_MAX_ENTRIES,
+    );
     return agent;
   } catch {
     return "unknown" as const;

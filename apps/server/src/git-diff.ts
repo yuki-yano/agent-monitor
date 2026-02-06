@@ -3,12 +3,15 @@ import path from "node:path";
 
 import type { DiffFile, DiffFileStatus, DiffSummary, DiffSummaryFile } from "@vde-monitor/shared";
 
+import { setMapEntryWithLimit } from "./cache.js";
 import { isBinaryPatch, parseNumstat, parseNumstatLine, pickStatus } from "./git-parsers.js";
 import { resolveRepoRoot, runGit } from "./git-utils.js";
 
 const SUMMARY_TTL_MS = 3000;
 const FILE_TTL_MS = 3000;
 const MAX_PATCH_BYTES = 2_000_000;
+const SUMMARY_CACHE_MAX_ENTRIES = 200;
+const FILE_CACHE_MAX_ENTRIES = 500;
 
 const nowIso = () => new Date().toISOString();
 
@@ -279,7 +282,12 @@ export const fetchDiffSummary = async (
     const untrackedStats = await collectUntrackedStats(repoRoot, files);
     const withStats = attachFileStats(files, trackedStats, untrackedStats);
     const summary = buildDiffSummary(repoRoot, createRevision(statusOutput), withStats);
-    summaryCache.set(repoRoot, { at: nowMs, summary, statusOutput });
+    setMapEntryWithLimit(
+      summaryCache,
+      repoRoot,
+      { at: nowMs, summary, statusOutput },
+      SUMMARY_CACHE_MAX_ENTRIES,
+    );
     return summary;
   } catch {
     return buildDiffSummary(repoRoot, null, [], "error");
@@ -312,6 +320,11 @@ export const fetchDiffFile = async (
     patch = "";
   }
   const diffFile = buildDiffFileFromPatch(file, rev, patch, numstat);
-  fileCache.set(cacheKey, { at: nowMs, rev, file: diffFile });
+  setMapEntryWithLimit(
+    fileCache,
+    cacheKey,
+    { at: nowMs, rev, file: diffFile },
+    FILE_CACHE_MAX_ENTRIES,
+  );
   return diffFile;
 };

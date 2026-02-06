@@ -33,6 +33,14 @@ import {
   formatTimestamp,
   sumFileStats,
 } from "../sessionDetailUtils";
+import {
+  buildCommitListClassName,
+  buildRenderedPatches,
+  formatCommitCountDescription,
+  getCommits,
+  isCommitListEmpty,
+  shouldShowLoadMore,
+} from "./commit-section-utils";
 import { DiffPatch } from "./DiffPatch";
 
 type CommitSectionState = {
@@ -139,42 +147,6 @@ type CommitLoadMoreButtonProps = {
   commitLoadingMore: boolean;
   onLoadMore: () => void;
 };
-
-const formatCommitCountDescription = (commitLog: CommitLog | null) => {
-  const currentCount = commitLog?.commits.length ?? 0;
-  const totalCount = commitLog?.totalCount ?? currentCount;
-  const suffix = totalCount === 1 ? "" : "s";
-  return `${currentCount}/${totalCount} commit${suffix}`;
-};
-
-const buildRenderedPatches = (
-  commitFileOpen: Record<string, boolean>,
-  commitFileDetails: Record<string, CommitFileDiff>,
-) => {
-  const next: Record<string, string[]> = {};
-  Object.entries(commitFileOpen).forEach(([key, isOpen]) => {
-    if (!isOpen) return;
-    const patch = commitFileDetails[key]?.patch;
-    if (!patch) return;
-    next[key] = patch.split("\n");
-  });
-  return next;
-};
-
-const isCommitListEmpty = (commitLog: CommitLog | null) => {
-  if (!commitLog) return false;
-  return commitLog.commits.length === 0 && !commitLog.reason;
-};
-
-const shouldShowLoadMore = (commitLog: CommitLog | null, commitHasMore: boolean) => {
-  if (!commitLog || commitLog.reason) return false;
-  return commitHasMore;
-};
-
-const getCommits = (commitLog: CommitLog | null) => commitLog?.commits ?? [];
-
-const buildCommitListClassName = (commitLoading: boolean) =>
-  `relative ${commitLoading ? "min-h-[120px]" : ""}`;
 
 const buildCommitFilesSection = ({
   commitHash,

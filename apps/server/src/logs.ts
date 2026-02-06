@@ -37,6 +37,7 @@ export const createLogActivityPoller = (pollIntervalMs: number) => {
   const entries = new Map<string, { paneId: string; size: number }>();
   const listeners = new Set<(paneId: string, at: string) => void>();
   let timer: NodeJS.Timeout | null = null;
+  let pollRunning = false;
 
   const register = (paneId: string, filePath: string) => {
     if (!entries.has(filePath)) {
@@ -53,24 +54,35 @@ export const createLogActivityPoller = (pollIntervalMs: number) => {
     if (timer) {
       return;
     }
-    timer = setInterval(async () => {
-      await Promise.all(
-        Array.from(entries.entries()).map(async ([filePath, entry]) => {
-          const stat = await fs.stat(filePath).catch(() => null);
-          if (!stat) {
-            return;
-          }
-          if (stat.size < entry.size) {
-            entry.size = stat.size;
-            return;
-          }
-          if (stat.size > entry.size) {
-            entry.size = stat.size;
-            const at = new Date().toISOString();
-            listeners.forEach((listener) => listener(entry.paneId, at));
-          }
-        }),
-      );
+    const poll = async () => {
+      if (pollRunning) {
+        return;
+      }
+      pollRunning = true;
+      try {
+        await Promise.all(
+          Array.from(entries.entries()).map(async ([filePath, entry]) => {
+            const stat = await fs.stat(filePath).catch(() => null);
+            if (!stat) {
+              return;
+            }
+            if (stat.size < entry.size) {
+              entry.size = stat.size;
+              return;
+            }
+            if (stat.size > entry.size) {
+              entry.size = stat.size;
+              const at = new Date().toISOString();
+              listeners.forEach((listener) => listener(entry.paneId, at));
+            }
+          }),
+        );
+      } finally {
+        pollRunning = false;
+      }
+    };
+    timer = setInterval(() => {
+      void poll().catch(() => null);
     }, pollIntervalMs);
   };
 
@@ -88,6 +100,7 @@ export const createJsonlTailer = (pollIntervalMs: number) => {
   let offset = 0;
   let buffer = "";
   let timer: NodeJS.Timeout | null = null;
+  let pollRunning = false;
   const listeners = new Set<(line: string) => void>();
 
   const onLine = (listener: (line: string) => void) => {
@@ -99,33 +112,44 @@ export const createJsonlTailer = (pollIntervalMs: number) => {
     if (timer) {
       return;
     }
-    timer = setInterval(async () => {
-      const stat = await fs.stat(filePath).catch(() => null);
-      if (!stat) {
+    const poll = async () => {
+      if (pollRunning) {
         return;
       }
-      if (stat.size < offset) {
-        offset = 0;
-        buffer = "";
-      }
-      if (stat.size === offset) {
-        return;
-      }
-      const fd = await fs.open(filePath, "r");
-      const length = stat.size - offset;
-      const chunk = Buffer.alloc(length);
-      await fd.read(chunk, 0, length, offset);
-      await fd.close();
-      offset = stat.size;
-      buffer += chunk.toString("utf8");
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-      lines.forEach((line) => {
-        if (line.trim().length === 0) {
+      pollRunning = true;
+      try {
+        const stat = await fs.stat(filePath).catch(() => null);
+        if (!stat) {
           return;
         }
-        listeners.forEach((listener) => listener(line));
-      });
+        if (stat.size < offset) {
+          offset = 0;
+          buffer = "";
+        }
+        if (stat.size === offset) {
+          return;
+        }
+        const fd = await fs.open(filePath, "r");
+        const length = stat.size - offset;
+        const chunk = Buffer.alloc(length);
+        await fd.read(chunk, 0, length, offset);
+        await fd.close();
+        offset = stat.size;
+        buffer += chunk.toString("utf8");
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        lines.forEach((line) => {
+          if (line.trim().length === 0) {
+            return;
+          }
+          listeners.forEach((listener) => listener(line));
+        });
+      } finally {
+        pollRunning = false;
+      }
+    };
+    timer = setInterval(() => {
+      void poll().catch(() => null);
     }, pollIntervalMs);
   };
 

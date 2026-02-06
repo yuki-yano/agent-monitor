@@ -1,0 +1,396 @@
+import { useMemo } from "react";
+
+import type { SessionDetailViewProps } from "../SessionDetailView";
+
+export const useSessionDetailViewSectionProps = ({
+  meta,
+  sidebar,
+  screen,
+  controls,
+  diffs,
+  commits,
+  logs,
+  title,
+  actions,
+}: SessionDetailViewProps) => {
+  const { paneId, session, nowMs, connectionIssue, readOnly } = meta;
+  const { sessionGroups } = sidebar;
+  const {
+    mode,
+    screenLines,
+    imageBase64,
+    fallbackReason,
+    error,
+    isScreenLoading,
+    isAtBottom,
+    handleAtBottomChange,
+    handleUserScrollStateChange,
+    forceFollow,
+    scrollToBottom,
+    handleModeChange,
+    virtuosoRef,
+    scrollerRef,
+    handleRefreshScreen,
+  } = screen;
+  const {
+    textInputRef,
+    autoEnter,
+    shiftHeld,
+    ctrlHeld,
+    controlsOpen,
+    rawMode,
+    allowDangerKeys,
+    interactive,
+    handleSendKey,
+    handleSendText,
+    handleRawBeforeInput,
+    handleRawInput,
+    handleRawKeyDown,
+    handleRawCompositionStart,
+    handleRawCompositionEnd,
+    toggleAutoEnter,
+    toggleControls,
+    toggleShift,
+    toggleCtrl,
+    toggleRawMode,
+    toggleAllowDangerKeys,
+    handleTouchSession,
+  } = controls;
+  const {
+    diffSummary,
+    diffError,
+    diffLoading,
+    diffFiles,
+    diffOpen,
+    diffLoadingFiles,
+    refreshDiff,
+    toggleDiff,
+  } = diffs;
+  const {
+    commitLog,
+    commitError,
+    commitLoading,
+    commitLoadingMore,
+    commitHasMore,
+    commitDetails,
+    commitFileDetails,
+    commitFileOpen,
+    commitFileLoading,
+    commitOpen,
+    commitLoadingDetails,
+    copiedHash,
+    refreshCommitLog,
+    loadMoreCommits,
+    toggleCommit,
+    toggleCommitFile,
+    copyHash,
+  } = commits;
+  const {
+    quickPanelOpen,
+    logModalOpen,
+    selectedSession,
+    selectedLogLines,
+    selectedLogLoading,
+    selectedLogError,
+    openLogModal,
+    closeLogModal,
+    toggleQuickPanel,
+    closeQuickPanel,
+  } = logs;
+  const {
+    titleDraft,
+    titleEditing,
+    titleSaving,
+    titleError,
+    openTitleEditor,
+    closeTitleEditor,
+    updateTitleDraft,
+    saveTitle,
+    clearTitle,
+  } = title;
+  const { handleOpenHere, handleOpenInNewTab } = actions;
+
+  const diffSectionProps = useMemo(
+    () => ({
+      state: {
+        diffSummary,
+        diffError,
+        diffLoading,
+        diffFiles,
+        diffOpen,
+        diffLoadingFiles,
+      },
+      actions: {
+        onRefresh: refreshDiff,
+        onToggle: toggleDiff,
+      },
+    }),
+    [
+      diffSummary,
+      diffError,
+      diffLoading,
+      diffFiles,
+      diffOpen,
+      diffLoadingFiles,
+      refreshDiff,
+      toggleDiff,
+    ],
+  );
+
+  const commitSectionProps = useMemo(
+    () => ({
+      state: {
+        commitLog,
+        commitError,
+        commitLoading,
+        commitLoadingMore,
+        commitHasMore,
+        commitDetails,
+        commitFileDetails,
+        commitFileOpen,
+        commitFileLoading,
+        commitOpen,
+        commitLoadingDetails,
+        copiedHash,
+      },
+      actions: {
+        onRefresh: refreshCommitLog,
+        onLoadMore: loadMoreCommits,
+        onToggleCommit: toggleCommit,
+        onToggleCommitFile: toggleCommitFile,
+        onCopyHash: copyHash,
+      },
+    }),
+    [
+      commitLog,
+      commitError,
+      commitLoading,
+      commitLoadingMore,
+      commitHasMore,
+      commitDetails,
+      commitFileDetails,
+      commitFileOpen,
+      commitFileLoading,
+      commitOpen,
+      commitLoadingDetails,
+      copiedHash,
+      refreshCommitLog,
+      loadMoreCommits,
+      toggleCommit,
+      toggleCommitFile,
+      copyHash,
+    ],
+  );
+
+  const screenPanelProps = useMemo(
+    () => ({
+      state: {
+        mode,
+        connectionIssue,
+        fallbackReason,
+        error,
+        isScreenLoading,
+        imageBase64,
+        screenLines,
+        virtuosoRef,
+        scrollerRef,
+        isAtBottom,
+        forceFollow,
+        rawMode,
+        allowDangerKeys,
+      },
+      actions: {
+        onModeChange: handleModeChange,
+        onRefresh: handleRefreshScreen,
+        onAtBottomChange: handleAtBottomChange,
+        onScrollToBottom: scrollToBottom,
+        onUserScrollStateChange: handleUserScrollStateChange,
+      },
+    }),
+    [
+      mode,
+      connectionIssue,
+      fallbackReason,
+      error,
+      isScreenLoading,
+      imageBase64,
+      screenLines,
+      virtuosoRef,
+      scrollerRef,
+      isAtBottom,
+      forceFollow,
+      rawMode,
+      allowDangerKeys,
+      handleModeChange,
+      handleRefreshScreen,
+      handleAtBottomChange,
+      scrollToBottom,
+      handleUserScrollStateChange,
+    ],
+  );
+
+  const quickPanelProps = useMemo(
+    () => ({
+      state: {
+        open: quickPanelOpen,
+        sessionGroups,
+        allSessions: sessionGroups.flatMap((group) => group.sessions),
+        nowMs,
+        currentPaneId: paneId,
+      },
+      actions: {
+        onOpenLogModal: openLogModal,
+        onClose: closeQuickPanel,
+        onToggle: toggleQuickPanel,
+      },
+    }),
+    [quickPanelOpen, sessionGroups, nowMs, paneId, openLogModal, closeQuickPanel, toggleQuickPanel],
+  );
+
+  const logModalProps = useMemo(
+    () => ({
+      state: {
+        open: logModalOpen,
+        session: selectedSession,
+        logLines: selectedLogLines,
+        loading: selectedLogLoading,
+        error: selectedLogError,
+      },
+      actions: {
+        onClose: closeLogModal,
+        onOpenHere: handleOpenHere,
+        onOpenNewTab: handleOpenInNewTab,
+      },
+    }),
+    [
+      logModalOpen,
+      selectedSession,
+      selectedLogLines,
+      selectedLogLoading,
+      selectedLogError,
+      closeLogModal,
+      handleOpenHere,
+      handleOpenInNewTab,
+    ],
+  );
+
+  const sessionHeaderProps = useMemo(() => {
+    if (!session) {
+      return null;
+    }
+    return {
+      state: {
+        session,
+        readOnly,
+        connectionIssue,
+        nowMs,
+        titleDraft,
+        titleEditing,
+        titleSaving,
+        titleError,
+      },
+      actions: {
+        onTitleDraftChange: updateTitleDraft,
+        onTitleSave: saveTitle,
+        onTitleClear: clearTitle,
+        onOpenTitleEditor: openTitleEditor,
+        onCloseTitleEditor: closeTitleEditor,
+      },
+    };
+  }, [
+    session,
+    readOnly,
+    connectionIssue,
+    nowMs,
+    titleDraft,
+    titleEditing,
+    titleSaving,
+    titleError,
+    updateTitleDraft,
+    saveTitle,
+    clearTitle,
+    openTitleEditor,
+    closeTitleEditor,
+  ]);
+
+  const sessionSidebarProps = useMemo(
+    () => ({
+      state: {
+        sessionGroups,
+        nowMs,
+        currentPaneId: paneId,
+        className: "border-latte-surface1/80 h-full w-full rounded-none rounded-r-3xl border-r",
+      },
+      actions: {},
+    }),
+    [sessionGroups, nowMs, paneId],
+  );
+
+  const controlsPanelProps = useMemo(
+    () => ({
+      state: {
+        readOnly,
+        interactive,
+        textInputRef,
+        autoEnter,
+        controlsOpen,
+        rawMode,
+        allowDangerKeys,
+        shiftHeld,
+        ctrlHeld,
+      },
+      actions: {
+        onSendText: handleSendText,
+        onToggleAutoEnter: toggleAutoEnter,
+        onToggleControls: toggleControls,
+        onToggleRawMode: toggleRawMode,
+        onToggleAllowDangerKeys: toggleAllowDangerKeys,
+        onToggleShift: toggleShift,
+        onToggleCtrl: toggleCtrl,
+        onSendKey: handleSendKey,
+        onRawBeforeInput: handleRawBeforeInput,
+        onRawInput: handleRawInput,
+        onRawKeyDown: handleRawKeyDown,
+        onRawCompositionStart: handleRawCompositionStart,
+        onRawCompositionEnd: handleRawCompositionEnd,
+        onTouchSession: handleTouchSession,
+      },
+    }),
+    [
+      readOnly,
+      interactive,
+      textInputRef,
+      autoEnter,
+      controlsOpen,
+      rawMode,
+      allowDangerKeys,
+      shiftHeld,
+      ctrlHeld,
+      handleSendText,
+      toggleAutoEnter,
+      toggleControls,
+      toggleRawMode,
+      toggleAllowDangerKeys,
+      toggleShift,
+      toggleCtrl,
+      handleSendKey,
+      handleRawBeforeInput,
+      handleRawInput,
+      handleRawKeyDown,
+      handleRawCompositionStart,
+      handleRawCompositionEnd,
+      handleTouchSession,
+    ],
+  );
+
+  return {
+    diffSectionProps,
+    commitSectionProps,
+    screenPanelProps,
+    quickPanelProps,
+    logModalProps,
+    sessionHeaderProps,
+    sessionSidebarProps,
+    controlsPanelProps,
+  };
+};
