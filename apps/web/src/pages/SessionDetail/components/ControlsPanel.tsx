@@ -85,17 +85,19 @@ const KeyButton = ({
 );
 
 const RAW_MODE_INPUT_CLASS_DANGER =
-  "border-latte-red/90 bg-latte-base/90 ring-4 ring-latte-red/50 ring-offset-2 ring-offset-latte-base/70 shadow-[0_0_0_1px_rgb(var(--ctp-red)/0.25),0_0_24px_rgb(var(--ctp-red)/0.6),0_0_52px_rgb(var(--ctp-red)/0.28)]";
+  "border-latte-red/70 bg-latte-red/10 focus-within:border-latte-red/80 focus-within:ring-2 focus-within:ring-latte-red/30";
 const RAW_MODE_INPUT_CLASS_SAFE =
-  "border-latte-peach/90 bg-latte-base/90 ring-4 ring-latte-peach/55 ring-offset-2 ring-offset-latte-base/70 shadow-[0_0_0_1px_rgb(var(--ctp-peach)/0.25),0_0_24px_rgb(var(--ctp-peach)/0.6),0_0_52px_rgb(var(--ctp-peach)/0.28)]";
+  "border-latte-peach/60 bg-latte-peach/10 focus-within:border-latte-peach/70 focus-within:ring-2 focus-within:ring-latte-peach/20";
 const RAW_MODE_INPUT_CLASS_DEFAULT =
-  "focus-within:border-latte-lavender focus-within:ring-latte-lavender/30 focus-within:ring-2";
+  "border-latte-surface2/80 bg-latte-base/70 focus-within:border-latte-lavender focus-within:ring-latte-lavender/30 focus-within:ring-2";
 const RAW_MODE_TOGGLE_CLASS_DANGER =
-  "border-latte-red/85 bg-latte-red/20 text-latte-red ring-2 ring-latte-red/40 ring-offset-2 ring-offset-latte-base/70 shadow-[0_0_0_1px_rgb(var(--ctp-red)/0.3),0_0_16px_rgb(var(--ctp-red)/0.45)]";
+  "border-latte-red/70 bg-latte-red/20 text-latte-red shadow-none hover:border-latte-red/80 hover:bg-latte-red/25 focus-visible:ring-latte-red/30";
 const RAW_MODE_TOGGLE_CLASS_SAFE =
-  "border-latte-peach/85 bg-latte-peach/20 text-latte-peach ring-2 ring-latte-peach/45 ring-offset-2 ring-offset-latte-base/70 shadow-[0_0_0_1px_rgb(var(--ctp-peach)/0.3),0_0_16px_rgb(var(--ctp-peach)/0.45)]";
-const DANGER_TOGGLE_CLASS_ACTIVE = "border-latte-red/70 bg-latte-red/10 text-latte-red";
-const DANGER_TOGGLE_CLASS_DEFAULT = "border-latte-surface2/70 text-latte-subtext0";
+  "border-latte-peach/70 bg-latte-peach/10 text-latte-peach shadow-none hover:border-latte-peach/80 hover:bg-latte-peach/20 focus-visible:ring-latte-peach/30";
+const DANGER_TOGGLE_CLASS_ACTIVE =
+  "border-latte-red/85 bg-latte-red/30 text-latte-red shadow-none ring-1 ring-latte-red/40 hover:border-latte-red hover:bg-latte-red/40 focus-visible:ring-latte-red/45";
+const DANGER_TOGGLE_CLASS_DEFAULT =
+  "border-latte-surface2/70 bg-transparent text-latte-subtext0 shadow-none hover:border-latte-overlay1 hover:bg-latte-surface0/50 hover:text-latte-text";
 const MODIFIER_DOT_CLASS_ACTIVE = "bg-latte-lavender";
 const MODIFIER_DOT_CLASS_DEFAULT = "bg-latte-surface2";
 
@@ -236,7 +238,7 @@ export const ControlsPanel = ({ state, actions }: ControlsPanelProps) => {
       <div className="flex items-start gap-4">
         <div
           ref={inputWrapperRef}
-          className={`border-latte-surface2/80 bg-latte-base/70 min-h-[56px] min-w-0 flex-1 overflow-hidden rounded-2xl border transition ${
+          className={`min-h-[56px] min-w-0 flex-1 overflow-hidden rounded-2xl border transition ${
             rawModeInputClass
           }`}
         >
