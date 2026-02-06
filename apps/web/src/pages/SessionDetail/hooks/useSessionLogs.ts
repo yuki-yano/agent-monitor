@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { renderAnsiLines } from "@/lib/ansi";
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import type { Theme } from "@/lib/theme";
-import { useRestoreTrigger } from "@/lib/use-restore-trigger";
+import { useVisibilityPolling } from "@/lib/use-visibility-polling";
 
 import { logModalOpenAtom, quickPanelOpenAtom, selectedPaneIdAtom } from "../atoms/logAtoms";
 import { useScreenCache } from "./useScreenCache";
@@ -81,70 +81,28 @@ export const useSessionLogs = ({
     },
     [fetchScreen],
   );
+  const canPollLogs = useCallback(
+    () => connectionIssue !== API_ERROR_MESSAGES.unauthorized,
+    [connectionIssue],
+  );
+  const refreshSelectedLog = useCallback(() => {
+    if (!selectedPaneId) return;
+    void fetchLog(selectedPaneId);
+  }, [fetchLog, selectedPaneId]);
 
   useEffect(() => {
     if (!logModalOpen || !selectedPaneId) {
       return;
     }
     void fetchLog(selectedPaneId);
-    const intervalMs = 2000;
-    let intervalId: number | null = null;
-    const canPoll = () => {
-      if (document.hidden) return false;
-      if (connectionIssue === API_ERROR_MESSAGES.unauthorized) return false;
-      if (navigator.onLine === false) return false;
-      return true;
-    };
-    const stop = () => {
-      if (intervalId === null) return;
-      window.clearInterval(intervalId);
-      intervalId = null;
-    };
-    const start = () => {
-      if (intervalId !== null) return;
-      intervalId = window.setInterval(() => {
-        if (!canPoll()) {
-          stop();
-          return;
-        }
-        void fetchLog(selectedPaneId);
-      }, intervalMs);
-    };
-    const handleResume = () => {
-      if (!canPoll()) {
-        stop();
-        return;
-      }
-      void fetchLog(selectedPaneId);
-      start();
-    };
+  }, [fetchLog, logModalOpen, selectedPaneId]);
 
-    if (canPoll()) {
-      start();
-    }
-
-    window.addEventListener("visibilitychange", handleResume);
-    window.addEventListener("online", handleResume);
-    window.addEventListener("focus", handleResume);
-    window.addEventListener("offline", stop);
-
-    return () => {
-      stop();
-      window.removeEventListener("visibilitychange", handleResume);
-      window.removeEventListener("online", handleResume);
-      window.removeEventListener("focus", handleResume);
-      window.removeEventListener("offline", stop);
-    };
-  }, [connectionIssue, fetchLog, logModalOpen, selectedPaneId]);
-
-  useRestoreTrigger(() => {
-    if (!logModalOpen || !selectedPaneId) {
-      return;
-    }
-    if (connectionIssue === API_ERROR_MESSAGES.unauthorized) {
-      return;
-    }
-    void fetchLog(selectedPaneId);
+  useVisibilityPolling({
+    enabled: logModalOpen && Boolean(selectedPaneId),
+    intervalMs: 2000,
+    shouldPoll: canPollLogs,
+    onTick: refreshSelectedLog,
+    onResume: refreshSelectedLog,
   });
 
   useEffect(() => {

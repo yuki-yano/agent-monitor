@@ -130,32 +130,87 @@ export const useSessionApi = ({
     }
   }, [apiClient, onConnectionIssue, onHighlightCorrections, onSessions, token]);
 
-  const requestDiffSummary = useCallback(
-    async (paneId: string, options?: { force?: boolean }) => {
+  const requestSessionField = useCallback(
+    async <T, K extends keyof T>({
+      paneId,
+      request,
+      field,
+      fallbackMessage,
+      includeStatus,
+    }: {
+      paneId: string;
+      request: Promise<Response>;
+      field: K;
+      fallbackMessage: string;
+      includeStatus?: boolean;
+    }): Promise<NonNullable<T[K]>> => {
       ensureToken();
-      const param = { paneId: encodePaneId(paneId) };
-      const query = options?.force ? { force: "1" } : {};
       try {
-        const { res, data } = await requestJson<ApiEnvelope<{ summary?: DiffSummary }>>(
-          apiClient.sessions[":paneId"].diff.$get({ param, query }),
-        );
+        const { res, data } = await requestJson<ApiEnvelope<T>>(request);
         if (!res.ok) {
           handleSessionMissing(paneId, res, data);
-          const message = extractErrorMessage(res, data, API_ERROR_MESSAGES.diffSummary, {
-            includeStatus: true,
-          });
+          const message = extractErrorMessage(res, data, fallbackMessage, { includeStatus });
           throw new Error(message);
         }
-        const summary = expectField(res, data, "summary", API_ERROR_MESSAGES.diffSummary);
+        const value = expectField(res, data, field, fallbackMessage);
         onConnectionIssue(null);
-        return summary;
+        return value;
       } catch (err) {
-        const message = err instanceof Error ? err.message : API_ERROR_MESSAGES.diffSummary;
+        const message = err instanceof Error ? err.message : fallbackMessage;
         onConnectionIssue(message);
         throw err instanceof Error ? err : new Error(message);
       }
     },
-    [apiClient, ensureToken, handleSessionMissing, onConnectionIssue],
+    [ensureToken, handleSessionMissing, onConnectionIssue],
+  );
+
+  const mutateSession = useCallback(
+    async (paneId: string, request: Promise<Response>, fallbackMessage: string) => {
+      ensureToken();
+      const { res, data } = await requestJson<ApiEnvelope<{ session?: SessionSummary }>>(request);
+      if (!res.ok) {
+        notifyReadOnly(data);
+        const message = extractErrorMessage(res, data, fallbackMessage);
+        onConnectionIssue(message);
+        handleSessionMissing(paneId, res, data);
+        throw new Error(message);
+      }
+      if (!data) {
+        const message = fallbackMessage;
+        onConnectionIssue(message);
+        throw new Error(message);
+      }
+      if (data.session) {
+        onSessionUpdated(data.session);
+        onConnectionIssue(null);
+        return data.session;
+      }
+      await refreshSessions();
+      return null;
+    },
+    [
+      ensureToken,
+      handleSessionMissing,
+      notifyReadOnly,
+      onConnectionIssue,
+      onSessionUpdated,
+      refreshSessions,
+    ],
+  );
+
+  const requestDiffSummary = useCallback(
+    async (paneId: string, options?: { force?: boolean }) => {
+      const param = { paneId: encodePaneId(paneId) };
+      const query = options?.force ? { force: "1" } : {};
+      return requestSessionField<{ summary?: DiffSummary }, "summary">({
+        paneId,
+        request: apiClient.sessions[":paneId"].diff.$get({ param, query }),
+        field: "summary",
+        fallbackMessage: API_ERROR_MESSAGES.diffSummary,
+        includeStatus: true,
+      });
+    },
+    [apiClient, requestSessionField],
   );
 
   const requestDiffFile = useCallback(
@@ -165,7 +220,6 @@ export const useSessionApi = ({
       rev?: string | null,
       options?: { force?: boolean },
     ) => {
-      ensureToken();
       const param = { paneId: encodePaneId(paneId) };
       const query: { path: string; rev?: string; force?: string } = { path: filePath };
       if (rev) {
@@ -174,32 +228,19 @@ export const useSessionApi = ({
       if (options?.force) {
         query.force = "1";
       }
-      try {
-        const { res, data } = await requestJson<ApiEnvelope<{ file?: DiffFile }>>(
-          apiClient.sessions[":paneId"].diff.file.$get({ param, query }),
-        );
-        if (!res.ok) {
-          handleSessionMissing(paneId, res, data);
-          const message = extractErrorMessage(res, data, API_ERROR_MESSAGES.diffFile, {
-            includeStatus: true,
-          });
-          throw new Error(message);
-        }
-        const file = expectField(res, data, "file", API_ERROR_MESSAGES.diffFile);
-        onConnectionIssue(null);
-        return file;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : API_ERROR_MESSAGES.diffFile;
-        onConnectionIssue(message);
-        throw err instanceof Error ? err : new Error(message);
-      }
+      return requestSessionField<{ file?: DiffFile }, "file">({
+        paneId,
+        request: apiClient.sessions[":paneId"].diff.file.$get({ param, query }),
+        field: "file",
+        fallbackMessage: API_ERROR_MESSAGES.diffFile,
+        includeStatus: true,
+      });
     },
-    [apiClient, ensureToken, handleSessionMissing, onConnectionIssue],
+    [apiClient, requestSessionField],
   );
 
   const requestCommitLog = useCallback(
     async (paneId: string, options?: { limit?: number; skip?: number; force?: boolean }) => {
-      ensureToken();
       const param = { paneId: encodePaneId(paneId) };
       const query: { limit?: string; skip?: string; force?: string } = {};
       if (options?.limit) {
@@ -211,89 +252,51 @@ export const useSessionApi = ({
       if (options?.force) {
         query.force = "1";
       }
-      try {
-        const { res, data } = await requestJson<ApiEnvelope<{ log?: CommitLog }>>(
-          apiClient.sessions[":paneId"].commits.$get({ param, query }),
-        );
-        if (!res.ok) {
-          handleSessionMissing(paneId, res, data);
-          const message = extractErrorMessage(res, data, API_ERROR_MESSAGES.commitLog, {
-            includeStatus: true,
-          });
-          throw new Error(message);
-        }
-        const log = expectField(res, data, "log", API_ERROR_MESSAGES.commitLog);
-        onConnectionIssue(null);
-        return log;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : API_ERROR_MESSAGES.commitLog;
-        onConnectionIssue(message);
-        throw err instanceof Error ? err : new Error(message);
-      }
+      return requestSessionField<{ log?: CommitLog }, "log">({
+        paneId,
+        request: apiClient.sessions[":paneId"].commits.$get({ param, query }),
+        field: "log",
+        fallbackMessage: API_ERROR_MESSAGES.commitLog,
+        includeStatus: true,
+      });
     },
-    [apiClient, ensureToken, handleSessionMissing, onConnectionIssue],
+    [apiClient, requestSessionField],
   );
 
   const requestCommitDetail = useCallback(
     async (paneId: string, hash: string, options?: { force?: boolean }) => {
-      ensureToken();
       const param = { paneId: encodePaneId(paneId), hash };
       const query = options?.force ? { force: "1" } : {};
-      try {
-        const { res, data } = await requestJson<ApiEnvelope<{ commit?: CommitDetail }>>(
-          apiClient.sessions[":paneId"].commits[":hash"].$get({ param, query }),
-        );
-        if (!res.ok) {
-          handleSessionMissing(paneId, res, data);
-          const message = extractErrorMessage(res, data, API_ERROR_MESSAGES.commitDetail, {
-            includeStatus: true,
-          });
-          throw new Error(message);
-        }
-        const commit = expectField(res, data, "commit", API_ERROR_MESSAGES.commitDetail);
-        onConnectionIssue(null);
-        return commit;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : API_ERROR_MESSAGES.commitDetail;
-        onConnectionIssue(message);
-        throw err instanceof Error ? err : new Error(message);
-      }
+      return requestSessionField<{ commit?: CommitDetail }, "commit">({
+        paneId,
+        request: apiClient.sessions[":paneId"].commits[":hash"].$get({ param, query }),
+        field: "commit",
+        fallbackMessage: API_ERROR_MESSAGES.commitDetail,
+        includeStatus: true,
+      });
     },
-    [apiClient, ensureToken, handleSessionMissing, onConnectionIssue],
+    [apiClient, requestSessionField],
   );
 
   const requestCommitFile = useCallback(
     async (paneId: string, hash: string, path: string, options?: { force?: boolean }) => {
-      ensureToken();
       const param = { paneId: encodePaneId(paneId), hash };
       const query: { path: string; force?: string } = { path };
       if (options?.force) {
         query.force = "1";
       }
-      try {
-        const { res, data } = await requestJson<ApiEnvelope<{ file?: CommitFileDiff }>>(
-          apiClient.sessions[":paneId"].commits[":hash"].file.$get({
-            param,
-            query,
-          }),
-        );
-        if (!res.ok) {
-          handleSessionMissing(paneId, res, data);
-          const message = extractErrorMessage(res, data, API_ERROR_MESSAGES.commitFile, {
-            includeStatus: true,
-          });
-          throw new Error(message);
-        }
-        const file = expectField(res, data, "file", API_ERROR_MESSAGES.commitFile);
-        onConnectionIssue(null);
-        return file;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : API_ERROR_MESSAGES.commitFile;
-        onConnectionIssue(message);
-        throw err instanceof Error ? err : new Error(message);
-      }
+      return requestSessionField<{ file?: CommitFileDiff }, "file">({
+        paneId,
+        request: apiClient.sessions[":paneId"].commits[":hash"].file.$get({
+          param,
+          query,
+        }),
+        field: "file",
+        fallbackMessage: API_ERROR_MESSAGES.commitFile,
+        includeStatus: true,
+      });
     },
-    [apiClient, ensureToken, handleSessionMissing, onConnectionIssue],
+    [apiClient, requestSessionField],
   );
 
   const requestScreen = useCallback(
@@ -481,79 +484,29 @@ export const useSessionApi = ({
 
   const updateSessionTitle = useCallback(
     async (paneId: string, title: string | null) => {
-      ensureToken();
-      const { res, data } = await requestJson<ApiEnvelope<{ session?: SessionSummary }>>(
+      await mutateSession(
+        paneId,
         apiClient.sessions[":paneId"].title.$put({
           param: { paneId: encodePaneId(paneId) },
           json: { title },
         }),
+        API_ERROR_MESSAGES.updateTitle,
       );
-      if (!res.ok) {
-        notifyReadOnly(data);
-        const message = extractErrorMessage(res, data, API_ERROR_MESSAGES.updateTitle);
-        onConnectionIssue(message);
-        handleSessionMissing(paneId, res, data);
-        throw new Error(message);
-      }
-      if (!data) {
-        const message = API_ERROR_MESSAGES.updateTitle;
-        onConnectionIssue(message);
-        throw new Error(message);
-      }
-      if (data.session) {
-        onSessionUpdated(data.session);
-        onConnectionIssue(null);
-        return;
-      }
-      await refreshSessions();
     },
-    [
-      apiClient,
-      ensureToken,
-      handleSessionMissing,
-      notifyReadOnly,
-      onConnectionIssue,
-      onSessionUpdated,
-      refreshSessions,
-    ],
+    [apiClient, mutateSession],
   );
 
   const touchSession = useCallback(
     async (paneId: string) => {
-      ensureToken();
-      const { res, data } = await requestJson<ApiEnvelope<{ session?: SessionSummary }>>(
+      await mutateSession(
+        paneId,
         apiClient.sessions[":paneId"].touch.$post({
           param: { paneId: encodePaneId(paneId) },
         }),
+        API_ERROR_MESSAGES.updateActivity,
       );
-      if (!res.ok) {
-        notifyReadOnly(data);
-        const message = extractErrorMessage(res, data, API_ERROR_MESSAGES.updateActivity);
-        onConnectionIssue(message);
-        handleSessionMissing(paneId, res, data);
-        throw new Error(message);
-      }
-      if (!data) {
-        const message = API_ERROR_MESSAGES.updateActivity;
-        onConnectionIssue(message);
-        throw new Error(message);
-      }
-      if (data.session) {
-        onSessionUpdated(data.session);
-        onConnectionIssue(null);
-        return;
-      }
-      await refreshSessions();
     },
-    [
-      apiClient,
-      ensureToken,
-      handleSessionMissing,
-      notifyReadOnly,
-      onConnectionIssue,
-      onSessionUpdated,
-      refreshSessions,
-    ],
+    [apiClient, mutateSession],
   );
 
   return {

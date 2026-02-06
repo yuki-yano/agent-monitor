@@ -3,6 +3,7 @@ import { useAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
+import { useVisibilityPolling } from "@/lib/use-visibility-polling";
 
 import {
   diffErrorAtom,
@@ -106,6 +107,9 @@ export const useSessionDiffs = ({
       return;
     }
   }, [applyDiffSummary, paneId, requestDiffSummary, setDiffError]);
+  const pollDiffSummaryTick = useCallback(() => {
+    void pollDiffSummary();
+  }, [pollDiffSummary]);
 
   const loadDiffFile = useCallback(
     async (path: string) => {
@@ -149,18 +153,11 @@ export const useSessionDiffs = ({
     loadDiffSummary();
   }, [loadDiffSummary]);
 
-  useEffect(() => {
-    if (!paneId || !connected) {
-      return;
-    }
-    const intervalId = window.setInterval(() => {
-      if (document.hidden) return;
-      void pollDiffSummary();
-    }, AUTO_REFRESH_INTERVAL_MS);
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [connected, paneId, pollDiffSummary]);
+  useVisibilityPolling({
+    enabled: Boolean(paneId) && connected,
+    intervalMs: AUTO_REFRESH_INTERVAL_MS,
+    onTick: pollDiffSummaryTick,
+  });
 
   useEffect(() => {
     setDiffSummary(null);

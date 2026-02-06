@@ -3,16 +3,21 @@ import { renderHook } from "@testing-library/react";
 import type { CommitLog, DiffSummary } from "@vde-monitor/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import { requestJson } from "@/lib/api-utils";
 
 import { useSessionApi } from "./use-session-api";
 
 const mockPost = vi.fn(() => Promise.resolve(new Response()));
 const mockGet = vi.fn(() => Promise.resolve(new Response()));
+const mockPut = vi.fn(() => Promise.resolve(new Response()));
 const mockApiClient = {
   sessions: {
+    $get: mockGet,
     ":paneId": {
       screen: { $post: mockPost },
+      title: { $put: mockPut },
+      touch: { $post: mockPost },
       diff: {
         $get: mockGet,
         file: { $get: mockGet },
@@ -210,5 +215,123 @@ describe("useSessionApi", () => {
       "pane not found",
     );
     expect(onSessionRemoved).toHaveBeenCalledWith("pane-1");
+  });
+
+  it("removes session when diff summary endpoint returns 410", async () => {
+    const requestJsonMock = vi.mocked(requestJson);
+    const onSessionRemoved = vi.fn();
+    requestJsonMock.mockResolvedValueOnce({
+      res: new Response(null, { status: 410 }),
+      data: null,
+    });
+
+    const { result } = renderHook(() =>
+      useSessionApi({
+        token: "token",
+        onSessions: vi.fn(),
+        onConnectionIssue: vi.fn(),
+        onReadOnly: vi.fn(),
+        onSessionUpdated: vi.fn(),
+        onSessionRemoved,
+        onHighlightCorrections: vi.fn(),
+      }),
+    );
+
+    await expect(result.current.requestDiffSummary("pane-1")).rejects.toThrow(
+      `${API_ERROR_MESSAGES.diffSummary} (410)`,
+    );
+    expect(onSessionRemoved).toHaveBeenCalledWith("pane-1");
+  });
+
+  it("refreshes sessions when touch response has no session payload", async () => {
+    const requestJsonMock = vi.mocked(requestJson);
+    const onSessions = vi.fn();
+    const onSessionUpdated = vi.fn();
+    requestJsonMock
+      .mockResolvedValueOnce({
+        res: new Response(null, { status: 200 }),
+        data: {},
+      })
+      .mockResolvedValueOnce({
+        res: new Response(null, { status: 200 }),
+        data: { sessions: [] },
+      });
+
+    const { result } = renderHook(() =>
+      useSessionApi({
+        token: "token",
+        onSessions,
+        onConnectionIssue: vi.fn(),
+        onReadOnly: vi.fn(),
+        onSessionUpdated,
+        onSessionRemoved: vi.fn(),
+        onHighlightCorrections: vi.fn(),
+      }),
+    );
+
+    await expect(result.current.touchSession("pane-1")).resolves.toBeUndefined();
+    expect(requestJsonMock).toHaveBeenCalledTimes(2);
+    expect(onSessionUpdated).not.toHaveBeenCalled();
+    expect(onSessions).toHaveBeenCalledWith([]);
+  });
+
+  it("marks read-only and throws unauthorized on title update 403", async () => {
+    const requestJsonMock = vi.mocked(requestJson);
+    const onReadOnly = vi.fn();
+    const onConnectionIssue = vi.fn();
+    requestJsonMock.mockResolvedValueOnce({
+      res: new Response(null, { status: 403 }),
+      data: { error: { code: "READ_ONLY", message: "read-only mode" } },
+    });
+
+    const { result } = renderHook(() =>
+      useSessionApi({
+        token: "token",
+        onSessions: vi.fn(),
+        onConnectionIssue,
+        onReadOnly,
+        onSessionUpdated: vi.fn(),
+        onSessionRemoved: vi.fn(),
+        onHighlightCorrections: vi.fn(),
+      }),
+    );
+
+    await expect(result.current.updateSessionTitle("pane-1", "next")).rejects.toThrow(
+      API_ERROR_MESSAGES.unauthorized,
+    );
+    expect(onReadOnly).toHaveBeenCalledTimes(1);
+    expect(onConnectionIssue).toHaveBeenCalledWith(API_ERROR_MESSAGES.unauthorized);
+  });
+
+  it("refreshes sessions when title update response has no session payload", async () => {
+    const requestJsonMock = vi.mocked(requestJson);
+    const onSessions = vi.fn();
+    const onSessionUpdated = vi.fn();
+    requestJsonMock
+      .mockResolvedValueOnce({
+        res: new Response(null, { status: 200 }),
+        data: {},
+      })
+      .mockResolvedValueOnce({
+        res: new Response(null, { status: 200 }),
+        data: { sessions: [] },
+      });
+
+    const { result } = renderHook(() =>
+      useSessionApi({
+        token: "token",
+        onSessions,
+        onConnectionIssue: vi.fn(),
+        onReadOnly: vi.fn(),
+        onSessionUpdated,
+        onSessionRemoved: vi.fn(),
+        onHighlightCorrections: vi.fn(),
+      }),
+    );
+
+    await expect(result.current.updateSessionTitle("pane-1", "next")).resolves.toBeUndefined();
+    expect(requestJsonMock).toHaveBeenCalledTimes(2);
+    expect(onSessionUpdated).not.toHaveBeenCalled();
+    expect(onSessions).toHaveBeenCalledWith([]);
   });
 });

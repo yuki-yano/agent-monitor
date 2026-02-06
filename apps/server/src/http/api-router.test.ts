@@ -159,6 +159,39 @@ describe("createApiRouter", () => {
     expect(data.command.error.code).toBe("READ_ONLY");
   });
 
+  it("returns read-only error on title update", async () => {
+    const { api } = createTestContext({ readOnly: true });
+    const res = await api.request("/sessions/pane-1/title", {
+      method: "PUT",
+      headers: { ...authHeaders, "content-type": "application/json" },
+      body: JSON.stringify({ title: "new title" }),
+    });
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error.code).toBe("READ_ONLY");
+  });
+
+  it("returns read-only error on touch", async () => {
+    const { api } = createTestContext({ readOnly: true });
+    const res = await api.request("/sessions/pane-1/touch", {
+      method: "POST",
+      headers: authHeaders,
+    });
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error.code).toBe("READ_ONLY");
+  });
+
+  it("returns 404 when pane is missing on diff endpoint", async () => {
+    const { api } = createTestContext();
+    const res = await api.request("/sessions/missing/diff", {
+      headers: authHeaders,
+    });
+    expect(res.status).toBe(404);
+    const data = await res.json();
+    expect(data.error.code).toBe("INVALID_PANE");
+  });
+
   it("returns 400 when diff summary is unavailable", async () => {
     vi.mocked(fetchDiffSummary).mockResolvedValueOnce({
       repoRoot: null,
@@ -184,6 +217,21 @@ describe("createApiRouter", () => {
     });
     const { api } = createTestContext();
     const res = await api.request("/sessions/pane-1/commits/hash", {
+      headers: authHeaders,
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when commit log is unavailable on commit file endpoint", async () => {
+    vi.mocked(fetchCommitLog).mockResolvedValueOnce({
+      repoRoot: null,
+      rev: null,
+      generatedAt: new Date(0).toISOString(),
+      commits: [],
+      reason: "not_git",
+    });
+    const { api } = createTestContext();
+    const res = await api.request("/sessions/pane-1/commits/hash/file?path=README.md", {
       headers: authHeaders,
     });
     expect(res.status).toBe(400);

@@ -23,7 +23,7 @@ import {
 } from "react";
 
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
-import { useRestoreTrigger } from "@/lib/use-restore-trigger";
+import { useVisibilityPolling } from "@/lib/use-visibility-polling";
 
 import { type RefreshSessionsResult, useSessionApi } from "./use-session-api";
 import { useSessionStore } from "./use-session-store";
@@ -190,12 +190,9 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     void refreshSessions();
   }, [refreshSessions, token]);
 
-  useRestoreTrigger(() => {
-    if (!hasToken || authBlocked) {
-      return;
-    }
+  const pollSessions = useCallback(() => {
     void refreshSessions();
-  });
+  }, [refreshSessions]);
 
   useEffect(() => {
     if (!hasToken || authBlocked) {
@@ -211,58 +208,12 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [connectionIssue]);
 
-  useEffect(() => {
-    if (!hasToken || authBlocked) {
-      return;
-    }
-    const intervalMs = SESSION_POLL_INTERVAL_MS + pollBackoffMs;
-    let intervalId: number | null = null;
-    const canPoll = () => {
-      if (document.hidden) return false;
-      if (navigator.onLine === false) return false;
-      return true;
-    };
-    const stop = () => {
-      if (intervalId === null) return;
-      window.clearInterval(intervalId);
-      intervalId = null;
-    };
-    const start = () => {
-      if (intervalId !== null) return;
-      intervalId = window.setInterval(() => {
-        if (!canPoll()) {
-          stop();
-          return;
-        }
-        void refreshSessions();
-      }, intervalMs);
-    };
-    const handleResume = () => {
-      if (!canPoll()) {
-        stop();
-        return;
-      }
-      void refreshSessions();
-      start();
-    };
-
-    if (canPoll()) {
-      start();
-    }
-
-    window.addEventListener("visibilitychange", handleResume);
-    window.addEventListener("online", handleResume);
-    window.addEventListener("focus", handleResume);
-    window.addEventListener("offline", stop);
-
-    return () => {
-      stop();
-      window.removeEventListener("visibilitychange", handleResume);
-      window.removeEventListener("online", handleResume);
-      window.removeEventListener("focus", handleResume);
-      window.removeEventListener("offline", stop);
-    };
-  }, [authBlocked, hasToken, pollBackoffMs, refreshSessions]);
+  useVisibilityPolling({
+    enabled: hasToken && !authBlocked,
+    intervalMs: SESSION_POLL_INTERVAL_MS + pollBackoffMs,
+    onTick: pollSessions,
+    onResume: pollSessions,
+  });
 
   useEffect(() => {
     setAuthBlocked(false);

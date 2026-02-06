@@ -3,6 +3,7 @@ import { useAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
+import { useVisibilityPolling } from "@/lib/use-visibility-polling";
 
 import { type CommitState, commitStateAtom, initialCommitState } from "../atoms/commitAtoms";
 import { AUTO_REFRESH_INTERVAL_MS, buildCommitLogSignature } from "../sessionDetailUtils";
@@ -277,6 +278,9 @@ export const useSessionCommits = ({
       return;
     }
   }, [applyCommitLog, commitPageSize, dispatch, paneId, requestCommitLog]);
+  const pollCommitLogTick = useCallback(() => {
+    void pollCommitLog();
+  }, [pollCommitLog]);
 
   const toggleCommit = useCallback(
     (hash: string) => {
@@ -353,18 +357,11 @@ export const useSessionCommits = ({
     loadCommitLog({ force: true });
   }, [loadCommitLog]);
 
-  useEffect(() => {
-    if (!paneId || !connected) {
-      return;
-    }
-    const intervalId = window.setInterval(() => {
-      if (document.hidden) return;
-      void pollCommitLog();
-    }, AUTO_REFRESH_INTERVAL_MS);
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [connected, paneId, pollCommitLog]);
+  useVisibilityPolling({
+    enabled: Boolean(paneId) && connected,
+    intervalMs: AUTO_REFRESH_INTERVAL_MS,
+    onTick: pollCommitLogTick,
+  });
 
   useEffect(() => {
     return () => {

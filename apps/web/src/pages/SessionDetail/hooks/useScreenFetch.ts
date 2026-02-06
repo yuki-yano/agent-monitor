@@ -13,7 +13,7 @@ import {
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import { applyScreenDeltas } from "@/lib/screen-delta";
 import type { ScreenLoadingEvent, ScreenMode } from "@/lib/screen-loading";
-import { useRestoreTrigger } from "@/lib/use-restore-trigger";
+import { useVisibilityPolling } from "@/lib/use-visibility-polling";
 
 import { screenErrorAtom, screenFallbackReasonAtom } from "../atoms/screenAtoms";
 import { DISCONNECTED_MESSAGE } from "../sessionDetailUtils";
@@ -79,6 +79,10 @@ export const useScreenFetch = ({
   const [error, setError] = useAtom(screenErrorAtom);
   const refreshInFlightRef = useRef<null | { id: number; mode: ScreenMode }>(null);
   const refreshRequestIdRef = useRef(0);
+  const canPollScreen = useCallback(
+    () => connectionIssue !== API_ERROR_MESSAGES.unauthorized,
+    [connectionIssue],
+  );
 
   const updateImageScreen = useCallback(
     (nextImage: string | null) => {
@@ -214,20 +218,13 @@ export const useScreenFetch = ({
     setFallbackReason,
     updateImageScreen,
   ]);
+  const pollScreen = useCallback(() => {
+    void refreshScreen();
+  }, [refreshScreen]);
 
   useEffect(() => {
     refreshScreen();
   }, [refreshScreen]);
-
-  useRestoreTrigger(() => {
-    if (!paneId || !connected) {
-      return;
-    }
-    if (connectionIssue === API_ERROR_MESSAGES.unauthorized) {
-      return;
-    }
-    void refreshScreen();
-  });
 
   useEffect(() => {
     if (!connected) {
@@ -244,59 +241,13 @@ export const useScreenFetch = ({
     }
   }, [connected, connectionIssue, dispatchScreenLoading, error, modeSwitchRef, setError]);
 
-  useEffect(() => {
-    if (!paneId || !connected) {
-      return;
-    }
-    const intervalMs = mode === "image" ? 2000 : 1000;
-    let intervalId: number | null = null;
-    const canPoll = () => {
-      if (document.hidden) return false;
-      if (connectionIssue === API_ERROR_MESSAGES.unauthorized) return false;
-      if (navigator.onLine === false) return false;
-      return true;
-    };
-    const stop = () => {
-      if (intervalId === null) return;
-      window.clearInterval(intervalId);
-      intervalId = null;
-    };
-    const start = () => {
-      if (intervalId !== null) return;
-      intervalId = window.setInterval(() => {
-        if (!canPoll()) {
-          stop();
-          return;
-        }
-        refreshScreen();
-      }, intervalMs);
-    };
-    const handleResume = () => {
-      if (!canPoll()) {
-        stop();
-        return;
-      }
-      refreshScreen();
-      start();
-    };
-
-    if (canPoll()) {
-      start();
-    }
-
-    window.addEventListener("visibilitychange", handleResume);
-    window.addEventListener("online", handleResume);
-    window.addEventListener("focus", handleResume);
-    window.addEventListener("offline", stop);
-
-    return () => {
-      stop();
-      window.removeEventListener("visibilitychange", handleResume);
-      window.removeEventListener("online", handleResume);
-      window.removeEventListener("focus", handleResume);
-      window.removeEventListener("offline", stop);
-    };
-  }, [connected, connectionIssue, mode, paneId, refreshScreen]);
+  useVisibilityPolling({
+    enabled: Boolean(paneId) && connected,
+    intervalMs: mode === "image" ? 2000 : 1000,
+    shouldPoll: canPollScreen,
+    onTick: pollScreen,
+    onResume: pollScreen,
+  });
 
   return {
     refreshScreen,

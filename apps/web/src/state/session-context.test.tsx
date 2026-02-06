@@ -27,10 +27,6 @@ vi.mock("./use-session-token", () => ({
   useSessionToken: () => ({ token: "token", setToken: vi.fn() }),
 }));
 
-vi.mock("@/lib/use-restore-trigger", () => ({
-  useRestoreTrigger: () => {},
-}));
-
 describe("SessionProvider", () => {
   afterEach(() => {
     vi.restoreAllMocks();
