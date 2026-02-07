@@ -115,6 +115,24 @@ export const useSessionControls = ({
   const [allowDangerKeys, setAllowDangerKeys] = useAtom(controlsAllowDangerKeysAtom);
 
   useEffect(() => {
+    prevAutoEnterRef.current = null;
+    setAutoEnter(true);
+    setShiftHeld(false);
+    setCtrlHeld(false);
+    setControlsOpen(false);
+    setRawMode(false);
+    setAllowDangerKeys(false);
+  }, [
+    paneId,
+    setAllowDangerKeys,
+    setAutoEnter,
+    setControlsOpen,
+    setCtrlHeld,
+    setRawMode,
+    setShiftHeld,
+  ]);
+
+  useEffect(() => {
     if (!rawMode && prevAutoEnterRef.current !== null) {
       setAutoEnter(prevAutoEnterRef.current);
       prevAutoEnterRef.current = null;

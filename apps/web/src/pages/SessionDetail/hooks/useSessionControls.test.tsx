@@ -671,4 +671,58 @@ describe("useSessionControls", () => {
     expect(result.current.rawMode).toBe(false);
     expect(result.current.autoEnter).toBe(true);
   });
+
+  it("resets prompt input mode state when pane changes", () => {
+    const sendText = vi.fn().mockResolvedValue({ ok: true });
+    const sendKeys = vi.fn().mockResolvedValue({ ok: true });
+    const sendRaw = vi.fn().mockResolvedValue({ ok: true });
+    const setScreenError = vi.fn();
+    const scrollToBottom = vi.fn();
+
+    const wrapper = createWrapper();
+    const { result, rerender } = renderHook(
+      ({ paneId }: { paneId: string }) =>
+        useSessionControls({
+          paneId,
+          readOnly: false,
+          mode: "text",
+          sendText,
+          sendKeys,
+          sendRaw,
+          setScreenError,
+          scrollToBottom,
+        }),
+      {
+        wrapper,
+        initialProps: { paneId: "pane-1" },
+      },
+    );
+
+    act(() => {
+      result.current.toggleAutoEnter();
+      result.current.toggleControls();
+      result.current.toggleShift();
+      result.current.toggleCtrl();
+      result.current.toggleRawMode();
+      result.current.toggleAllowDangerKeys();
+    });
+
+    expect(result.current.autoEnter).toBe(false);
+    expect(result.current.controlsOpen).toBe(true);
+    expect(result.current.shiftHeld).toBe(true);
+    expect(result.current.ctrlHeld).toBe(true);
+    expect(result.current.rawMode).toBe(true);
+    expect(result.current.allowDangerKeys).toBe(true);
+
+    act(() => {
+      rerender({ paneId: "pane-2" });
+    });
+
+    expect(result.current.autoEnter).toBe(true);
+    expect(result.current.controlsOpen).toBe(false);
+    expect(result.current.shiftHeld).toBe(false);
+    expect(result.current.ctrlHeld).toBe(false);
+    expect(result.current.rawMode).toBe(false);
+    expect(result.current.allowDangerKeys).toBe(false);
+  });
 });
