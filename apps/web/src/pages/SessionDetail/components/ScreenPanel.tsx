@@ -203,7 +203,7 @@ const VirtuosoList = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     <div
       ref={ref}
       {...props}
-      className={`text-latte-text w-max min-w-max px-2 py-2 font-mono text-xs ${className ?? ""}`}
+      className={`text-latte-text w-max min-w-full px-2 py-2 font-mono text-xs ${className ?? ""}`}
     />
   ),
 );

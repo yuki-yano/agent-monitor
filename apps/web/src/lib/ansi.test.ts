@@ -21,6 +21,42 @@ describe("renderAnsiLines", () => {
     expect(lines[3]).toContain('class="text-latte-text"');
   });
 
+  it("normalizes Claude unicode table lines into width-agnostic rows", () => {
+    const text = [
+      "  ┌──────────┬──────────────┐",
+      "  │ ファイル │ 役割         │",
+      "  ├──────────┼──────────────┤",
+      "  │ foo.ts   │ メインページ │",
+      "  └──────────┴──────────────┘",
+    ].join("\n");
+    const lines = renderAnsiLines(text, "latte", { agent: "claude" });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('class="vde-unicode-table"');
+    expect(lines[0]).toContain('class="vde-unicode-table-header"');
+    expect(lines[0]).toContain("<colgroup>");
+    expect(lines[0]).toContain("foo.ts");
+    expect(lines[0]).toContain("メインページ");
+    expect(lines[0]).not.toContain("&#x250C;");
+  });
+
+  it("keeps unicode table borders for codex agent", () => {
+    const text = ["┌──┐", "│A │", "└──┘"].join("\n");
+    const lines = renderAnsiLines(text, "latte", { agent: "codex" });
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toContain("&#x250C;");
+    expect(lines[1]).toContain("&#x2502;");
+    expect(lines[0]).not.toContain('class="vde-unicode-table"');
+  });
+
+  it("normalizes unicode table lines for unknown agent", () => {
+    const text = ["┌──┬──┐", "│A │B │", "├──┼──┤", "│1 │2 │", "└──┴──┘"].join("\n");
+    const lines = renderAnsiLines(text, "latte", { agent: "unknown" });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('class="vde-unicode-table"');
+    expect(lines[0]).toContain('class="vde-unicode-table-cell-left">A</td>');
+    expect(lines[0]).toContain('class="vde-unicode-table-cell-left">2</td>');
+  });
+
   it("keeps wrapped Claude diff lines styled with the diff marker", () => {
     const text = [
       "  98 - very-long-line",

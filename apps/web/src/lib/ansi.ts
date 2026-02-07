@@ -8,9 +8,12 @@ import { applyClaudeDiffMask, buildClaudeDiffMask, renderClaudeDiffLine } from "
 import { blendRgb, contrastRatio, luminance, parseColor } from "./ansi-colors";
 import {
   ensureLineContent,
+  isUnicodeTableHtmlLine,
+  normalizeUnicodeTableLines,
   replaceBackgroundColors,
   splitLines,
   stripAnsi,
+  unwrapUnicodeTableHtmlLine,
 } from "./ansi-text-utils";
 
 const catppuccinLatteAnsi: Record<number, string> = {
@@ -232,6 +235,9 @@ const renderDefaultLines = (
   shouldApplyCodexHighlight: boolean,
 ): string[] => {
   const rendered = lines.map((line) => {
+    if (isUnicodeTableHtmlLine(line)) {
+      return ensureLineContent(unwrapUnicodeTableHtmlLine(line));
+    }
     const html = convertAnsiLineToHtml(converter, line, theme, options);
     const normalized = shouldApplyCodexHighlight
       ? normalizeCodexBackgrounds(html, theme, options)
@@ -247,10 +253,13 @@ const renderClaudeLines = (
   theme: Theme,
   options: RenderAnsiOptions | undefined,
 ): string[] => {
-  const plainLines = lines.map(stripAnsi);
+  const plainLines = lines.map((line) => (isUnicodeTableHtmlLine(line) ? "" : stripAnsi(line)));
   const diffMask = buildClaudeDiffMask(plainLines);
   const maskedHtml = applyClaudeDiffMask(plainLines, diffMask);
   return lines.map((line, index) => {
+    if (isUnicodeTableHtmlLine(line)) {
+      return ensureLineContent(unwrapUnicodeTableHtmlLine(line));
+    }
     if (!diffMask[index]) {
       const html = convertAnsiLineToHtml(converter, line, theme, options);
       return ensureLineContent(html);
@@ -273,10 +282,18 @@ export const renderAnsiLines = (
 ): string[] => {
   const converter = buildAnsiToHtml(theme, { stream: false });
   const lines = splitLines(text);
+  const shouldNormalizeUnicodeTable = options?.agent === "claude" || options?.agent === "unknown";
+  const normalizedLines = shouldNormalizeUnicodeTable ? normalizeUnicodeTableLines(lines) : lines;
   const shouldApplyCodexHighlight = shouldApplyHighlight(options, "codex");
   const shouldApplyClaudeHighlight = shouldApplyHighlight(options, "claude");
   if (!shouldApplyClaudeHighlight) {
-    return renderDefaultLines(lines, converter, theme, options, shouldApplyCodexHighlight);
+    return renderDefaultLines(
+      normalizedLines,
+      converter,
+      theme,
+      options,
+      shouldApplyCodexHighlight,
+    );
   }
-  return renderClaudeLines(lines, converter, theme, options);
+  return renderClaudeLines(normalizedLines, converter, theme, options);
 };

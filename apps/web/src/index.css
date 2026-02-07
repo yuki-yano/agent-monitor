@@ -114,8 +114,50 @@ body::before {
 
 .font-mono {
   font-family:
-    ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
-    monospace;
+    ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "M PLUS 1 Code", "Liberation Mono",
+    "Courier New", monospace;
+}
+
+.vde-unicode-table-wrap {
+  display: inline-block;
+  vertical-align: top;
+}
+
+.vde-unicode-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: max-content;
+  min-width: max-content;
+  font-family:
+    ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "M PLUS 1 Code", "Liberation Mono",
+    "Courier New", monospace;
+  border: 1px solid rgb(var(--ctp-surface2));
+  font-kerning: none;
+  font-variant-ligatures: none;
+}
+
+.vde-unicode-table td {
+  border: 1px solid rgb(var(--ctp-surface2));
+  padding: 0.125rem 0.5ch;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+.vde-unicode-table td.vde-unicode-table-cell-left {
+  text-align: left;
+}
+
+.vde-unicode-table td.vde-unicode-table-cell-center {
+  text-align: center;
+}
+
+.vde-unicode-table td.vde-unicode-table-cell-right {
+  text-align: right;
+}
+
+.vde-unicode-table tr.vde-unicode-table-header td {
+  font-weight: 600;
 }
 
 @keyframes pulse-soft {
