@@ -108,7 +108,7 @@ export const SessionCard = ({ session, nowMs }: SessionCardProps) => {
             {sessionTitle}
           </h3>
           <p
-            className="text-latte-subtext0 mt-1.5 line-clamp-2 font-mono text-[11px] leading-normal tracking-tight"
+            className="text-latte-subtext0 mt-1 line-clamp-2 font-mono text-[11px] leading-normal tracking-tight"
             title={session.currentPath ?? undefined}
           >
             {formatPath(session.currentPath)}

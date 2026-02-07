@@ -396,7 +396,7 @@ export const DiffSection = memo(({ state, actions }: DiffSectionProps) => {
   );
 
   return (
-    <Card className="flex flex-col gap-3">
+    <Card className="flex flex-col gap-2">
       <SectionHeader
         title="Changes"
         description={

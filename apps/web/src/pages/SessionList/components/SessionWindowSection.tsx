@@ -20,7 +20,7 @@ export const SessionWindowSection = ({ group, totalPanes, nowMs }: SessionWindow
             <div className="bg-latte-sky/25 pointer-events-none absolute -bottom-3 -right-3 h-8 w-8 rounded-full blur-xl" />
             <LayoutGrid className="text-latte-sky h-5 w-5" />
           </div>
-          <div className="min-w-0 space-y-2">
+          <div className="min-w-0 space-y-0.5">
             <p className="font-display text-latte-text truncate text-base font-semibold leading-snug">
               Window {group.windowIndex}
             </p>

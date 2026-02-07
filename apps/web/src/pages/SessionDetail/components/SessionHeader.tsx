@@ -208,7 +208,7 @@ const SessionTitleArea = ({
   const showClearTitle = Boolean(sessionCustomTitle && !readOnly && !titleEditing);
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1">
         {titleEditing ? (
           <SessionTitleInput
             titleDraft={titleDraft}

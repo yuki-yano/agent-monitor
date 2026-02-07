@@ -42,7 +42,7 @@ export const SessionGroupSection = ({ group, nowMs, allSessions }: SessionGroupS
             <div className="bg-latte-lavender/30 pointer-events-none absolute -bottom-3 -right-3 h-8 w-8 rounded-full blur-xl" />
             <FolderGit2 className="text-latte-lavender h-5 w-5" />
           </div>
-          <div className="min-w-0 space-y-2">
+          <div className="min-w-0 space-y-1">
             <p className="font-display text-latte-text truncate text-lg font-semibold leading-snug">
               {repoName}
             </p>
