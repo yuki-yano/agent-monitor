@@ -223,10 +223,6 @@ export const StateTimelineSection = ({ state, actions }: StateTimelineSectionPro
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
-        <TagPill tone="meta">Range {timelineRange}</TagPill>
-        {compactView && timelineDisplay.condensedCount > 0 ? (
-          <TagPill tone="meta">Condensed {timelineDisplay.condensedCount}</TagPill>
-        ) : null}
         <TagPill tone="meta">Waiting {formatDurationMs(waitingMs)}</TagPill>
         <TagPill tone="meta">Running {formatDurationMs(timelineDisplay.totalsMs.RUNNING)}</TagPill>
       </div>
