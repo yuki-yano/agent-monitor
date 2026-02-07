@@ -16,6 +16,7 @@ import { SessionSidebar } from "./SessionSidebar";
 const mockSessionsContext = {
   connected: true,
   connectionIssue: null,
+  requestStateTimeline: vi.fn(),
   requestScreen: vi.fn(),
   highlightCorrections: { codex: true, claude: true },
 };

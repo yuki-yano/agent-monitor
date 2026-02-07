@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type { SessionSummary } from "@vde-monitor/shared";
+import type { SessionStateTimeline, SessionSummary } from "@vde-monitor/shared";
 import { createStore, Provider as JotaiProvider } from "jotai";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -41,6 +41,41 @@ vi.mock("@/lib/ansi", () => ({
 }));
 
 describe("useSidebarPreview", () => {
+  const createTimeline = (paneId: string): SessionStateTimeline => ({
+    paneId,
+    now: new Date(0).toISOString(),
+    range: "1h",
+    totalsMs: {
+      RUNNING: 1000,
+      WAITING_INPUT: 0,
+      WAITING_PERMISSION: 0,
+      SHELL: 0,
+      UNKNOWN: 0,
+    },
+    current: {
+      id: "timeline-current",
+      paneId,
+      state: "RUNNING",
+      reason: "running",
+      startedAt: new Date(0).toISOString(),
+      endedAt: null,
+      durationMs: 1000,
+      source: "poll",
+    },
+    items: [
+      {
+        id: "timeline-current",
+        paneId,
+        state: "RUNNING",
+        reason: "running",
+        startedAt: new Date(0).toISOString(),
+        endedAt: null,
+        durationMs: 1000,
+        source: "poll",
+      },
+    ],
+  });
+
   afterEach(() => {
     prefetchPreview.mockClear();
     previewCache["pane-1"]!.screen = "line1\nline2";
@@ -80,6 +115,7 @@ describe("useSidebarPreview", () => {
     const sessionIndex = new Map<string, SessionSummary>([[session.paneId, session]]);
     const resolvedTheme = "latte" as Theme;
     const requestScreen = vi.fn();
+    const requestStateTimeline = vi.fn((paneId: string) => Promise.resolve(createTimeline(paneId)));
     const store = createStore();
     store.set(sidebarHoveredPaneIdAtom, null);
     store.set(sidebarPreviewFrameAtom, null);
@@ -94,6 +130,7 @@ describe("useSidebarPreview", () => {
           currentPaneId: null,
           connected: true,
           connectionIssue: null,
+          requestStateTimeline,
           requestScreen,
           resolvedTheme,
         }),
@@ -126,12 +163,18 @@ describe("useSidebarPreview", () => {
     await waitFor(() => {
       expect(result.current.preview).not.toBeNull();
     });
+    await waitFor(() => {
+      expect(result.current.preview?.timeline?.paneId).toBe("pane-1");
+    });
 
     expect(result.current.preview?.title).toBe("Custom Title");
     expect(result.current.preview?.sessionName).toBe("session-1");
     expect(result.current.preview?.windowIndex).toBe(1);
     expect(result.current.preview?.paneId).toBe("pane-1");
     expect(result.current.preview?.lines).toEqual(["line1", "line2"]);
+    expect(result.current.preview?.timeline?.paneId).toBe("pane-1");
+    expect(result.current.preview?.timelineLoading).toBe(false);
+    expect(result.current.preview?.timelineError).toBeNull();
     expect(prefetchPreview).toHaveBeenCalledWith("pane-1");
   });
 
@@ -199,11 +242,15 @@ describe("useSidebarPreview", () => {
     await waitFor(() => {
       expect(result.current.preview).not.toBeNull();
     });
+    await waitFor(() => {
+      expect(result.current.preview?.timeline?.paneId).toBe("pane-2");
+    });
 
     expect(result.current.preview?.title).toBe("Session");
     expect(result.current.preview?.sessionName).toBeNull();
     expect(result.current.preview?.windowIndex).toBeNull();
     expect(result.current.preview?.lines).toEqual(["No log data"]);
+    expect(result.current.preview?.timeline?.paneId).toBe("pane-2");
     expect(prefetchPreview).toHaveBeenCalledWith("pane-2");
   });
 });
