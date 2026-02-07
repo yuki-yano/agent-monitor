@@ -16,6 +16,7 @@ export type SessionListViewProps = SessionListVM;
 export const SessionListView = ({
   sessions,
   groups,
+  sidebarSessionGroups,
   visibleSessionCount,
   quickPanelGroups,
   filter,
@@ -49,7 +50,7 @@ export const SessionListView = ({
       >
         <SessionSidebar
           state={{
-            sessionGroups: quickPanelGroups,
+            sessionGroups: sidebarSessionGroups,
             nowMs,
             currentPaneId: null,
             className: "border-latte-surface1/80 h-full w-full rounded-none rounded-r-3xl border-r",

@@ -118,11 +118,13 @@ const filterOptions = filterValues.map((value) => ({
 const createViewProps = (overrides: Partial<SessionListViewProps> = {}): SessionListViewProps => {
   const sessions = overrides.sessions ?? [];
   const groups = overrides.groups ?? buildSessionGroups(sessions);
+  const sidebarSessionGroups = overrides.sidebarSessionGroups ?? buildSessionGroups(sessions);
   const quickPanelGroups = overrides.quickPanelGroups ?? buildSessionGroups(sessions);
   const visibleSessionCount = overrides.visibleSessionCount ?? sessions.length;
   return {
     sessions,
     groups,
+    sidebarSessionGroups,
     visibleSessionCount,
     quickPanelGroups,
     filter: "AGENT",
@@ -264,6 +266,34 @@ describe("SessionListView", () => {
     expect(screen.getAllByText("1 / 3 panes").length).toBeGreaterThan(0);
     expect(screen.getAllByText("1 / 1 panes").length).toBeGreaterThan(0);
     expect(screen.queryAllByText("1 / 2 panes").length).toBe(0);
+  });
+
+  it("passes sidebar groups independently from visible groups", () => {
+    const agentSession = buildSession({
+      paneId: "pane-agent",
+      repoRoot: "/Users/test/agent-repo",
+      currentPath: "/Users/test/agent-repo",
+      state: "RUNNING",
+      title: "Agent Session",
+    });
+    const shellSession = buildSession({
+      paneId: "pane-shell",
+      repoRoot: "/Users/test/shell-repo",
+      currentPath: "/Users/test/shell-repo",
+      state: "SHELL",
+      title: "Shell Session",
+    });
+    const sessions = [agentSession, shellSession];
+    const props = createViewProps({
+      sessions,
+      groups: buildSessionGroups([agentSession]),
+      visibleSessionCount: 1,
+      sidebarSessionGroups: buildSessionGroups(sessions),
+    });
+
+    renderWithRouter(<SessionListView {...props} />);
+
+    expect(screen.getByTestId("session-sidebar").getAttribute("data-count")).toBe("2");
   });
 
   it("wires LogModal actions", () => {

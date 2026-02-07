@@ -3,7 +3,14 @@ import type { SessionStateTimeline, SessionStateValue, SessionSummary } from "@v
 import { Clock, SquareTerminal } from "lucide-react";
 import { memo, type MouseEvent, useCallback, useMemo, useState } from "react";
 
-import { Badge, Card, IconButton, LastInputPill, TagPill } from "@/components/ui";
+import {
+  Badge,
+  Card,
+  FilterToggleGroup,
+  IconButton,
+  LastInputPill,
+  TagPill,
+} from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { formatRepoDirLabel, statusIconMeta } from "@/lib/quick-panel-utils";
 import type { SessionGroup } from "@/lib/session-group";
@@ -11,6 +18,13 @@ import {
   buildSessionWindowGroups,
   type SessionWindowGroup,
 } from "@/pages/SessionList/session-window-group";
+import {
+  DEFAULT_SESSION_LIST_FILTER,
+  isSessionListFilter,
+  matchesSessionListFilter,
+  SESSION_LIST_FILTER_VALUES,
+  type SessionListFilter,
+} from "@/pages/SessionList/sessionListFilters";
 import { useSessions } from "@/state/session-context";
 import { useTheme } from "@/state/theme-context";
 
@@ -79,6 +93,11 @@ const SidebarHeader = memo(({ totalSessions, repoCount }: SidebarHeaderProps) =>
 ));
 
 SidebarHeader.displayName = "SidebarHeader";
+
+const SIDEBAR_FILTER_OPTIONS = SESSION_LIST_FILTER_VALUES.map((value) => ({
+  value,
+  label: value.replace("_", " "),
+}));
 
 type SessionSidebarItemProps = {
   item: SessionSummary;
@@ -425,13 +444,30 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
   const { connected, connectionIssue, requestStateTimeline, requestScreen, highlightCorrections } =
     useSessions();
   const { resolvedTheme } = useTheme();
+  const [filter, setFilter] = useState<SessionListFilter>(DEFAULT_SESSION_LIST_FILTER);
   const [focusPendingPaneIds, setFocusPendingPaneIds] = useState<Set<string>>(() => new Set());
 
-  const agentGroups = useMemo(() => {
+  const filteredSessionGroups = useMemo(() => {
     return sessionGroups
       .map((group) => {
-        const agentSessions = group.sessions.filter((session) => session.agent !== "unknown");
-        const windowGroups = buildSessionWindowGroups(agentSessions);
+        const filteredSessions = group.sessions.filter((session) =>
+          matchesSessionListFilter(session, filter),
+        );
+        if (filteredSessions.length === 0) {
+          return null;
+        }
+        return {
+          ...group,
+          sessions: filteredSessions,
+        };
+      })
+      .filter((group): group is SessionGroup => Boolean(group));
+  }, [filter, sessionGroups]);
+
+  const sidebarGroups = useMemo(() => {
+    return filteredSessionGroups
+      .map((group) => {
+        const windowGroups = buildSessionWindowGroups(group.sessions);
         if (windowGroups.length === 0) {
           return null;
         }
@@ -446,12 +482,12 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
         ): group is { repoRoot: SessionGroup["repoRoot"]; windowGroups: SessionWindowGroup[] } =>
           Boolean(group),
       );
-  }, [sessionGroups]);
+  }, [filteredSessionGroups]);
 
   const { totalSessions, repoCount, sessionIndex } = useMemo(() => {
     let total = 0;
     const map = new Map<string, SessionSummary>();
-    agentGroups.forEach((group) => {
+    sidebarGroups.forEach((group) => {
       group.windowGroups.forEach((windowGroup) => {
         total += windowGroup.sessions.length;
         windowGroup.sessions.forEach((session) => {
@@ -459,8 +495,8 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
         });
       });
     });
-    return { totalSessions: total, repoCount: agentGroups.length, sessionIndex: map };
-  }, [agentGroups]);
+    return { totalSessions: total, repoCount: sidebarGroups.length, sessionIndex: map };
+  }, [sidebarGroups]);
 
   const {
     preview,
@@ -521,6 +557,14 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
     [onFocusPane],
   );
 
+  const handleFilterChange = useCallback((next: string) => {
+    if (!isSessionListFilter(next)) {
+      setFilter(DEFAULT_SESSION_LIST_FILTER);
+      return;
+    }
+    setFilter(next);
+  }, []);
+
   return (
     <Card
       className={cn(
@@ -532,18 +576,24 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-5">
         <SidebarHeader totalSessions={totalSessions} repoCount={repoCount} />
+        <FilterToggleGroup
+          value={filter}
+          onChange={handleFilterChange}
+          options={SIDEBAR_FILTER_OPTIONS}
+          buttonClassName="uppercase tracking-[0.14em] text-[11px] px-2.5 py-1"
+        />
 
         <div
           className="custom-scrollbar -mr-2 min-h-0 flex-1 overflow-y-auto pr-2"
           onScroll={handleListScroll}
         >
           <div className="space-y-5">
-            {agentGroups.length === 0 && (
+            {sidebarGroups.length === 0 && (
               <div className="border-latte-surface2/60 bg-latte-crust/50 text-latte-subtext0 rounded-2xl border px-3 py-4 text-center text-xs">
-                No agent sessions available.
+                No sessions available for this filter.
               </div>
             )}
-            {agentGroups.map((group) => {
+            {sidebarGroups.map((group) => {
               const groupTotalPanes = group.windowGroups.reduce(
                 (total, windowGroup) => total + windowGroup.sessions.length,
                 0,

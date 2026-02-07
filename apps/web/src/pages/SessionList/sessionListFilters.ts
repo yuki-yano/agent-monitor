@@ -1,3 +1,5 @@
+import type { SessionSummary } from "@vde-monitor/shared";
+
 export const SESSION_LIST_FILTER_VALUES = ["ALL", "AGENT", "SHELL", "UNKNOWN"] as const;
 
 export type SessionListFilter = (typeof SESSION_LIST_FILTER_VALUES)[number];
@@ -21,4 +23,17 @@ export const readStoredSessionListFilter = (): SessionListFilter => {
 export const storeSessionListFilter = (filter: SessionListFilter) => {
   if (typeof window === "undefined") return;
   window.sessionStorage.setItem(SESSION_LIST_FILTER_STORAGE_KEY, filter);
+};
+
+export const matchesSessionListFilter = (
+  session: Pick<SessionSummary, "state">,
+  filter: SessionListFilter,
+) => {
+  if (filter === "ALL") {
+    return true;
+  }
+  if (filter === "AGENT") {
+    return session.state !== "SHELL" && session.state !== "UNKNOWN";
+  }
+  return session.state === filter;
 };

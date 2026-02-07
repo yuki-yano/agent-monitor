@@ -11,6 +11,7 @@ import { useSessionLogs } from "../SessionDetail/hooks/useSessionLogs";
 import {
   DEFAULT_SESSION_LIST_FILTER,
   isSessionListFilter,
+  matchesSessionListFilter,
   SESSION_LIST_FILTER_VALUES,
   storeSessionListFilter,
 } from "./sessionListFilters";
@@ -42,16 +43,11 @@ export const useSessionListVM = () => {
   }, [filter]);
 
   const visibleSessions = useMemo(() => {
-    return sessions.filter((session) => {
-      if (filter === "ALL") return true;
-      if (filter === "AGENT") {
-        return session.state !== "SHELL" && session.state !== "UNKNOWN";
-      }
-      return session.state === filter;
-    });
+    return sessions.filter((session) => matchesSessionListFilter(session, filter));
   }, [filter, sessions]);
 
   const groups = useMemo(() => buildSessionGroups(visibleSessions), [visibleSessions]);
+  const sidebarSessionGroups = useMemo(() => buildSessionGroups(sessions), [sessions]);
   const quickPanelGroups = useMemo(() => buildSessionGroups(visibleSessions), [visibleSessions]);
 
   const {
@@ -114,6 +110,7 @@ export const useSessionListVM = () => {
   return {
     sessions,
     groups,
+    sidebarSessionGroups,
     visibleSessionCount: visibleSessions.length,
     quickPanelGroups,
     filter,

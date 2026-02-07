@@ -95,6 +95,7 @@ describe("SessionSidebar", () => {
       paneId: "pane-3",
       title: "Shell Session",
       agent: "unknown",
+      state: "SHELL",
       windowIndex: 1,
       sessionName: "alpha",
     });
@@ -125,6 +126,7 @@ describe("SessionSidebar", () => {
       paneId: "pane-3",
       title: "Shell Session",
       agent: "unknown",
+      state: "SHELL",
     });
     const state = buildState({
       sessionGroups: [
@@ -138,7 +140,45 @@ describe("SessionSidebar", () => {
 
     renderWithRouter(<SessionSidebar state={state} actions={buildActions()} />);
 
-    expect(screen.getByText("No agent sessions available.")).toBeTruthy();
+    expect(screen.getByText("No sessions available for this filter.")).toBeTruthy();
+  });
+
+  it("filters sessions with local sidebar filter", () => {
+    const agentSession = createSessionDetail({
+      paneId: "pane-1",
+      title: "Codex Session",
+      agent: "codex",
+      state: "RUNNING",
+      windowIndex: 1,
+      sessionName: "alpha",
+    });
+    const shellSession = createSessionDetail({
+      paneId: "pane-2",
+      title: "Shell Session",
+      agent: "unknown",
+      state: "SHELL",
+      windowIndex: 1,
+      sessionName: "alpha",
+    });
+    const state = buildState({
+      sessionGroups: [
+        {
+          repoRoot: "/Users/test/repo",
+          sessions: [agentSession, shellSession],
+          lastInputAt: agentSession.lastInputAt,
+        },
+      ],
+    });
+
+    renderWithRouter(<SessionSidebar state={state} actions={buildActions()} />);
+
+    expect(screen.getByText("Codex Session")).toBeTruthy();
+    expect(screen.queryByText("Shell Session")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "SHELL" }));
+
+    expect(screen.getByText("Shell Session")).toBeTruthy();
+    expect(screen.queryByText("Codex Session")).toBeNull();
   });
 
   it("calls onFocusPane without triggering session selection", () => {
