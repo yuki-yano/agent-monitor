@@ -52,6 +52,12 @@ type UseSessionApiParams = {
   onHighlightCorrections: (config: HighlightCorrectionConfig) => void;
 };
 
+const buildPaneParam = (paneId: string) => ({ paneId: encodePaneId(paneId) });
+const buildPaneHashParam = (paneId: string, hash: string) => ({
+  paneId: encodePaneId(paneId),
+  hash,
+});
+
 export type { RefreshSessionsResult } from "./session-api-utils";
 
 export const useSessionApi = ({
@@ -187,7 +193,7 @@ export const useSessionApi = ({
 
   const requestDiffSummary = useCallback(
     async (paneId: string, options?: { force?: boolean }) => {
-      const param = { paneId: encodePaneId(paneId) };
+      const param = buildPaneParam(paneId);
       const query = buildForceQuery(options);
       return requestSessionField<{ summary?: DiffSummary }, "summary">({
         paneId,
@@ -207,7 +213,7 @@ export const useSessionApi = ({
       rev?: string | null,
       options?: { force?: boolean },
     ) => {
-      const param = { paneId: encodePaneId(paneId) };
+      const param = buildPaneParam(paneId);
       const query = buildDiffFileQuery(filePath, rev, options);
       return requestSessionField<{ file?: DiffFile }, "file">({
         paneId,
@@ -222,7 +228,7 @@ export const useSessionApi = ({
 
   const requestCommitLog = useCallback(
     async (paneId: string, options?: { limit?: number; skip?: number; force?: boolean }) => {
-      const param = { paneId: encodePaneId(paneId) };
+      const param = buildPaneParam(paneId);
       const query = buildCommitLogQuery(options);
       return requestSessionField<{ log?: CommitLog }, "log">({
         paneId,
@@ -237,7 +243,7 @@ export const useSessionApi = ({
 
   const requestCommitDetail = useCallback(
     async (paneId: string, hash: string, options?: { force?: boolean }) => {
-      const param = { paneId: encodePaneId(paneId), hash };
+      const param = buildPaneHashParam(paneId, hash);
       const query = buildForceQuery(options);
       return requestSessionField<{ commit?: CommitDetail }, "commit">({
         paneId,
@@ -252,7 +258,7 @@ export const useSessionApi = ({
 
   const requestCommitFile = useCallback(
     async (paneId: string, hash: string, path: string, options?: { force?: boolean }) => {
-      const param = { paneId: encodePaneId(paneId), hash };
+      const param = buildPaneHashParam(paneId, hash);
       const query = buildCommitFileQuery(path, options);
       return requestSessionField<{ file?: CommitFileDiff }, "file">({
         paneId,
@@ -273,7 +279,7 @@ export const useSessionApi = ({
       paneId: string,
       options?: { range?: SessionStateTimelineRange; limit?: number },
     ): Promise<SessionStateTimeline> => {
-      const param = { paneId: encodePaneId(paneId) };
+      const param = buildPaneParam(paneId);
       const query: { range?: SessionStateTimelineRange; limit?: string } = {};
       if (options?.range) {
         query.range = options.range;
@@ -315,7 +321,7 @@ export const useSessionApi = ({
       }
 
       const executeRequest = async (): Promise<ScreenResponse> => {
-        const param = { paneId: encodePaneId(paneId) };
+        const param = buildPaneParam(paneId);
         const json = buildScreenRequestJson(options, normalizedMode);
         try {
           const { res, data } = await requestJson<ApiEnvelope<{ screen?: ScreenResponse }>>(
@@ -432,7 +438,7 @@ export const useSessionApi = ({
 
   const sendText = useCallback(
     async (paneId: string, text: string, enter = true): Promise<CommandResponse> => {
-      const param = { paneId: encodePaneId(paneId) };
+      const param = buildPaneParam(paneId);
       return requestCommand(
         paneId,
         apiClient.sessions[":paneId"].send.text.$post({ param, json: { text, enter } }),
@@ -444,7 +450,7 @@ export const useSessionApi = ({
 
   const focusPane = useCallback(
     async (paneId: string): Promise<CommandResponse> => {
-      const param = { paneId: encodePaneId(paneId) };
+      const param = buildPaneParam(paneId);
       return requestCommand(
         paneId,
         apiClient.sessions[":paneId"].focus.$post({ param }),
@@ -456,7 +462,7 @@ export const useSessionApi = ({
 
   const uploadImageAttachment = useCallback(
     async (paneId: string, file: File): Promise<ImageAttachment> => {
-      const param = { paneId: encodePaneId(paneId) };
+      const param = buildPaneParam(paneId);
       const attachment = await requestSessionField<{ attachment?: unknown }, "attachment">({
         paneId,
         request: apiClient.sessions[":paneId"].attachments.image.$post({
@@ -480,7 +486,7 @@ export const useSessionApi = ({
 
   const sendKeys = useCallback(
     async (paneId: string, keys: AllowedKey[]): Promise<CommandResponse> => {
-      const param = { paneId: encodePaneId(paneId) };
+      const param = buildPaneParam(paneId);
       return requestCommand(
         paneId,
         apiClient.sessions[":paneId"].send.keys.$post({ param, json: { keys } }),
@@ -492,7 +498,7 @@ export const useSessionApi = ({
 
   const sendRaw = useCallback(
     async (paneId: string, items: RawItem[], unsafe = false): Promise<CommandResponse> => {
-      const param = { paneId: encodePaneId(paneId) };
+      const param = buildPaneParam(paneId);
       return requestCommand(
         paneId,
         apiClient.sessions[":paneId"].send.raw.$post({ param, json: { items, unsafe } }),
@@ -507,7 +513,7 @@ export const useSessionApi = ({
       await mutateSession(
         paneId,
         apiClient.sessions[":paneId"].title.$put({
-          param: { paneId: encodePaneId(paneId) },
+          param: buildPaneParam(paneId),
           json: { title },
         }),
         API_ERROR_MESSAGES.updateTitle,
@@ -521,7 +527,7 @@ export const useSessionApi = ({
       await mutateSession(
         paneId,
         apiClient.sessions[":paneId"].touch.$post({
-          param: { paneId: encodePaneId(paneId) },
+          param: buildPaneParam(paneId),
         }),
         API_ERROR_MESSAGES.updateActivity,
       );
