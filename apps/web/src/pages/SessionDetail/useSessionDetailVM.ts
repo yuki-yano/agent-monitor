@@ -1,8 +1,6 @@
-import { useNavigate } from "@tanstack/react-router";
 import { useAtomValue } from "jotai";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
-import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import { buildSessionGroups } from "@/lib/session-group";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { useNowMs } from "@/lib/use-now-ms";
@@ -22,6 +20,7 @@ import {
 } from "./atoms/sessionDetailAtoms";
 import { useSessionCommits } from "./hooks/useSessionCommits";
 import { useSessionControls } from "./hooks/useSessionControls";
+import { useSessionDetailActions } from "./hooks/useSessionDetailActions";
 import { useSessionDiffs } from "./hooks/useSessionDiffs";
 import { useSessionLogs } from "./hooks/useSessionLogs";
 import { useSessionScreen } from "./hooks/useSessionScreen";
@@ -58,7 +57,6 @@ export const useSessionDetailVM = (paneId: string) => {
     touchSession,
     updateSessionTitle,
   } = sessionApi;
-  const navigate = useNavigate();
   const nowMs = useNowMs();
 
   const {
@@ -182,6 +180,22 @@ export const useSessionDetailVM = (paneId: string) => {
   });
 
   const {
+    handleOpenInNewTab,
+    handleTouchSession,
+    handleFocusPane,
+    handleOpenPaneHere,
+    handleOpenHere,
+  } = useSessionDetailActions({
+    paneId,
+    selectedPaneId,
+    closeQuickPanel,
+    closeLogModal,
+    touchSession,
+    focusPane,
+    setScreenError,
+  });
+
+  const {
     titleDraft,
     titleEditing,
     titleSaving,
@@ -233,43 +247,9 @@ export const useSessionDetailVM = (paneId: string) => {
     maxRatio: 0.65,
   });
 
-  const handleRefreshScreen = useCallback(() => {
+  const handleRefreshScreen = () => {
     void refreshScreen();
-  }, [refreshScreen]);
-
-  const handleOpenInNewTab = useCallback(() => {
-    if (!selectedPaneId) return;
-    const encoded = encodeURIComponent(selectedPaneId);
-    window.open(`/sessions/${encoded}`, "_blank", "noopener,noreferrer");
-  }, [selectedPaneId]);
-
-  const handleTouchSession = useCallback(() => {
-    void touchSession(paneId).catch(() => null);
-  }, [paneId, touchSession]);
-
-  const handleFocusPane = useCallback(
-    async (targetPaneId: string) => {
-      const result = await focusPane(targetPaneId);
-      if (!result.ok) {
-        setScreenError(result.error?.message ?? API_ERROR_MESSAGES.focusPane);
-      }
-    },
-    [focusPane, setScreenError],
-  );
-
-  const handleOpenPaneHere = useCallback(
-    (targetPaneId: string) => {
-      closeQuickPanel();
-      navigate({ to: "/sessions/$paneId", params: { paneId: targetPaneId } });
-      closeLogModal();
-    },
-    [closeLogModal, closeQuickPanel, navigate],
-  );
-
-  const handleOpenHere = useCallback(() => {
-    if (!selectedPaneId) return;
-    handleOpenPaneHere(selectedPaneId);
-  }, [handleOpenPaneHere, selectedPaneId]);
+  };
 
   return {
     meta: {
