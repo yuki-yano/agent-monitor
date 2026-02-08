@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/yuki-yano/vde-monitor.git"
   },
-  "version": "0.1.52",
+  "version": "0.1.53",
   "type": "module",
   "packageManager": "pnpm@10.28.2",
   "engines": {
