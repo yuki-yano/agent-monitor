@@ -1,11 +1,8 @@
-import type { AgentMonitorConfig, ApiError } from "@vde-monitor/shared";
+import type { AgentMonitorConfig } from "@vde-monitor/shared";
+
+export { buildError } from "../errors";
 
 export const nowIso = () => new Date().toISOString();
-
-export const buildError = (code: ApiError["code"], message: string): ApiError => ({
-  code,
-  message,
-});
 
 export const requireAuth = (
   config: AgentMonitorConfig,

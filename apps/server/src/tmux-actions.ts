@@ -4,14 +4,10 @@ import type { TmuxAdapter } from "@vde-monitor/tmux";
 
 import { markPaneFocus } from "./activity-suppressor";
 import { setMapEntryWithLimit } from "./cache";
+import { buildError } from "./errors";
 import { resolveBackendApp } from "./screen/macos-app";
 import { focusTerminalApp, isAppRunning } from "./screen/macos-applescript";
 import { focusTmuxPane } from "./screen/tmux-geometry";
-
-const buildError = (code: ApiError["code"], message: string): ApiError => ({
-  code,
-  message,
-});
 
 type ActionResult = { ok: true; error?: undefined } | { ok: false; error: ApiError };
 
