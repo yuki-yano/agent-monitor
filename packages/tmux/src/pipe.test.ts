@@ -57,22 +57,19 @@ describe("createPipeManager", () => {
 
   it("returns not attached when pipe-pane fails", async () => {
     const adapter = {
-      run: vi
-        .fn()
-        .mockResolvedValueOnce({ stdout: "", stderr: "fail", exitCode: 1 })
-        .mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 0 }),
+      run: vi.fn().mockResolvedValueOnce({ stdout: "", stderr: "fail", exitCode: 1 }),
     };
     const pipeManager = createPipeManager(adapter);
     const result = await pipeManager.attachPipe("%3", "/tmp/test.log", {
       panePipe: false,
-      pipeTagValue: "1",
+      pipeTagValue: null,
     });
 
     expect(result).toEqual({ attached: false, conflict: false });
     expect(adapter.run).toHaveBeenCalledTimes(1);
   });
 
-  it("skips setting pane tag when already tagged", async () => {
+  it("repairs detached pipe when pane is already tagged", async () => {
     const adapter = {
       run: vi.fn().mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 }),
     };
@@ -83,14 +80,14 @@ describe("createPipeManager", () => {
     });
 
     expect(result).toEqual({ attached: true, conflict: false });
-    expect(adapter.run).toHaveBeenCalledWith([
+    expect(adapter.run).toHaveBeenNthCalledWith(1, ["pipe-pane", "-t", "%3"]);
+    expect(adapter.run).toHaveBeenNthCalledWith(2, [
       "pipe-pane",
-      "-o",
       "-t",
       "%3",
       'cat >> "/tmp/test.log"',
     ]);
-    expect(adapter.run).toHaveBeenCalledTimes(1);
+    expect(adapter.run).toHaveBeenCalledTimes(2);
   });
 
   it("exposes hasConflict helper", () => {

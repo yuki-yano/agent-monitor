@@ -30,7 +30,14 @@ export const createPipeManager = (adapter: TmuxAdapter) => {
     }
 
     const command = buildPipeCommand(logPath);
-    const result = await adapter.run(["pipe-pane", "-o", "-t", paneId, command]);
+    let result;
+    if (!state.panePipe && state.pipeTagValue === "1") {
+      // Repair an inconsistent state where our tag remains but tmux reports pane_pipe=0.
+      await adapter.run(["pipe-pane", "-t", paneId]);
+      result = await adapter.run(["pipe-pane", "-t", paneId, command]);
+    } else {
+      result = await adapter.run(["pipe-pane", "-o", "-t", paneId, command]);
+    }
     if (result.exitCode !== 0) {
       return { attached: false, conflict: false };
     }
