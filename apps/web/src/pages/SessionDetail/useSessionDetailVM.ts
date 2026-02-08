@@ -9,6 +9,7 @@ import { useNowMs } from "@/lib/use-now-ms";
 import { useSidebarWidth } from "@/lib/use-sidebar-width";
 import { useSplitRatio } from "@/lib/use-split-ratio";
 
+import { screenTextAtom } from "./atoms/screenAtoms";
 import {
   connectedAtom,
   connectionIssueAtom,
@@ -26,6 +27,7 @@ import { useSessionLogs } from "./hooks/useSessionLogs";
 import { useSessionScreen } from "./hooks/useSessionScreen";
 import { useSessionTimeline } from "./hooks/useSessionTimeline";
 import { useSessionTitleEditor } from "./hooks/useSessionTitleEditor";
+import { extractCodexContextLeft } from "./sessionDetailUtils";
 
 export const useSessionDetailVM = (paneId: string) => {
   const sessions = useAtomValue(sessionsAtom);
@@ -35,6 +37,7 @@ export const useSessionDetailVM = (paneId: string) => {
   const highlightCorrections = useAtomValue(highlightCorrectionsAtom);
   const resolvedTheme = useAtomValue(resolvedThemeAtom);
   const session = useAtomValue(currentSessionAtom);
+  const screenText = useAtomValue(screenTextAtom);
   const sessionApi = useAtomValue(sessionApiAtom);
   if (!sessionApi) {
     throw new Error("SessionDetailProvider is required");
@@ -195,6 +198,10 @@ export const useSessionDetailVM = (paneId: string) => {
   });
 
   const sessionGroups = useMemo(() => buildSessionGroups(sessions), [sessions]);
+  const contextLeftLabel = useMemo(
+    () => (session?.agent === "codex" ? extractCodexContextLeft(screenText) : null),
+    [screenText, session?.agent],
+  );
   const is2xlUp = useMediaQuery("(min-width: 1536px)");
   const isMobile = useMediaQuery("(max-width: 767px)");
 
@@ -300,6 +307,7 @@ export const useSessionDetailVM = (paneId: string) => {
       imageBase64,
       fallbackReason,
       error,
+      contextLeftLabel,
       isScreenLoading,
       isAtBottom,
       handleAtBottomChange,

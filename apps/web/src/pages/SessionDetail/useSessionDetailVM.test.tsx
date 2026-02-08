@@ -4,6 +4,7 @@ import { createStore, Provider as JotaiProvider } from "jotai";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import { screenTextAtom } from "./atoms/screenAtoms";
 import {
   connectedAtom,
   connectionIssueAtom,
@@ -260,5 +261,81 @@ describe("useSessionDetailVM", () => {
 
     expect(focusPane).toHaveBeenCalledWith("pane-1");
     expect(setScreenErrorMock).toHaveBeenCalledWith("rate limited");
+  });
+
+  it("derives latest codex context-left label from screen text", () => {
+    const sessionApi = {
+      reconnect: vi.fn(),
+      requestDiffSummary: vi.fn(),
+      requestDiffFile: vi.fn(),
+      requestCommitLog: vi.fn(),
+      requestCommitDetail: vi.fn(),
+      requestCommitFile: vi.fn(),
+      requestStateTimeline: vi.fn(),
+      requestScreen: vi.fn(),
+      focusPane: vi.fn(),
+      uploadImageAttachment: vi.fn(),
+      sendText: vi.fn(),
+      sendKeys: vi.fn(),
+      sendRaw: vi.fn(),
+      touchSession: vi.fn(),
+      updateSessionTitle: vi.fn(),
+    };
+
+    const store = createStore();
+    store.set(paneIdAtom, "pane-1");
+    store.set(sessionsAtom, [session]);
+    store.set(connectedAtom, true);
+    store.set(connectionIssueAtom, null);
+    store.set(highlightCorrectionsAtom, { codex: false, claude: true });
+    store.set(resolvedThemeAtom, "mocha");
+    store.set(screenTextAtom, "91% context left\n\u001b[32m74% context left\u001b[0m");
+    store.set(sessionApiAtom, sessionApi);
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <JotaiProvider store={store}>{children}</JotaiProvider>
+    );
+
+    const { result } = renderHook(() => useSessionDetailVM("pane-1"), { wrapper });
+
+    expect(result.current.screen.contextLeftLabel).toBe("74% context left");
+  });
+
+  it("ignores context-left label for non-codex sessions", () => {
+    const sessionApi = {
+      reconnect: vi.fn(),
+      requestDiffSummary: vi.fn(),
+      requestDiffFile: vi.fn(),
+      requestCommitLog: vi.fn(),
+      requestCommitDetail: vi.fn(),
+      requestCommitFile: vi.fn(),
+      requestStateTimeline: vi.fn(),
+      requestScreen: vi.fn(),
+      focusPane: vi.fn(),
+      uploadImageAttachment: vi.fn(),
+      sendText: vi.fn(),
+      sendKeys: vi.fn(),
+      sendRaw: vi.fn(),
+      touchSession: vi.fn(),
+      updateSessionTitle: vi.fn(),
+    };
+
+    const store = createStore();
+    store.set(paneIdAtom, "pane-1");
+    store.set(sessionsAtom, [createSessionDetail({ paneId: "pane-1", agent: "claude" })]);
+    store.set(connectedAtom, true);
+    store.set(connectionIssueAtom, null);
+    store.set(highlightCorrectionsAtom, { codex: false, claude: true });
+    store.set(resolvedThemeAtom, "mocha");
+    store.set(screenTextAtom, "63% context left");
+    store.set(sessionApiAtom, sessionApi);
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <JotaiProvider store={store}>{children}</JotaiProvider>
+    );
+
+    const { result } = renderHook(() => useSessionDetailVM("pane-1"), { wrapper });
+
+    expect(result.current.screen.contextLeftLabel).toBeNull();
   });
 });

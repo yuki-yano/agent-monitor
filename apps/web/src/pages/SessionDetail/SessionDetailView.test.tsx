@@ -92,6 +92,7 @@ const createViewProps = (overrides: SessionDetailViewOverrides = {}): SessionDet
       imageBase64: null,
       fallbackReason: null,
       error: null,
+      contextLeftLabel: null,
       isScreenLoading: false,
       isAtBottom: true,
       handleAtBottomChange: vi.fn(),

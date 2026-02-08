@@ -30,6 +30,7 @@ describe("ScreenPanel", () => {
     connectionIssue: null,
     fallbackReason: null,
     error: null,
+    contextLeftLabel: null,
     isScreenLoading: false,
     imageBase64: null,
     screenLines: ["line"],
@@ -78,6 +79,14 @@ describe("ScreenPanel", () => {
     render(<ScreenPanel state={state} actions={actions} controls={null} />);
 
     expect(screen.queryByText("Disconnected. Reconnecting...")).toBeNull();
+  });
+
+  it("shows context-left label when available", () => {
+    const state = buildState({ contextLeftLabel: "73% context left" });
+    const actions = buildActions();
+    render(<ScreenPanel state={state} actions={actions} controls={null} />);
+
+    expect(screen.getByText("73% context left")).toBeTruthy();
   });
 
   it("renders image mode content", () => {

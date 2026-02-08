@@ -4,6 +4,8 @@ import {
   type DiffSummary,
 } from "@vde-monitor/shared";
 
+import { stripAnsi } from "@/lib/ansi-text-utils";
+
 export type { LastInputTone } from "@/lib/session-format";
 export {
   agentLabelFor,
@@ -20,6 +22,9 @@ export {
 const compilePatterns = () =>
   defaultDangerCommandPatterns.map((pattern) => new RegExp(pattern, "i"));
 
+const normalizeScreenTextForSearch = (screenText: string) =>
+  stripAnsi(screenText).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
 export const AUTO_REFRESH_INTERVAL_MS = 10_000;
 export const MAX_DIFF_LINES = 1200;
 export const PREVIEW_DIFF_LINES = 240;
@@ -33,6 +38,27 @@ export const isDangerousText = (text: string) => {
   return normalized.some((line) =>
     patterns.some((pattern) => pattern.test(line.toLowerCase().replace(/\s+/g, " ").trim())),
   );
+};
+
+export const extractCodexContextLeft = (screenText: string): string | null => {
+  if (!screenText) {
+    return null;
+  }
+  const normalized = normalizeScreenTextForSearch(screenText);
+  const pattern = /(\d{1,3}(?:\.\d+)?)%\s+context left\b/gi;
+  let match: RegExpExecArray | null = null;
+  let lastValue: string | null = null;
+  while (true) {
+    match = pattern.exec(normalized);
+    if (!match) {
+      break;
+    }
+    const value = match[1];
+    if (value) {
+      lastValue = value;
+    }
+  }
+  return lastValue ? `${lastValue}% context left` : null;
 };
 
 export const diffLineClass = (line: string) => {

@@ -32,6 +32,7 @@ type ScreenPanelState = {
   connectionIssue: string | null;
   fallbackReason: string | null;
   error: string | null;
+  contextLeftLabel: string | null;
   isScreenLoading: boolean;
   imageBase64: string | null;
   screenLines: string[];
@@ -216,6 +217,7 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     connectionIssue,
     fallbackReason,
     error,
+    contextLeftLabel,
     isScreenLoading,
     imageBase64,
     screenLines,
@@ -305,6 +307,13 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
           onScrollToBottom={onScrollToBottom}
         />
       </div>
+      {contextLeftLabel ? (
+        <div className="-mt-1 flex justify-end">
+          <span className="text-latte-subtext0 px-1 text-[12px] font-medium tracking-[0.14em]">
+            {contextLeftLabel}
+          </span>
+        </div>
+      ) : null}
       <div>{controls}</div>
     </Card>
   );
