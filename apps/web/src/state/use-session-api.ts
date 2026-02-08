@@ -57,6 +57,7 @@ const buildPaneHashParam = (paneId: string, hash: string) => ({
   paneId: encodePaneId(paneId),
   hash,
 });
+type PaneParam = ReturnType<typeof buildPaneParam>;
 
 export type { RefreshSessionsResult } from "./session-api-utils";
 
@@ -369,28 +370,41 @@ export const useSessionApi = ({
     ],
   );
 
+  const runPaneCommand = useCallback(
+    (
+      paneId: string,
+      fallbackMessage: string,
+      request: (param: PaneParam) => Promise<Response>,
+    ): Promise<CommandResponse> => {
+      const param = buildPaneParam(paneId);
+      return requestCommand(paneId, request(param), fallbackMessage);
+    },
+    [requestCommand],
+  );
+
+  const runPaneMutation = useCallback(
+    (paneId: string, fallbackMessage: string, request: (param: PaneParam) => Promise<Response>) => {
+      return mutateSession(paneId, request(buildPaneParam(paneId)), fallbackMessage);
+    },
+    [mutateSession],
+  );
+
   const sendText = useCallback(
     async (paneId: string, text: string, enter = true): Promise<CommandResponse> => {
-      const param = buildPaneParam(paneId);
-      return requestCommand(
-        paneId,
+      return runPaneCommand(paneId, API_ERROR_MESSAGES.sendText, (param) =>
         apiClient.sessions[":paneId"].send.text.$post({ param, json: { text, enter } }),
-        API_ERROR_MESSAGES.sendText,
       );
     },
-    [apiClient, requestCommand],
+    [apiClient, runPaneCommand],
   );
 
   const focusPane = useCallback(
     async (paneId: string): Promise<CommandResponse> => {
-      const param = buildPaneParam(paneId);
-      return requestCommand(
-        paneId,
+      return runPaneCommand(paneId, API_ERROR_MESSAGES.focusPane, (param) =>
         apiClient.sessions[":paneId"].focus.$post({ param }),
-        API_ERROR_MESSAGES.focusPane,
       );
     },
-    [apiClient, requestCommand],
+    [apiClient, runPaneCommand],
   );
 
   const uploadImageAttachment = useCallback(
@@ -419,53 +433,38 @@ export const useSessionApi = ({
 
   const sendKeys = useCallback(
     async (paneId: string, keys: AllowedKey[]): Promise<CommandResponse> => {
-      const param = buildPaneParam(paneId);
-      return requestCommand(
-        paneId,
+      return runPaneCommand(paneId, API_ERROR_MESSAGES.sendKeys, (param) =>
         apiClient.sessions[":paneId"].send.keys.$post({ param, json: { keys } }),
-        API_ERROR_MESSAGES.sendKeys,
       );
     },
-    [apiClient, requestCommand],
+    [apiClient, runPaneCommand],
   );
 
   const sendRaw = useCallback(
     async (paneId: string, items: RawItem[], unsafe = false): Promise<CommandResponse> => {
-      const param = buildPaneParam(paneId);
-      return requestCommand(
-        paneId,
+      return runPaneCommand(paneId, API_ERROR_MESSAGES.sendRaw, (param) =>
         apiClient.sessions[":paneId"].send.raw.$post({ param, json: { items, unsafe } }),
-        API_ERROR_MESSAGES.sendRaw,
       );
     },
-    [apiClient, requestCommand],
+    [apiClient, runPaneCommand],
   );
 
   const updateSessionTitle = useCallback(
     async (paneId: string, title: string | null) => {
-      await mutateSession(
-        paneId,
-        apiClient.sessions[":paneId"].title.$put({
-          param: buildPaneParam(paneId),
-          json: { title },
-        }),
-        API_ERROR_MESSAGES.updateTitle,
+      await runPaneMutation(paneId, API_ERROR_MESSAGES.updateTitle, (param) =>
+        apiClient.sessions[":paneId"].title.$put({ param, json: { title } }),
       );
     },
-    [apiClient, mutateSession],
+    [apiClient, runPaneMutation],
   );
 
   const touchSession = useCallback(
     async (paneId: string) => {
-      await mutateSession(
-        paneId,
-        apiClient.sessions[":paneId"].touch.$post({
-          param: buildPaneParam(paneId),
-        }),
-        API_ERROR_MESSAGES.updateActivity,
+      await runPaneMutation(paneId, API_ERROR_MESSAGES.updateActivity, (param) =>
+        apiClient.sessions[":paneId"].touch.$post({ param }),
       );
     },
-    [apiClient, mutateSession],
+    [apiClient, runPaneMutation],
   );
 
   return {
