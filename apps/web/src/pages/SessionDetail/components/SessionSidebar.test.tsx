@@ -13,26 +13,6 @@ import { describe, expect, it, vi } from "vitest";
 import { createSessionDetail } from "../test-helpers";
 import { SessionSidebar } from "./SessionSidebar";
 
-const mockSessionsContext = {
-  connected: true,
-  connectionIssue: null,
-  requestStateTimeline: vi.fn(),
-  requestScreen: vi.fn(),
-  highlightCorrections: { codex: true, claude: true },
-};
-
-vi.mock("@/state/session-context", () => ({
-  useSessions: () => mockSessionsContext,
-}));
-
-vi.mock("@/state/theme-context", () => ({
-  useTheme: () => ({
-    preference: "system",
-    resolvedTheme: "latte",
-    setPreference: vi.fn(),
-  }),
-}));
-
 vi.mock("../hooks/useSidebarPreview", () => ({
   useSidebarPreview: () => ({
     preview: null,
@@ -67,6 +47,12 @@ describe("SessionSidebar", () => {
   const buildState = (overrides: Partial<SessionSidebarState> = {}): SessionSidebarState => ({
     sessionGroups: [],
     nowMs: Date.now(),
+    connected: true,
+    connectionIssue: null,
+    requestStateTimeline: vi.fn(),
+    requestScreen: vi.fn(),
+    highlightCorrections: { codex: true, claude: true },
+    resolvedTheme: "latte",
     currentPaneId: null,
     ...overrides,
   });

@@ -15,7 +15,15 @@ export const useSessionDetailViewSectionProps = ({
   actions,
 }: SessionDetailViewProps) => {
   const { paneId, session, nowMs, connectionIssue } = meta;
-  const { sessionGroups } = sidebar;
+  const {
+    sessionGroups,
+    connected,
+    connectionIssue: sidebarConnectionIssue,
+    requestStateTimeline,
+    requestScreen,
+    highlightCorrections,
+    resolvedTheme,
+  } = sidebar;
   const {
     timeline: stateTimeline,
     timelineRange,
@@ -373,6 +381,12 @@ export const useSessionDetailViewSectionProps = ({
       state: {
         sessionGroups,
         nowMs,
+        connected,
+        connectionIssue: sidebarConnectionIssue,
+        requestStateTimeline,
+        requestScreen,
+        highlightCorrections,
+        resolvedTheme,
         currentPaneId: paneId,
         className: "border-latte-surface1/80 h-full w-full rounded-none rounded-r-3xl border-r",
       },
@@ -380,7 +394,18 @@ export const useSessionDetailViewSectionProps = ({
         onFocusPane: handleFocusPane,
       },
     }),
-    [sessionGroups, nowMs, paneId, handleFocusPane],
+    [
+      sessionGroups,
+      nowMs,
+      connected,
+      sidebarConnectionIssue,
+      requestStateTimeline,
+      requestScreen,
+      highlightCorrections,
+      resolvedTheme,
+      paneId,
+      handleFocusPane,
+    ],
   );
 
   const controlsPanelProps = useMemo(

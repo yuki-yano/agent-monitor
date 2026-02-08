@@ -151,9 +151,10 @@ describe("useSessionListVM", () => {
       connectionStatus: "healthy",
       connectionIssue: null,
       refreshSessions: vi.fn(),
+      requestStateTimeline: vi.fn(),
       requestScreen: vi.fn(),
       touchSession: vi.fn(),
-      highlightCorrections: false,
+      highlightCorrections: { codex: true, claude: true },
     });
   });
 
@@ -203,9 +204,10 @@ describe("useSessionListVM", () => {
       connectionStatus: "healthy",
       connectionIssue: null,
       refreshSessions: vi.fn(),
+      requestStateTimeline: vi.fn(),
       requestScreen: vi.fn(),
       touchSession,
-      highlightCorrections: false,
+      highlightCorrections: { codex: true, claude: true },
     });
 
     await renderWithRouter(["/"]);

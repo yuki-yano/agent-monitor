@@ -1,5 +1,12 @@
 import { Link } from "@tanstack/react-router";
-import type { SessionStateTimeline, SessionStateValue, SessionSummary } from "@vde-monitor/shared";
+import type {
+  HighlightCorrectionConfig,
+  ScreenResponse,
+  SessionStateTimeline,
+  SessionStateTimelineRange,
+  SessionStateValue,
+  SessionSummary,
+} from "@vde-monitor/shared";
 import { Clock, SquareTerminal } from "lucide-react";
 import { memo, type MouseEvent, useCallback, useMemo, useState } from "react";
 
@@ -14,6 +21,7 @@ import {
 import { cn } from "@/lib/cn";
 import { formatRepoDirLabel, statusIconMeta } from "@/lib/quick-panel-utils";
 import { buildSessionGroups, type SessionGroup } from "@/lib/session-group";
+import type { Theme } from "@/lib/theme";
 import {
   buildSessionWindowGroups,
   type SessionWindowGroup,
@@ -25,8 +33,6 @@ import {
   SESSION_LIST_FILTER_VALUES,
   type SessionListFilter,
 } from "@/pages/SessionList/sessionListFilters";
-import { useSessions } from "@/state/session-context";
-import { useTheme } from "@/state/theme-context";
 
 import { type PreviewFrame, useSidebarPreview } from "../hooks/useSidebarPreview";
 import {
@@ -43,6 +49,18 @@ import { buildTimelineDisplay } from "./state-timeline-display";
 type SessionSidebarState = {
   sessionGroups: SessionGroup[];
   nowMs: number;
+  connected: boolean;
+  connectionIssue: string | null;
+  requestStateTimeline: (
+    paneId: string,
+    options?: { range?: SessionStateTimelineRange; limit?: number },
+  ) => Promise<SessionStateTimeline>;
+  requestScreen: (
+    paneId: string,
+    options: { lines?: number; mode?: "text" | "image"; cursor?: string },
+  ) => Promise<ScreenResponse>;
+  highlightCorrections: HighlightCorrectionConfig;
+  resolvedTheme: Theme;
   currentPaneId?: string | null;
   className?: string;
 };
@@ -462,11 +480,19 @@ const SessionPreviewPopover = memo(
 SessionPreviewPopover.displayName = "SessionPreviewPopover";
 
 export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
-  const { sessionGroups, nowMs, currentPaneId, className } = state;
+  const {
+    sessionGroups,
+    nowMs,
+    connected,
+    connectionIssue,
+    requestStateTimeline,
+    requestScreen,
+    highlightCorrections,
+    resolvedTheme,
+    currentPaneId,
+    className,
+  } = state;
   const { onSelectSession, onFocusPane } = actions;
-  const { connected, connectionIssue, requestStateTimeline, requestScreen, highlightCorrections } =
-    useSessions();
-  const { resolvedTheme } = useTheme();
   const [filter, setFilter] = useState<SessionListFilter>(DEFAULT_SESSION_LIST_FILTER);
   const [focusPendingPaneIds, setFocusPendingPaneIds] = useState<Set<string>>(() => new Set());
 

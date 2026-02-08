@@ -66,6 +66,12 @@ const createViewProps = (overrides: SessionDetailViewOverrides = {}): SessionDet
     },
     sidebar: {
       sessionGroups: buildSessionGroups([]),
+      connected: false,
+      connectionIssue: null,
+      requestStateTimeline: vi.fn(),
+      requestScreen: vi.fn(),
+      highlightCorrections: { codex: true, claude: true },
+      resolvedTheme: "latte",
     },
     layout: {
       is2xlUp: false,

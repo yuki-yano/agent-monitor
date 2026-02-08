@@ -281,6 +281,12 @@ export const useSessionDetailVM = (paneId: string) => {
     },
     sidebar: {
       sessionGroups,
+      connected,
+      connectionIssue,
+      requestStateTimeline,
+      requestScreen,
+      highlightCorrections,
+      resolvedTheme,
     },
     layout: {
       is2xlUp,
