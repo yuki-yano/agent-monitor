@@ -1,11 +1,8 @@
 import {
-  type AllowedKey,
   type ApiEnvelope,
   type ApiError,
   type CommandResponse,
   type HighlightCorrectionConfig,
-  type ImageAttachment,
-  type RawItem,
   type ScreenResponse,
   type SessionSummary,
 } from "@vde-monitor/shared";
@@ -13,13 +10,13 @@ import { useCallback, useMemo, useRef } from "react";
 
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 
+import { createSessionActionRequests } from "./session-api-action-requests";
 import { createApiClient } from "./session-api-contract";
 import { createSessionQueryRequests } from "./session-api-query-requests";
 import {
   mutateSession as executeMutateSession,
   refreshSessions as executeRefreshSessions,
   requestCommand as executeRequestCommand,
-  requestImageAttachment as executeRequestImageAttachment,
   requestScreenResponse as executeRequestScreenResponse,
   requestSessionField as executeRequestSessionField,
 } from "./session-api-request-executors";
@@ -28,11 +25,6 @@ import {
   buildPaneParam,
   buildScreenRequestJson,
   buildScreenRequestKeys,
-  buildSendKeysJson,
-  buildSendRawJson,
-  buildSendTextJson,
-  buildSessionTitleJson,
-  buildUploadImageForm,
   executeInflightRequest,
   type RefreshSessionsResult,
   resolveScreenMode,
@@ -329,86 +321,32 @@ export const useSessionApi = ({
     [mutateSession],
   );
 
-  const sendText = useCallback(
-    async (paneId: string, text: string, enter = true): Promise<CommandResponse> => {
-      return runPaneCommand(paneId, API_ERROR_MESSAGES.sendText, (param) =>
-        apiClient.sessions[":paneId"].send.text.$post({
-          param,
-          json: buildSendTextJson(text, enter),
-        }),
-      );
-    },
-    [apiClient, runPaneCommand],
-  );
-
-  const focusPane = useCallback(
-    async (paneId: string): Promise<CommandResponse> => {
-      return runPaneCommand(paneId, API_ERROR_MESSAGES.focusPane, (param) =>
-        apiClient.sessions[":paneId"].focus.$post({ param }),
-      );
-    },
-    [apiClient, runPaneCommand],
-  );
-
-  const uploadImageAttachment = useCallback(
-    async (paneId: string, file: File): Promise<ImageAttachment> => {
-      return executeRequestImageAttachment({
-        paneId,
-        request: apiClient.sessions[":paneId"].attachments.image.$post({
-          param: buildPaneParam(paneId),
-          form: buildUploadImageForm(file),
-        }),
+  const {
+    sendText,
+    focusPane,
+    uploadImageAttachment,
+    sendKeys,
+    sendRaw,
+    updateSessionTitle,
+    touchSession,
+  } = useMemo(
+    () =>
+      createSessionActionRequests({
+        apiClient,
+        runPaneCommand,
+        runPaneMutation,
         ensureToken,
         onConnectionIssue,
         handleSessionMissing,
-      });
-    },
-    [apiClient, ensureToken, handleSessionMissing, onConnectionIssue],
-  );
-
-  const sendKeys = useCallback(
-    async (paneId: string, keys: AllowedKey[]): Promise<CommandResponse> => {
-      return runPaneCommand(paneId, API_ERROR_MESSAGES.sendKeys, (param) =>
-        apiClient.sessions[":paneId"].send.keys.$post({
-          param,
-          json: buildSendKeysJson(keys),
-        }),
-      );
-    },
-    [apiClient, runPaneCommand],
-  );
-
-  const sendRaw = useCallback(
-    async (paneId: string, items: RawItem[], unsafe = false): Promise<CommandResponse> => {
-      return runPaneCommand(paneId, API_ERROR_MESSAGES.sendRaw, (param) =>
-        apiClient.sessions[":paneId"].send.raw.$post({
-          param,
-          json: buildSendRawJson(items, unsafe),
-        }),
-      );
-    },
-    [apiClient, runPaneCommand],
-  );
-
-  const updateSessionTitle = useCallback(
-    async (paneId: string, title: string | null) => {
-      await runPaneMutation(paneId, API_ERROR_MESSAGES.updateTitle, (param) =>
-        apiClient.sessions[":paneId"].title.$put({
-          param,
-          json: buildSessionTitleJson(title),
-        }),
-      );
-    },
-    [apiClient, runPaneMutation],
-  );
-
-  const touchSession = useCallback(
-    async (paneId: string) => {
-      await runPaneMutation(paneId, API_ERROR_MESSAGES.updateActivity, (param) =>
-        apiClient.sessions[":paneId"].touch.$post({ param }),
-      );
-    },
-    [apiClient, runPaneMutation],
+      }),
+    [
+      apiClient,
+      ensureToken,
+      handleSessionMissing,
+      onConnectionIssue,
+      runPaneCommand,
+      runPaneMutation,
+    ],
   );
 
   return {
