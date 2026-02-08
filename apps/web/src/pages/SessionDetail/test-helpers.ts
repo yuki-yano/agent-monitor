@@ -108,3 +108,11 @@ export const createCommitFileDiff = (overrides: Partial<CommitFileDiff> = {}): C
   truncated: false,
   ...overrides,
 });
+
+export const createDeferred = <T>() => {
+  let resolve: ((value: T) => void) | null = null;
+  const promise = new Promise<T>((nextResolve) => {
+    resolve = nextResolve;
+  });
+  return { promise, resolve: (value: T) => resolve?.(value) };
+};

@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { SessionStateTimeline, SessionStateTimelineRange } from "@vde-monitor/shared";
 import { describe, expect, it, vi } from "vitest";
 
+import { createDeferred } from "../test-helpers";
 import { useSessionTimeline } from "./useSessionTimeline";
 
 const buildTimeline = (range: SessionStateTimelineRange): SessionStateTimeline => ({
@@ -21,14 +22,6 @@ const buildTimeline = (range: SessionStateTimelineRange): SessionStateTimeline =
 });
 
 describe("useSessionTimeline", () => {
-  const deferred = <T,>() => {
-    let resolve: ((value: T) => void) | null = null;
-    const promise = new Promise<T>((nextResolve) => {
-      resolve = nextResolve;
-    });
-    return { promise, resolve: (value: T) => resolve?.(value) };
-  };
-
   it("loads timeline on mount", async () => {
     const requestStateTimeline = vi.fn().mockResolvedValue(buildTimeline("1h"));
 
@@ -100,7 +93,7 @@ describe("useSessionTimeline", () => {
   });
 
   it("ignores stale timeline responses from previous pane", async () => {
-    const pane1Deferred = deferred<SessionStateTimeline>();
+    const pane1Deferred = createDeferred<SessionStateTimeline>();
     const pane2Timeline: SessionStateTimeline = {
       ...buildTimeline("1h"),
       paneId: "pane-2",
@@ -139,8 +132,8 @@ describe("useSessionTimeline", () => {
   });
 
   it("keeps the newest timeline when refresh requests resolve out of order", async () => {
-    const staleDeferred = deferred<SessionStateTimeline>();
-    const freshDeferred = deferred<SessionStateTimeline>();
+    const staleDeferred = createDeferred<SessionStateTimeline>();
+    const freshDeferred = createDeferred<SessionStateTimeline>();
     const requestStateTimeline = vi
       .fn()
       .mockImplementationOnce(() => staleDeferred.promise)

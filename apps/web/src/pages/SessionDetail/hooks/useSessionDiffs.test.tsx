@@ -12,18 +12,10 @@ import {
   diffOpenAtom,
   diffSummaryAtom,
 } from "../atoms/diffAtoms";
-import { createDiffFile, createDiffSummary } from "../test-helpers";
+import { createDeferred, createDiffFile, createDiffSummary } from "../test-helpers";
 import { useSessionDiffs } from "./useSessionDiffs";
 
 describe("useSessionDiffs", () => {
-  const deferred = <T,>() => {
-    let resolve: ((value: T) => void) | null = null;
-    const promise = new Promise<T>((nextResolve) => {
-      resolve = nextResolve;
-    });
-    return { promise, resolve: (value: T) => resolve?.(value) };
-  };
-
   const createWrapper = () => {
     const store = createStore();
     store.set(diffSummaryAtom, null);
@@ -129,7 +121,7 @@ describe("useSessionDiffs", () => {
       rev: "rev-pane-2",
       files: [{ path: "pane-2.ts", status: "M", staged: false, additions: 1, deletions: 0 }],
     });
-    const pane1Deferred = deferred<typeof pane1Summary>();
+    const pane1Deferred = createDeferred<typeof pane1Summary>();
     const requestDiffSummary = vi.fn((paneId: string) =>
       paneId === "pane-1" ? pane1Deferred.promise : Promise.resolve(pane2Summary),
     );
@@ -166,8 +158,8 @@ describe("useSessionDiffs", () => {
   it("keeps the newest summary when refresh requests resolve out of order", async () => {
     const staleSummary = createDiffSummary({ rev: "rev-stale" });
     const freshSummary = createDiffSummary({ rev: "rev-fresh" });
-    const staleDeferred = deferred<typeof staleSummary>();
-    const freshDeferred = deferred<typeof freshSummary>();
+    const staleDeferred = createDeferred<typeof staleSummary>();
+    const freshDeferred = createDeferred<typeof freshSummary>();
     const requestDiffSummary = vi
       .fn()
       .mockImplementationOnce(() => staleDeferred.promise)

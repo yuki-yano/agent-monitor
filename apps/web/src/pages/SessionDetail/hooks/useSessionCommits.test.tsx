@@ -5,18 +5,15 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { commitStateAtom, initialCommitState } from "../atoms/commitAtoms";
-import { createCommitDetail, createCommitFileDiff, createCommitLog } from "../test-helpers";
+import {
+  createCommitDetail,
+  createCommitFileDiff,
+  createCommitLog,
+  createDeferred,
+} from "../test-helpers";
 import { useSessionCommits } from "./useSessionCommits";
 
 describe("useSessionCommits", () => {
-  const deferred = <T,>() => {
-    let resolve: ((value: T) => void) | null = null;
-    const promise = new Promise<T>((nextResolve) => {
-      resolve = nextResolve;
-    });
-    return { promise, resolve: (value: T) => resolve?.(value) };
-  };
-
   const createWrapper = () => {
     const store = createStore();
     store.set(commitStateAtom, initialCommitState);
@@ -160,7 +157,7 @@ describe("useSessionCommits", () => {
   it("ignores stale commit log responses from previous pane", async () => {
     const pane1Log = createCommitLog({ rev: "rev-pane-1" });
     const pane2Log = createCommitLog({ rev: "rev-pane-2" });
-    const pane1Deferred = deferred<typeof pane1Log>();
+    const pane1Deferred = createDeferred<typeof pane1Log>();
     const requestCommitLog = vi.fn((paneId: string) =>
       paneId === "pane-1" ? pane1Deferred.promise : Promise.resolve(pane2Log),
     );
@@ -199,8 +196,8 @@ describe("useSessionCommits", () => {
   it("keeps the newest commit log when refresh requests resolve out of order", async () => {
     const staleLog = createCommitLog({ rev: "rev-stale" });
     const freshLog = createCommitLog({ rev: "rev-fresh" });
-    const staleDeferred = deferred<typeof staleLog>();
-    const freshDeferred = deferred<typeof freshLog>();
+    const staleDeferred = createDeferred<typeof staleLog>();
+    const freshDeferred = createDeferred<typeof freshLog>();
     const requestCommitLog = vi
       .fn()
       .mockImplementationOnce(() => staleDeferred.promise)
