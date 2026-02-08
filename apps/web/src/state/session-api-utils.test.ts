@@ -8,6 +8,7 @@ import {
   buildRefreshFailureResult,
   buildScreenRequestJson,
   buildScreenRequestKeys,
+  buildTimelineQuery,
   resolveInflightScreenRequest,
 } from "./session-api-utils";
 
@@ -108,5 +109,10 @@ describe("session-api-utils", () => {
       path: "src/a.ts",
       force: "1",
     });
+
+    expect(buildTimelineQuery()).toEqual({});
+    expect(buildTimelineQuery({ range: "1h" })).toEqual({ range: "1h" });
+    expect(buildTimelineQuery({ limit: 9.8 })).toEqual({ limit: "9" });
+    expect(buildTimelineQuery({ limit: 0 })).toEqual({ limit: "1" });
   });
 });

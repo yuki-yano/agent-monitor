@@ -37,6 +37,7 @@ import {
   buildForceQuery,
   buildScreenRequestJson,
   buildScreenRequestKeys,
+  buildTimelineQuery,
   type RefreshSessionsResult,
   resolveInflightScreenRequest,
   resolveScreenMode,
@@ -268,13 +269,7 @@ export const useSessionApi = ({
       options?: { range?: SessionStateTimelineRange; limit?: number },
     ): Promise<SessionStateTimeline> => {
       const param = buildPaneParam(paneId);
-      const query: { range?: SessionStateTimelineRange; limit?: string } = {};
-      if (options?.range) {
-        query.range = options.range;
-      }
-      if (typeof options?.limit === "number" && Number.isFinite(options.limit)) {
-        query.limit = String(Math.max(1, Math.floor(options.limit)));
-      }
+      const query = buildTimelineQuery(options);
       return requestPaneField<{ timeline?: SessionStateTimeline }, "timeline">({
         paneId,
         request: apiClient.sessions[":paneId"].timeline.$get({ param, query }),

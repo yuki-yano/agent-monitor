@@ -16,6 +16,7 @@ import type {
   DiffFileQuery,
   ForceQuery,
   ScreenRequestJson,
+  TimelineQuery,
 } from "./session-api-contract";
 
 export type RefreshSessionsResult = {
@@ -199,4 +200,18 @@ export const buildCommitFileQuery = (
 ): CommitFileQuery => {
   const query: CommitFileQuery = { path };
   return applyForceQuery(query, options?.force);
+};
+
+export const buildTimelineQuery = (options?: {
+  range?: TimelineQuery["range"];
+  limit?: number;
+}) => {
+  const query: TimelineQuery = {};
+  if (options?.range) {
+    query.range = options.range;
+  }
+  if (typeof options?.limit === "number" && Number.isFinite(options.limit)) {
+    query.limit = String(Math.max(1, Math.floor(options.limit)));
+  }
+  return query;
 };

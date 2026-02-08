@@ -27,5 +27,8 @@ export type ScreenRequestJson = NonNullable<
 export type UploadImageForm = NonNullable<
   InferRequestType<SessionClient["attachments"]["image"]["$post"]>["form"]
 >;
+export type TimelineQuery = NonNullable<
+  InferRequestType<SessionClient["timeline"]["$get"]>["query"]
+>;
 
 export type { ApiClientContract };
