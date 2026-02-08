@@ -16,6 +16,14 @@ import { createDiffFile, createDiffSummary } from "../test-helpers";
 import { useSessionDiffs } from "./useSessionDiffs";
 
 describe("useSessionDiffs", () => {
+  const deferred = <T,>() => {
+    let resolve: ((value: T) => void) | null = null;
+    const promise = new Promise<T>((nextResolve) => {
+      resolve = nextResolve;
+    });
+    return { promise, resolve: (value: T) => resolve?.(value) };
+  };
+
   const createWrapper = () => {
     const store = createStore();
     store.set(diffSummaryAtom, null);
@@ -113,5 +121,82 @@ describe("useSessionDiffs", () => {
       expect(requestDiffSummary).toHaveBeenCalledTimes(2);
     });
     expect(requestDiffSummary).toHaveBeenLastCalledWith("pane-1", { force: true });
+  });
+
+  it("ignores stale diff summary responses from previous pane", async () => {
+    const pane1Summary = createDiffSummary({ rev: "rev-pane-1", files: [] });
+    const pane2Summary = createDiffSummary({
+      rev: "rev-pane-2",
+      files: [{ path: "pane-2.ts", status: "M", staged: false, additions: 1, deletions: 0 }],
+    });
+    const pane1Deferred = deferred<typeof pane1Summary>();
+    const requestDiffSummary = vi.fn((paneId: string) =>
+      paneId === "pane-1" ? pane1Deferred.promise : Promise.resolve(pane2Summary),
+    );
+    const requestDiffFile = vi.fn().mockResolvedValue(createDiffFile());
+
+    const wrapper = createWrapper();
+    const { result, rerender } = renderHook(
+      ({ paneId }) =>
+        useSessionDiffs({
+          paneId,
+          connected: true,
+          requestDiffSummary,
+          requestDiffFile,
+        }),
+      {
+        wrapper,
+        initialProps: { paneId: "pane-1" },
+      },
+    );
+
+    rerender({ paneId: "pane-2" });
+
+    await waitFor(() => {
+      expect(result.current.diffSummary?.rev).toBe("rev-pane-2");
+    });
+
+    pane1Deferred.resolve(pane1Summary);
+
+    await waitFor(() => {
+      expect(result.current.diffSummary?.rev).toBe("rev-pane-2");
+    });
+  });
+
+  it("keeps the newest summary when refresh requests resolve out of order", async () => {
+    const staleSummary = createDiffSummary({ rev: "rev-stale" });
+    const freshSummary = createDiffSummary({ rev: "rev-fresh" });
+    const staleDeferred = deferred<typeof staleSummary>();
+    const freshDeferred = deferred<typeof freshSummary>();
+    const requestDiffSummary = vi
+      .fn()
+      .mockImplementationOnce(() => staleDeferred.promise)
+      .mockImplementationOnce(() => freshDeferred.promise);
+    const requestDiffFile = vi.fn().mockResolvedValue(createDiffFile());
+
+    const wrapper = createWrapper();
+    const { result } = renderHook(
+      () =>
+        useSessionDiffs({
+          paneId: "pane-1",
+          connected: true,
+          requestDiffSummary,
+          requestDiffFile,
+        }),
+      { wrapper },
+    );
+
+    void result.current.refreshDiff();
+    freshDeferred.resolve(freshSummary);
+
+    await waitFor(() => {
+      expect(result.current.diffSummary?.rev).toBe("rev-fresh");
+    });
+
+    staleDeferred.resolve(staleSummary);
+
+    await waitFor(() => {
+      expect(result.current.diffSummary?.rev).toBe("rev-fresh");
+    });
   });
 });

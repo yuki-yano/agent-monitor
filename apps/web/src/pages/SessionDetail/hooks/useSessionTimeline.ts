@@ -37,26 +37,48 @@ export const useSessionTimeline = ({
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineExpanded, setTimelineExpanded] = useState(!mobileDefaultCollapsed);
   const previousConnectedRef = useRef<boolean | null>(null);
+  const activePaneIdRef = useRef(paneId);
+  const timelineRequestIdRef = useRef(0);
+  activePaneIdRef.current = paneId;
 
   const loadTimeline = useCallback(
     async ({ silent = false }: LoadTimelineOptions = {}) => {
       if (!paneId) {
         return;
       }
+      const targetPaneId = paneId;
+      const requestId = timelineRequestIdRef.current + 1;
+      timelineRequestIdRef.current = requestId;
       if (!silent) {
         setTimelineLoading(true);
       }
       try {
-        const nextTimeline = await requestStateTimeline(paneId, {
+        const nextTimeline = await requestStateTimeline(targetPaneId, {
           range: timelineRange,
           limit: DEFAULT_LIMIT,
         });
+        if (
+          timelineRequestIdRef.current !== requestId ||
+          activePaneIdRef.current !== targetPaneId
+        ) {
+          return;
+        }
         setTimeline(nextTimeline);
         setTimelineError(null);
       } catch (err) {
+        if (
+          timelineRequestIdRef.current !== requestId ||
+          activePaneIdRef.current !== targetPaneId
+        ) {
+          return;
+        }
         setTimelineError(resolveTimelineError(err));
       } finally {
-        if (!silent) {
+        if (
+          !silent &&
+          timelineRequestIdRef.current === requestId &&
+          activePaneIdRef.current === targetPaneId
+        ) {
           setTimelineLoading(false);
         }
       }

@@ -21,6 +21,14 @@ const buildTimeline = (range: SessionStateTimelineRange): SessionStateTimeline =
 });
 
 describe("useSessionTimeline", () => {
+  const deferred = <T,>() => {
+    let resolve: ((value: T) => void) | null = null;
+    const promise = new Promise<T>((nextResolve) => {
+      resolve = nextResolve;
+    });
+    return { promise, resolve: (value: T) => resolve?.(value) };
+  };
+
   it("loads timeline on mount", async () => {
     const requestStateTimeline = vi.fn().mockResolvedValue(buildTimeline("1h"));
 
@@ -89,5 +97,81 @@ describe("useSessionTimeline", () => {
       result.current.toggleTimelineExpanded();
     });
     expect(result.current.timelineExpanded).toBe(true);
+  });
+
+  it("ignores stale timeline responses from previous pane", async () => {
+    const pane1Deferred = deferred<SessionStateTimeline>();
+    const pane2Timeline: SessionStateTimeline = {
+      ...buildTimeline("1h"),
+      paneId: "pane-2",
+    };
+    const requestStateTimeline = vi.fn((paneId: string) =>
+      paneId === "pane-1" ? pane1Deferred.promise : Promise.resolve(pane2Timeline),
+    );
+
+    const { result, rerender } = renderHook(
+      ({ paneId }) =>
+        useSessionTimeline({
+          paneId,
+          connected: true,
+          requestStateTimeline,
+          mobileDefaultCollapsed: false,
+        }),
+      {
+        initialProps: { paneId: "pane-1" },
+      },
+    );
+
+    rerender({ paneId: "pane-2" });
+
+    await waitFor(() => {
+      expect(result.current.timeline?.paneId).toBe("pane-2");
+    });
+
+    pane1Deferred.resolve({
+      ...buildTimeline("1h"),
+      paneId: "pane-1",
+    });
+
+    await waitFor(() => {
+      expect(result.current.timeline?.paneId).toBe("pane-2");
+    });
+  });
+
+  it("keeps the newest timeline when refresh requests resolve out of order", async () => {
+    const staleDeferred = deferred<SessionStateTimeline>();
+    const freshDeferred = deferred<SessionStateTimeline>();
+    const requestStateTimeline = vi
+      .fn()
+      .mockImplementationOnce(() => staleDeferred.promise)
+      .mockImplementationOnce(() => freshDeferred.promise);
+
+    const { result } = renderHook(() =>
+      useSessionTimeline({
+        paneId: "pane-1",
+        connected: true,
+        requestStateTimeline,
+        mobileDefaultCollapsed: false,
+      }),
+    );
+
+    result.current.refreshTimeline();
+    freshDeferred.resolve({
+      ...buildTimeline("1h"),
+      paneId: "pane-1",
+    });
+
+    await waitFor(() => {
+      expect(result.current.timeline?.paneId).toBe("pane-1");
+    });
+
+    staleDeferred.resolve({
+      ...buildTimeline("15m"),
+      paneId: "pane-1",
+    });
+
+    await waitFor(() => {
+      expect(result.current.timeline?.range).toBe("1h");
+    });
   });
 });

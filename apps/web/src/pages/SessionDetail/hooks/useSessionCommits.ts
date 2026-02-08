@@ -230,6 +230,9 @@ export const useSessionCommits = ({
   const commitSignatureRef = useRef<string | null>(null);
   const commitCopyTimeoutRef = useRef<number | null>(null);
   const prevConnectedRef = useRef<boolean | null>(null);
+  const activePaneIdRef = useRef(paneId);
+  const commitLogRequestIdRef = useRef(0);
+  activePaneIdRef.current = paneId;
 
   const applyCommitLog = useCallback(
     (log: CommitLog, options: { append: boolean; updateSignature: boolean }) => {
@@ -244,21 +247,41 @@ export const useSessionCommits = ({
   const loadCommitLog = useCallback(
     async (options?: { append?: boolean; force?: boolean }) => {
       if (!paneId) return;
+      const targetPaneId = paneId;
+      const requestId = commitLogRequestIdRef.current + 1;
+      commitLogRequestIdRef.current = requestId;
       const { append, force } = resolveCommitLogLoadOptions(options);
       dispatch({ type: "startLogLoad", append });
       dispatch({ type: "setCommitError", error: null });
       try {
         const skip = resolveCommitLogSkip(append, commitLogRef.current);
-        const log = await requestCommitLog(paneId, {
+        const log = await requestCommitLog(targetPaneId, {
           limit: commitPageSize,
           skip,
           force,
         });
+        if (
+          activePaneIdRef.current !== targetPaneId ||
+          commitLogRequestIdRef.current !== requestId
+        ) {
+          return;
+        }
         applyCommitLog(log, { append, updateSignature: !append });
       } catch (err) {
+        if (
+          activePaneIdRef.current !== targetPaneId ||
+          commitLogRequestIdRef.current !== requestId
+        ) {
+          return;
+        }
         dispatchCommitLogError(dispatch, append, err);
       } finally {
-        dispatch({ type: "finishLogLoad", append });
+        if (
+          activePaneIdRef.current === targetPaneId &&
+          commitLogRequestIdRef.current === requestId
+        ) {
+          dispatch({ type: "finishLogLoad", append });
+        }
       }
     },
     [applyCommitLog, commitPageSize, dispatch, paneId, requestCommitLog],
@@ -267,17 +290,26 @@ export const useSessionCommits = ({
   const loadCommitDetail = useCallback(
     async (hash: string) => {
       if (!paneId || commitLoadingDetails[hash]) return;
+      const targetPaneId = paneId;
       dispatch({ type: "setCommitLoadingDetails", hash, loading: true });
       try {
-        const detail = await requestCommitDetail(paneId, hash, { force: true });
+        const detail = await requestCommitDetail(targetPaneId, hash, { force: true });
+        if (activePaneIdRef.current !== targetPaneId) {
+          return;
+        }
         dispatch({ type: "setCommitDetail", hash, detail });
       } catch (err) {
+        if (activePaneIdRef.current !== targetPaneId) {
+          return;
+        }
         dispatch({
           type: "setCommitError",
           error: err instanceof Error ? err.message : API_ERROR_MESSAGES.commitDetail,
         });
       } finally {
-        dispatch({ type: "setCommitLoadingDetails", hash, loading: false });
+        if (activePaneIdRef.current === targetPaneId) {
+          dispatch({ type: "setCommitLoadingDetails", hash, loading: false });
+        }
       }
     },
     [commitLoadingDetails, dispatch, paneId, requestCommitDetail],
@@ -288,17 +320,26 @@ export const useSessionCommits = ({
       if (!paneId) return;
       const key = `${hash}:${path}`;
       if (commitFileLoading[key]) return;
+      const targetPaneId = paneId;
       dispatch({ type: "setCommitFileLoading", key, loading: true });
       try {
-        const file = await requestCommitFile(paneId, hash, path, { force: true });
+        const file = await requestCommitFile(targetPaneId, hash, path, { force: true });
+        if (activePaneIdRef.current !== targetPaneId) {
+          return;
+        }
         dispatch({ type: "setCommitFileDetail", key, file });
       } catch (err) {
+        if (activePaneIdRef.current !== targetPaneId) {
+          return;
+        }
         dispatch({
           type: "setCommitError",
           error: err instanceof Error ? err.message : API_ERROR_MESSAGES.commitFile,
         });
       } finally {
-        dispatch({ type: "setCommitFileLoading", key, loading: false });
+        if (activePaneIdRef.current === targetPaneId) {
+          dispatch({ type: "setCommitFileLoading", key, loading: false });
+        }
       }
     },
     [commitFileLoading, dispatch, paneId, requestCommitFile],
@@ -306,12 +347,18 @@ export const useSessionCommits = ({
 
   const pollCommitLog = useCallback(async () => {
     if (!paneId) return;
+    const targetPaneId = paneId;
+    const requestId = commitLogRequestIdRef.current + 1;
+    commitLogRequestIdRef.current = requestId;
     try {
-      const log = await requestCommitLog(paneId, {
+      const log = await requestCommitLog(targetPaneId, {
         limit: commitPageSize,
         skip: 0,
         force: true,
       });
+      if (activePaneIdRef.current !== targetPaneId || commitLogRequestIdRef.current !== requestId) {
+        return;
+      }
       const signature = buildCommitLogSignature(log);
       if (signature === commitSignatureRef.current) {
         return;

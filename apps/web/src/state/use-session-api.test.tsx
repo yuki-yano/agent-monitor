@@ -19,6 +19,11 @@ const mockApiClient = {
       screen: { $post: mockPost },
       focus: { $post: mockPost },
       attachments: { image: { $post: mockPost } },
+      send: {
+        text: { $post: mockPost },
+        keys: { $post: mockPost },
+        raw: { $post: mockPost },
+      },
       title: { $put: mockPut },
       touch: { $post: mockPost },
       diff: {

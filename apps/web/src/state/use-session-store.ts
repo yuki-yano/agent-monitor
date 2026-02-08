@@ -1,6 +1,12 @@
 import type { SessionDetail, SessionSummary } from "@vde-monitor/shared";
 import { useCallback, useState } from "react";
 
+const toSessionDetail = (session: SessionSummary): SessionDetail => ({
+  ...session,
+  startCommand: null,
+  panePid: null,
+});
+
 export const useSessionStore = () => {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
 
@@ -28,7 +34,7 @@ export const useSessionStore = () => {
   const getSessionDetail = useCallback(
     (paneId: string) => {
       const session = sessions.find((item) => item.paneId === paneId);
-      return session ? (session as SessionDetail) : null;
+      return session ? toSessionDetail(session) : null;
     },
     [sessions],
   );

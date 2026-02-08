@@ -9,6 +9,14 @@ import { createCommitDetail, createCommitFileDiff, createCommitLog } from "../te
 import { useSessionCommits } from "./useSessionCommits";
 
 describe("useSessionCommits", () => {
+  const deferred = <T,>() => {
+    let resolve: ((value: T) => void) | null = null;
+    const promise = new Promise<T>((nextResolve) => {
+      resolve = nextResolve;
+    });
+    return { promise, resolve: (value: T) => resolve?.(value) };
+  };
+
   const createWrapper = () => {
     const store = createStore();
     store.set(commitStateAtom, initialCommitState);
@@ -146,6 +154,84 @@ describe("useSessionCommits", () => {
       limit: 10,
       skip: 0,
       force: true,
+    });
+  });
+
+  it("ignores stale commit log responses from previous pane", async () => {
+    const pane1Log = createCommitLog({ rev: "rev-pane-1" });
+    const pane2Log = createCommitLog({ rev: "rev-pane-2" });
+    const pane1Deferred = deferred<typeof pane1Log>();
+    const requestCommitLog = vi.fn((paneId: string) =>
+      paneId === "pane-1" ? pane1Deferred.promise : Promise.resolve(pane2Log),
+    );
+    const requestCommitDetail = vi.fn().mockResolvedValue(createCommitDetail());
+    const requestCommitFile = vi.fn().mockResolvedValue(createCommitFileDiff());
+
+    const wrapper = createWrapper();
+    const { result, rerender } = renderHook(
+      ({ paneId }) =>
+        useSessionCommits({
+          paneId,
+          connected: true,
+          requestCommitLog,
+          requestCommitDetail,
+          requestCommitFile,
+        }),
+      {
+        wrapper,
+        initialProps: { paneId: "pane-1" },
+      },
+    );
+
+    rerender({ paneId: "pane-2" });
+
+    await waitFor(() => {
+      expect(result.current.commitLog?.rev).toBe("rev-pane-2");
+    });
+
+    pane1Deferred.resolve(pane1Log);
+
+    await waitFor(() => {
+      expect(result.current.commitLog?.rev).toBe("rev-pane-2");
+    });
+  });
+
+  it("keeps the newest commit log when refresh requests resolve out of order", async () => {
+    const staleLog = createCommitLog({ rev: "rev-stale" });
+    const freshLog = createCommitLog({ rev: "rev-fresh" });
+    const staleDeferred = deferred<typeof staleLog>();
+    const freshDeferred = deferred<typeof freshLog>();
+    const requestCommitLog = vi
+      .fn()
+      .mockImplementationOnce(() => staleDeferred.promise)
+      .mockImplementationOnce(() => freshDeferred.promise);
+    const requestCommitDetail = vi.fn().mockResolvedValue(createCommitDetail());
+    const requestCommitFile = vi.fn().mockResolvedValue(createCommitFileDiff());
+
+    const wrapper = createWrapper();
+    const { result } = renderHook(
+      () =>
+        useSessionCommits({
+          paneId: "pane-1",
+          connected: true,
+          requestCommitLog,
+          requestCommitDetail,
+          requestCommitFile,
+        }),
+      { wrapper },
+    );
+
+    void result.current.refreshCommitLog();
+    freshDeferred.resolve(freshLog);
+
+    await waitFor(() => {
+      expect(result.current.commitLog?.rev).toBe("rev-fresh");
+    });
+
+    staleDeferred.resolve(staleLog);
+
+    await waitFor(() => {
+      expect(result.current.commitLog?.rev).toBe("rev-fresh");
     });
   });
 });

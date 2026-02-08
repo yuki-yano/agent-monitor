@@ -18,13 +18,12 @@ import {
   type SessionStateTimelineRange,
   type SessionSummary,
 } from "@vde-monitor/shared";
-import { hc } from "hono/client";
 import { useCallback, useMemo, useRef } from "react";
 
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import { expectField, extractErrorMessage, requestJson } from "@/lib/api-utils";
 
-import type { ApiClientContract } from "./session-api-contract";
+import { createApiClient } from "./session-api-contract";
 import {
   applyRefreshSessionsFailure,
   applyRefreshSessionsSuccess,
@@ -99,10 +98,7 @@ export const useSessionApi = ({
     return normalized && normalized.length > 0 ? normalized : "/api";
   }, [apiBaseUrl]);
   const apiClient = useMemo(
-    () =>
-      hc(apiBasePath, {
-        headers: authHeaders,
-      }) as unknown as ApiClientContract,
+    () => createApiClient(apiBasePath, authHeaders),
     [apiBasePath, authHeaders],
   );
   const screenInFlightRef = useRef(new Map<string, Promise<ScreenResponse>>());

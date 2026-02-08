@@ -43,6 +43,9 @@ export const useSessionDiffs = ({
   const diffOpenRef = useRef<Record<string, boolean>>({});
   const diffSignatureRef = useRef<string | null>(null);
   const prevConnectedRef = useRef<boolean | null>(null);
+  const activePaneIdRef = useRef(paneId);
+  const summaryRequestIdRef = useRef(0);
+  activePaneIdRef.current = paneId;
 
   const applyDiffSummary = useCallback(
     async (summary: DiffSummary, refreshOpenFiles: boolean) => {
@@ -82,22 +85,39 @@ export const useSessionDiffs = ({
 
   const loadDiffSummary = useCallback(async () => {
     if (!paneId) return;
+    const targetPaneId = paneId;
+    const requestId = summaryRequestIdRef.current + 1;
+    summaryRequestIdRef.current = requestId;
     setDiffLoading(true);
     setDiffError(null);
     try {
-      const summary = await requestDiffSummary(paneId, { force: true });
+      const summary = await requestDiffSummary(targetPaneId, { force: true });
+      if (summaryRequestIdRef.current !== requestId || activePaneIdRef.current !== targetPaneId) {
+        return;
+      }
       await applyDiffSummary(summary, true);
     } catch (err) {
+      if (summaryRequestIdRef.current !== requestId || activePaneIdRef.current !== targetPaneId) {
+        return;
+      }
       setDiffError(err instanceof Error ? err.message : API_ERROR_MESSAGES.diffSummary);
     } finally {
-      setDiffLoading(false);
+      if (summaryRequestIdRef.current === requestId && activePaneIdRef.current === targetPaneId) {
+        setDiffLoading(false);
+      }
     }
   }, [applyDiffSummary, paneId, requestDiffSummary, setDiffError, setDiffLoading]);
 
   const pollDiffSummary = useCallback(async () => {
     if (!paneId) return;
+    const targetPaneId = paneId;
+    const requestId = summaryRequestIdRef.current + 1;
+    summaryRequestIdRef.current = requestId;
     try {
-      const summary = await requestDiffSummary(paneId, { force: true });
+      const summary = await requestDiffSummary(targetPaneId, { force: true });
+      if (summaryRequestIdRef.current !== requestId || activePaneIdRef.current !== targetPaneId) {
+        return;
+      }
       const signature = buildDiffSummarySignature(summary);
       if (signature === diffSignatureRef.current) {
         return;
@@ -116,14 +136,24 @@ export const useSessionDiffs = ({
     async (path: string) => {
       if (!paneId || !diffSummary?.rev) return;
       if (diffLoadingFiles[path]) return;
+      const targetPaneId = paneId;
+      const requestId = summaryRequestIdRef.current;
       setDiffLoadingFiles((prev) => ({ ...prev, [path]: true }));
       try {
-        const file = await requestDiffFile(paneId, path, diffSummary.rev, { force: true });
+        const file = await requestDiffFile(targetPaneId, path, diffSummary.rev, { force: true });
+        if (summaryRequestIdRef.current !== requestId || activePaneIdRef.current !== targetPaneId) {
+          return;
+        }
         setDiffFiles((prev) => ({ ...prev, [path]: file }));
       } catch (err) {
+        if (summaryRequestIdRef.current !== requestId || activePaneIdRef.current !== targetPaneId) {
+          return;
+        }
         setDiffError(err instanceof Error ? err.message : API_ERROR_MESSAGES.diffFile);
       } finally {
-        setDiffLoadingFiles((prev) => ({ ...prev, [path]: false }));
+        if (summaryRequestIdRef.current === requestId && activePaneIdRef.current === targetPaneId) {
+          setDiffLoadingFiles((prev) => ({ ...prev, [path]: false }));
+        }
       }
     },
     [

@@ -1,4 +1,5 @@
 import type { AllowedKey, RawItem, SessionStateTimelineRange } from "@vde-monitor/shared";
+import { hc } from "hono/client";
 
 export type PaneParam = { paneId: string };
 export type PaneHashParam = { paneId: string; hash: string };
@@ -66,4 +67,132 @@ export type ApiClientContract = {
       };
     };
   };
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object";
+
+const hasFunction = (value: unknown, key: string): boolean =>
+  isRecord(value) && typeof value[key] === "function";
+
+const hasPathRecord = (value: unknown, key: string): value is Record<string, unknown> =>
+  isRecord(value) && isRecord(value[key]);
+
+const hasPaneRoutes = (value: unknown): value is Record<string, unknown> => {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (!hasPathRecord(value, "diff")) {
+    return false;
+  }
+  if (!hasPathRecord(value, "commits")) {
+    return false;
+  }
+  if (!hasPathRecord(value, "timeline")) {
+    return false;
+  }
+  if (!hasPathRecord(value, "screen")) {
+    return false;
+  }
+  if (!hasPathRecord(value, "focus")) {
+    return false;
+  }
+  if (!hasPathRecord(value, "attachments")) {
+    return false;
+  }
+  if (!hasPathRecord(value, "send")) {
+    return false;
+  }
+  if (!hasPathRecord(value, "title")) {
+    return false;
+  }
+  if (!hasPathRecord(value, "touch")) {
+    return false;
+  }
+  if (!hasFunction(value.diff, "$get")) {
+    return false;
+  }
+  if (!hasPathRecord(value.diff, "file") || !hasFunction(value.diff.file, "$get")) {
+    return false;
+  }
+  if (!hasFunction(value.commits, "$get")) {
+    return false;
+  }
+  if (!hasPathRecord(value.commits, ":hash")) {
+    return false;
+  }
+  if (!hasFunction(value.commits[":hash"], "$get")) {
+    return false;
+  }
+  if (
+    !hasPathRecord(value.commits[":hash"], "file") ||
+    !hasFunction(value.commits[":hash"].file, "$get")
+  ) {
+    return false;
+  }
+  if (!hasFunction(value.timeline, "$get")) {
+    return false;
+  }
+  if (!hasFunction(value.screen, "$post")) {
+    return false;
+  }
+  if (!hasFunction(value.focus, "$post")) {
+    return false;
+  }
+  if (
+    !hasPathRecord(value.attachments, "image") ||
+    !hasFunction(value.attachments.image, "$post")
+  ) {
+    return false;
+  }
+  if (
+    !hasPathRecord(value.send, "text") ||
+    !hasPathRecord(value.send, "keys") ||
+    !hasPathRecord(value.send, "raw")
+  ) {
+    return false;
+  }
+  if (
+    !hasFunction(value.send.text, "$post") ||
+    !hasFunction(value.send.keys, "$post") ||
+    !hasFunction(value.send.raw, "$post")
+  ) {
+    return false;
+  }
+  if (!hasFunction(value.title, "$put")) {
+    return false;
+  }
+  if (!hasFunction(value.touch, "$post")) {
+    return false;
+  }
+  return true;
+};
+
+export const isApiClientContract = (value: unknown): value is ApiClientContract => {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (!hasPathRecord(value, "sessions")) {
+    return false;
+  }
+  if (!hasFunction(value.sessions, "$get")) {
+    return false;
+  }
+  if (!hasPathRecord(value.sessions, ":paneId")) {
+    return false;
+  }
+  return hasPaneRoutes(value.sessions[":paneId"]);
+};
+
+export const createApiClient = (
+  apiBasePath: string,
+  authHeaders: Record<string, string>,
+): ApiClientContract => {
+  const client = hc(apiBasePath, {
+    headers: authHeaders,
+  });
+  if (!isApiClientContract(client)) {
+    throw new Error("invalid api client contract");
+  }
+  return client;
 };
