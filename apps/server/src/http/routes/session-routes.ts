@@ -43,6 +43,9 @@ const sendRawSchema = z.object({
   items: z.array(rawItemSchema),
   unsafe: z.boolean().optional(),
 });
+const imageAttachmentFormSchema = z.object({
+  image: z.instanceof(File).optional(),
+});
 
 const resolveTimelineRange = (range: string | undefined): SessionStateTimelineRange => {
   if (range === "15m" || range === "1h" || range === "6h") {
@@ -117,46 +120,44 @@ export const createSessionRoutes = ({
       const updated = monitor.registry.getDetail(pane.paneId) ?? pane.detail;
       return c.json({ session: updated });
     })
-    .post("/sessions/:paneId/attachments/image", async (c) => {
-      const pane = resolvePane(c);
-      if (pane instanceof Response) {
-        return pane;
-      }
-      const contentLength = validateAttachmentContentLength(c);
-      if (contentLength instanceof Response) {
-        return contentLength;
-      }
-      if (contentLength > IMAGE_ATTACHMENT_MAX_CONTENT_LENGTH_BYTES) {
-        return c.json(
-          { error: buildError("INVALID_PAYLOAD", "attachment exceeds content-length limit") },
-          400,
-        );
-      }
-      let formData: FormData;
-      try {
-        formData = await c.req.formData();
-      } catch {
-        return c.json({ error: buildError("INVALID_PAYLOAD", "invalid multipart payload") }, 400);
-      }
-      const image = formData.get("image");
-      if (!(image instanceof File)) {
-        return c.json({ error: buildError("INVALID_PAYLOAD", "image field is required") }, 400);
-      }
-
-      try {
-        const attachment = await saveImageAttachment({
-          paneId: pane.paneId,
-          repoRoot: pane.detail.repoRoot,
-          file: image,
-        });
-        return c.json({ attachment });
-      } catch (error) {
-        if (error instanceof ImageAttachmentError) {
-          return c.json({ error: buildError(error.code, error.message) }, error.status);
+    .post(
+      "/sessions/:paneId/attachments/image",
+      zValidator("form", imageAttachmentFormSchema),
+      async (c) => {
+        const pane = resolvePane(c);
+        if (pane instanceof Response) {
+          return pane;
         }
-        return c.json({ error: buildError("INTERNAL", "failed to save image attachment") }, 500);
-      }
-    })
+        const contentLength = validateAttachmentContentLength(c);
+        if (contentLength instanceof Response) {
+          return contentLength;
+        }
+        if (contentLength > IMAGE_ATTACHMENT_MAX_CONTENT_LENGTH_BYTES) {
+          return c.json(
+            { error: buildError("INVALID_PAYLOAD", "attachment exceeds content-length limit") },
+            400,
+          );
+        }
+        const { image } = c.req.valid("form");
+        if (!(image instanceof File)) {
+          return c.json({ error: buildError("INVALID_PAYLOAD", "image field is required") }, 400);
+        }
+
+        try {
+          const attachment = await saveImageAttachment({
+            paneId: pane.paneId,
+            repoRoot: pane.detail.repoRoot,
+            file: image,
+          });
+          return c.json({ attachment });
+        } catch (error) {
+          if (error instanceof ImageAttachmentError) {
+            return c.json({ error: buildError(error.code, error.message) }, error.status);
+          }
+          return c.json({ error: buildError("INTERNAL", "failed to save image attachment") }, 500);
+        }
+      },
+    )
     .post("/sessions/:paneId/screen", zValidator("json", screenRequestSchema), async (c) => {
       const pane = resolvePane(c);
       if (pane instanceof Response) {
