@@ -97,6 +97,7 @@ export const ShikiCodeBlock = ({
   const fallbackPreClassName = flush
     ? "m-0 min-h-full w-max min-w-full whitespace-pre px-2 py-1.5 font-mono text-xs leading-5"
     : "m-0 min-h-full w-max min-w-full whitespace-pre p-3 font-mono text-xs leading-5";
+  const emptyLineMarker = "\u200B";
   const fallbackLines = useMemo(() => normalizedCode.split("\n"), [normalizedCode]);
   const highlightedHtml = useMemo(() => {
     if (!html) {
@@ -106,9 +107,10 @@ export const ShikiCodeBlock = ({
       return html;
     }
     return html
+      .replace(/<span class="line"><\/span>/g, `<span class="line">${emptyLineMarker}</span>`)
       .replace(/<\/span>\n<span class="line">/g, '</span><span class="line">')
       .replace(/<\/span>\n<\/code>/g, "</span></code>");
-  }, [html, showLineNumbers]);
+  }, [emptyLineMarker, html, showLineNumbers]);
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col", error ? "gap-2" : "gap-0", className)}>
@@ -134,7 +136,7 @@ export const ShikiCodeBlock = ({
               {showLineNumbers
                 ? fallbackLines.map((line, index) => (
                     <span key={`${index}:${line}`} className="line">
-                      {line || "\u200B"}
+                      {line || emptyLineMarker}
                     </span>
                   ))
                 : normalizedCode || "\u200B"}

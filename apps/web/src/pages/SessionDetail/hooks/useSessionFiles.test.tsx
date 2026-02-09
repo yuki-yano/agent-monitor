@@ -699,18 +699,18 @@ describe("useSessionFiles", () => {
       }),
     );
 
-    expect(result.current.fileModalShowLineNumbers).toBe(false);
-    act(() => {
-      result.current.onToggleFileModalLineNumbers();
-    });
     expect(result.current.fileModalShowLineNumbers).toBe(true);
     act(() => {
       result.current.onToggleFileModalLineNumbers();
     });
     expect(result.current.fileModalShowLineNumbers).toBe(false);
+    act(() => {
+      result.current.onToggleFileModalLineNumbers();
+    });
+    expect(result.current.fileModalShowLineNumbers).toBe(true);
   });
 
-  it("resets line-number visibility when opening or closing file modal", async () => {
+  it("resets line-number visibility to default when opening or closing file modal", async () => {
     const requestRepoFileTree = vi.fn(async () => createTreePage({ basePath: ".", entries: [] }));
     const requestRepoFileSearch = vi.fn();
 
@@ -728,17 +728,17 @@ describe("useSessionFiles", () => {
     act(() => {
       result.current.onToggleFileModalLineNumbers();
     });
-    expect(result.current.fileModalShowLineNumbers).toBe(true);
+    expect(result.current.fileModalShowLineNumbers).toBe(false);
 
     act(() => {
       result.current.onOpenFileModal("src/reset.ts");
     });
-    expect(result.current.fileModalShowLineNumbers).toBe(false);
+    expect(result.current.fileModalShowLineNumbers).toBe(true);
 
     act(() => {
       result.current.onToggleFileModalLineNumbers();
       result.current.onCloseFileModal();
     });
-    expect(result.current.fileModalShowLineNumbers).toBe(false);
+    expect(result.current.fileModalShowLineNumbers).toBe(true);
   });
 });

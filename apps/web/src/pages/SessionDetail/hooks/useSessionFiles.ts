@@ -329,7 +329,7 @@ export const useSessionFiles = ({
   const [fileModalMarkdownViewMode, setFileModalMarkdownViewMode] = useState<"code" | "preview">(
     "code",
   );
-  const [fileModalShowLineNumbers, setFileModalShowLineNumbers] = useState(false);
+  const [fileModalShowLineNumbers, setFileModalShowLineNumbers] = useState(true);
   const [fileModalCopiedPath, setFileModalCopiedPath] = useState(false);
   const [fileModalCopyError, setFileModalCopyError] = useState<string | null>(null);
 
@@ -480,7 +480,7 @@ export const useSessionFiles = ({
     setFileModalError(null);
     setFileModalFile(null);
     setFileModalMarkdownViewMode("code");
-    setFileModalShowLineNumbers(false);
+    setFileModalShowLineNumbers(true);
     setFileModalCopiedPath(false);
     setFileModalCopyError(null);
 
@@ -684,7 +684,7 @@ export const useSessionFiles = ({
       setFileModalPath(targetPath);
       setFileModalLoading(true);
       setFileModalError(null);
-      setFileModalShowLineNumbers(false);
+      setFileModalShowLineNumbers(true);
       setFileModalCopyError(null);
       setFileModalCopiedPath(false);
       setFileModalFile(null);
@@ -722,7 +722,7 @@ export const useSessionFiles = ({
     setFileModalOpen(false);
     setFileModalLoading(false);
     setFileModalError(null);
-    setFileModalShowLineNumbers(false);
+    setFileModalShowLineNumbers(true);
     setFileModalCopyError(null);
     setFileModalCopiedPath(false);
     if (fileModalCopyTimeoutRef.current != null) {
