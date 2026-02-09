@@ -238,6 +238,55 @@ describe("ScreenPanel", () => {
     });
   });
 
+  it("keeps hovered link highlight across rerender", async () => {
+    const onResolveFileReferenceCandidates = vi.fn(async (rawTokens: string[]) => rawTokens);
+    const actions = buildActions({ onResolveFileReferenceCandidates });
+    const { container, rerender } = render(
+      <ScreenPanel
+        state={buildState({
+          screenLines: ["see src/main.ts:1"],
+        })}
+        actions={actions}
+        controls={null}
+      />,
+    );
+
+    let initialRef: HTMLElement | null = null;
+    await waitFor(() => {
+      initialRef = container.querySelector<HTMLElement>("[data-vde-file-ref='src/main.ts:1']");
+      expect(initialRef).toBeTruthy();
+    });
+    if (!initialRef) {
+      throw new Error("expected linkified file reference");
+    }
+    fireEvent.mouseMove(initialRef);
+
+    await waitFor(() => {
+      const hoveredRef = container.querySelector<HTMLElement>(
+        "[data-vde-file-ref='src/main.ts:1']",
+      );
+      expect(hoveredRef?.className.includes("text-latte-lavender")).toBe(true);
+    });
+
+    rerender(
+      <ScreenPanel
+        state={buildState({
+          screenLines: ["again src/main.ts:1"],
+        })}
+        actions={actions}
+        controls={null}
+      />,
+    );
+
+    await waitFor(() => {
+      const rerenderedRef = container.querySelector<HTMLElement>(
+        "[data-vde-file-ref='src/main.ts:1']",
+      );
+      expect(rerenderedRef).toBeTruthy();
+      expect(rerenderedRef?.className.includes("text-latte-lavender")).toBe(true);
+    });
+  });
+
   it("passes raw token candidates to resolver", async () => {
     const onResolveFileReferenceCandidates = vi.fn(async (rawTokens: string[]) => rawTokens);
     const state = buildState({
@@ -256,7 +305,7 @@ describe("ScreenPanel", () => {
 
   it("passes all visible-range candidates without token cap", async () => {
     const onResolveFileReferenceCandidates = vi.fn(async (rawTokens: string[]) => rawTokens);
-    const manyTokens = Array.from({ length: 1205 }, (_, index) => `file-${index}.ts`).join(" ");
+    const manyTokens = Array.from({ length: 180 }, (_, index) => `file-${index}.ts`).join(" ");
     const state = buildState({
       screenLines: [manyTokens],
     });
@@ -270,56 +319,9 @@ describe("ScreenPanel", () => {
     const firstCallArgs = onResolveFileReferenceCandidates.mock.calls[0]?.[0] as
       | string[]
       | undefined;
-    expect(firstCallArgs?.length).toBe(1205);
+    expect(firstCallArgs?.length).toBe(180);
     expect(firstCallArgs?.[0]).toBe("file-0.ts");
-    expect(firstCallArgs?.at(-1)).toBe("file-1204.ts");
-  });
-
-  it("prioritizes latest path-like tokens when building candidates", async () => {
-    const onResolveFileReferenceCandidates = vi.fn(async (rawTokens: string[]) => rawTokens);
-    const oldFilenameTokens = Array.from({ length: 120 }, (_, index) => `old-${index}.ts`).join(
-      " ",
-    );
-    const state = buildState({
-      screenLines: [
-        oldFilenameTokens,
-        "latest apps/web/src/pages/SessionDetail/components/ScreenPanel.tsx:29",
-      ],
-    });
-    const actions = buildActions({ onResolveFileReferenceCandidates });
-    render(<ScreenPanel state={state} actions={actions} controls={null} />);
-
-    await waitFor(() => {
-      expect(onResolveFileReferenceCandidates).toHaveBeenCalled();
-    });
-    const firstCallArgs = onResolveFileReferenceCandidates.mock.calls[0]?.[0] as
-      | string[]
-      | undefined;
-    expect(firstCallArgs?.[0]).toBe(
-      "apps/web/src/pages/SessionDetail/components/ScreenPanel.tsx:29",
-    );
-  });
-
-  it("keeps latest filename tokens within resolver window even with older path backlog", async () => {
-    const onResolveFileReferenceCandidates = vi.fn(async (rawTokens: string[]) => rawTokens);
-    const oldPathTokens = Array.from(
-      { length: 300 },
-      (_, index) => `src/old/path-${index}.ts`,
-    ).join(" ");
-    const state = buildState({
-      screenLines: [oldPathTokens, "Read useSessionFiles.test.tsx"],
-    });
-    const actions = buildActions({ onResolveFileReferenceCandidates });
-    render(<ScreenPanel state={state} actions={actions} controls={null} />);
-
-    await waitFor(() => {
-      expect(onResolveFileReferenceCandidates).toHaveBeenCalled();
-    });
-    const firstCallArgs = onResolveFileReferenceCandidates.mock.calls[0]?.[0] as
-      | string[]
-      | undefined;
-    expect(firstCallArgs).toContain("useSessionFiles.test.tsx");
-    expect(firstCallArgs?.indexOf("useSessionFiles.test.tsx") ?? 999).toBeLessThan(80);
+    expect(firstCallArgs?.at(-1)).toBe("file-179.ts");
   });
 
   it("invokes file resolver only for verified links", async () => {

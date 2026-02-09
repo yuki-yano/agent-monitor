@@ -148,6 +148,19 @@ describe("linkifyLogLineFileReferences", () => {
     expect(refs.map((node) => node.dataset.vdeFileRef)).toEqual(["src/b.ts"]);
     expect(doc.body.textContent).toContain("src/a.ts");
   });
+
+  it("adds active class to hovered token", () => {
+    const html = linkifyLogLineFileReferences("src/a.ts src/b.ts", {
+      isActiveToken: (rawToken) => rawToken === "src/b.ts",
+    });
+    const doc = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html");
+    const first = doc.querySelector<HTMLElement>("[data-vde-file-ref='src/a.ts']");
+    const second = doc.querySelector<HTMLElement>("[data-vde-file-ref='src/b.ts']");
+    const firstClassList = new Set((first?.className ?? "").split(/\s+/).filter(Boolean));
+    const secondClassList = new Set((second?.className ?? "").split(/\s+/).filter(Boolean));
+    expect(firstClassList.has("text-latte-lavender")).toBe(false);
+    expect(secondClassList.has("text-latte-lavender")).toBe(true);
+  });
 });
 
 describe("extractLogReferenceLocation", () => {

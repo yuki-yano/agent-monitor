@@ -9,6 +9,7 @@ const { highlightCodeMock, resetShikiHighlighterMock } = vi.hoisted(() => ({
 
 vi.mock("@/lib/shiki/highlighter", () => ({
   highlightCode: highlightCodeMock,
+  peekHighlightedCode: vi.fn(() => null),
   resetShikiHighlighter: resetShikiHighlighterMock,
 }));
 

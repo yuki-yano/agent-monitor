@@ -1,11 +1,6 @@
 // @vitest-environment happy-dom
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type {
-  RepoFileContent,
-  RepoFileResolveReference,
-  RepoFileSearchPage,
-  RepoFileTreePage,
-} from "@vde-monitor/shared";
+import type { RepoFileContent, RepoFileSearchPage, RepoFileTreePage } from "@vde-monitor/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { useSessionFiles } from "./useSessionFiles";
@@ -820,21 +815,32 @@ describe("useSessionFiles", () => {
 
   it("opens file modal directly when log path exists", async () => {
     const requestRepoFileTree = vi.fn(async () => createTreePage({ basePath: ".", entries: [] }));
-    const requestRepoFileSearch = vi.fn();
-    const requestRepoFileContentLocal = vi.fn(
-      async (
-        paneId: string,
-        targetPath: string,
-        options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
-      ) => ({
-        path: targetPath,
-        sizeBytes: options?.maxBytes === 1 ? 1 : 100,
-        isBinary: false,
-        truncated: options?.maxBytes === 1,
-        languageHint: "typescript" as const,
-        content: options?.maxBytes === 1 ? "e" : `// ${paneId}:${targetPath}`,
-      }),
-    );
+    const requestRepoFileSearch = vi.fn(async (_paneId: string, query: string) => {
+      if (query === "apps/web/src/index.ts") {
+        return createSearchPage({
+          query,
+          items: [
+            {
+              path: "apps/web/src/index.ts",
+              name: "index.ts",
+              kind: "file",
+              score: 1,
+              highlights: [0],
+            },
+          ],
+          totalMatchedCount: 1,
+        });
+      }
+      return createSearchPage({ query, items: [], totalMatchedCount: 0 });
+    });
+    const requestRepoFileContentLocal = vi.fn(async (paneId: string, targetPath: string) => ({
+      path: targetPath,
+      sizeBytes: 100,
+      isBinary: false,
+      truncated: false,
+      languageHint: "typescript" as const,
+      content: `// ${paneId}:${targetPath}`,
+    }));
 
     const { result } = renderHook(() =>
       useSessionFiles({
@@ -863,10 +869,9 @@ describe("useSessionFiles", () => {
     expect(result.current.fileModalHighlightLine).toBe(12);
     expect(result.current.selectedFilePath).toBeNull();
     expect(result.current.logFileCandidateModalOpen).toBe(false);
-    expect(requestRepoFileSearch).not.toHaveBeenCalled();
-    expect(requestRepoFileContentLocal).toHaveBeenCalledWith("pane-log", "apps/web/src/index.ts", {
-      maxBytes: 1,
-      suppressConnectionIssue: true,
+    expect(requestRepoFileSearch).toHaveBeenCalledWith("pane-log", "apps/web/src/index.ts", {
+      cursor: undefined,
+      limit: 100,
     });
     expect(requestRepoFileContentLocal).toHaveBeenCalledWith("pane-log", "apps/web/src/index.ts", {
       maxBytes: 256 * 1024,
@@ -890,25 +895,14 @@ describe("useSessionFiles", () => {
         totalMatchedCount: 1,
       }),
     );
-    const requestRepoFileContentLocal = vi.fn(
-      async (
-        _paneId: string,
-        targetPath: string,
-        options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
-      ) => {
-        if (options?.maxBytes === 1) {
-          throw new Error("not found");
-        }
-        return {
-          path: targetPath,
-          sizeBytes: 123,
-          isBinary: false,
-          truncated: false,
-          languageHint: "typescript" as const,
-          content: "export const value = 1;",
-        };
-      },
-    );
+    const requestRepoFileContentLocal = vi.fn(async (_paneId: string, targetPath: string) => ({
+      path: targetPath,
+      sizeBytes: 123,
+      isBinary: false,
+      truncated: false,
+      languageHint: "typescript" as const,
+      content: "export const value = 1;",
+    }));
 
     const { result } = renderHook(() =>
       useSessionFiles({
@@ -936,7 +930,11 @@ describe("useSessionFiles", () => {
     expect(result.current.fileModalHighlightLine).toBe(4);
     expect(result.current.fileResolveError).toBeNull();
     expect(result.current.logFileCandidateModalOpen).toBe(false);
-    expect(requestRepoFileSearch).toHaveBeenCalledWith("pane-log", "index.ts", {
+    expect(requestRepoFileSearch).toHaveBeenNthCalledWith(1, "pane-log", "src/index.ts", {
+      cursor: undefined,
+      limit: 100,
+    });
+    expect(requestRepoFileSearch).toHaveBeenNthCalledWith(2, "pane-log", "index.ts", {
       cursor: undefined,
       limit: 100,
     });
@@ -966,25 +964,14 @@ describe("useSessionFiles", () => {
         totalMatchedCount: 2,
       }),
     );
-    const requestRepoFileContentLocal = vi.fn(
-      async (
-        _paneId: string,
-        targetPath: string,
-        options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
-      ) => {
-        if (options?.maxBytes === 1) {
-          throw new Error("path not found");
-        }
-        return {
-          path: targetPath,
-          sizeBytes: 12,
-          isBinary: false,
-          truncated: false,
-          languageHint: "typescript" as const,
-          content: "export {};",
-        };
-      },
-    );
+    const requestRepoFileContentLocal = vi.fn(async (_paneId: string, targetPath: string) => ({
+      path: targetPath,
+      sizeBytes: 12,
+      isBinary: false,
+      truncated: false,
+      languageHint: "typescript" as const,
+      content: "export {};",
+    }));
 
     const { result } = renderHook(() =>
       useSessionFiles({
@@ -1022,6 +1009,14 @@ describe("useSessionFiles", () => {
     });
     expect(result.current.fileModalHighlightLine).toBe(4);
     expect(result.current.logFileCandidateModalOpen).toBe(false);
+    expect(requestRepoFileSearch).toHaveBeenNthCalledWith(1, "pane-log", "src/index.ts", {
+      cursor: undefined,
+      limit: 100,
+    });
+    expect(requestRepoFileSearch).toHaveBeenNthCalledWith(2, "pane-log", "index.ts", {
+      cursor: undefined,
+      limit: 100,
+    });
     expect(requestRepoFileContentLocal).toHaveBeenCalledWith("pane-log", "apps/web/src/index.ts", {
       maxBytes: 256 * 1024,
     });
@@ -1036,25 +1031,14 @@ describe("useSessionFiles", () => {
         totalMatchedCount: 0,
       }),
     );
-    const requestRepoFileContentLocal = vi.fn(
-      async (
-        _paneId: string,
-        _targetPath: string,
-        options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
-      ) => {
-        if (options?.maxBytes === 1) {
-          throw new Error("not found");
-        }
-        return {
-          path: "unused.ts",
-          sizeBytes: 0,
-          isBinary: false,
-          truncated: false,
-          languageHint: "typescript" as const,
-          content: "",
-        };
-      },
-    );
+    const requestRepoFileContentLocal = vi.fn(async () => ({
+      path: "unused.ts",
+      sizeBytes: 0,
+      isBinary: false,
+      truncated: false,
+      languageHint: "typescript" as const,
+      content: "",
+    }));
 
     const { result } = renderHook(() =>
       useSessionFiles({
@@ -1094,25 +1078,14 @@ describe("useSessionFiles", () => {
         }),
       );
     });
-    const requestRepoFileContentLocal = vi.fn(
-      async (
-        _paneId: string,
-        targetPath: string,
-        options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
-      ) => {
-        if (options?.maxBytes === 1) {
-          throw new Error(`missing: ${targetPath}`);
-        }
-        return {
-          path: targetPath,
-          sizeBytes: 10,
-          isBinary: false,
-          truncated: false,
-          languageHint: "typescript" as const,
-          content: `// ${targetPath}`,
-        };
-      },
-    );
+    const requestRepoFileContentLocal = vi.fn(async (_paneId: string, targetPath: string) => ({
+      path: targetPath,
+      sizeBytes: 10,
+      isBinary: false,
+      truncated: false,
+      languageHint: "typescript" as const,
+      content: `// ${targetPath}`,
+    }));
 
     const { result } = renderHook(() =>
       useSessionFiles({
@@ -1195,79 +1168,53 @@ describe("useSessionFiles", () => {
 
   it("returns only existing tokens for log-linkify candidate resolution", async () => {
     const requestRepoFileTree = vi.fn(async () => createTreePage({ basePath: ".", entries: [] }));
-    const requestRepoFileSearch = vi.fn(async () =>
-      createSearchPage({
-        query: "index.ts",
-        items: [
-          {
-            path: "apps/web/src/index.ts",
-            name: "index.ts",
-            kind: "file",
-            score: 1,
-            highlights: [0],
-          },
-        ],
-        totalMatchedCount: 1,
-      }),
-    );
-    const requestRepoFileContentLocal = vi.fn(
-      async (
-        _paneId: string,
-        targetPath: string,
-        options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
-      ) => {
-        if (targetPath === "src/exists.ts" && options?.maxBytes === 1) {
-          return {
-            path: targetPath,
-            sizeBytes: 1,
-            isBinary: false,
-            truncated: true,
-            languageHint: "typescript" as const,
-            content: "x",
-          };
-        }
-        if (options?.maxBytes === 1) {
-          throw new Error("not found");
-        }
-        return {
-          path: targetPath,
-          sizeBytes: 12,
-          isBinary: false,
-          truncated: false,
-          languageHint: "typescript" as const,
-          content: "export {};",
-        };
-      },
-    );
-
-    const { result } = renderHook(() =>
-      useSessionFiles({
-        paneId: "pane-current",
-        repoRoot: "/repo-current",
-        autoExpandMatchLimit: 100,
-        requestRepoFileTree,
-        requestRepoFileSearch,
-        requestRepoFileContent: requestRepoFileContentLocal,
-      }),
-    );
-
-    const linkable = await result.current.onResolveLogFileReferenceCandidates({
-      rawTokens: ["src/exists.ts:2", "src/missing.ts:1", "index.ts", "https://example.com"],
-      sourcePaneId: "pane-log",
-      sourceRepoRoot: "/repo",
+    const requestRepoFileSearch = vi.fn(async (_paneId: string, query: string) => {
+      if (query === "src/exists.ts") {
+        return createSearchPage({
+          query,
+          items: [
+            {
+              path: "src/exists.ts",
+              name: "exists.ts",
+              kind: "file",
+              score: 1,
+              highlights: [0],
+            },
+          ],
+          totalMatchedCount: 1,
+        });
+      }
+      if (query === "src/missing.ts" || query === "missing.ts") {
+        return createSearchPage({
+          query,
+          items: [],
+          totalMatchedCount: 0,
+        });
+      }
+      if (query === "index.ts") {
+        return createSearchPage({
+          query,
+          items: [
+            {
+              path: "apps/web/src/index.ts",
+              name: "index.ts",
+              kind: "file",
+              score: 1,
+              highlights: [0],
+            },
+          ],
+          totalMatchedCount: 1,
+        });
+      }
+      return createSearchPage({ query, items: [], totalMatchedCount: 0 });
     });
-
-    expect(linkable).toEqual(["src/exists.ts:2", "index.ts"]);
-  });
-
-  it("uses batch resolve API when provided for log-linkify candidate resolution", async () => {
-    const requestRepoFileTree = vi.fn(async () => createTreePage({ basePath: ".", entries: [] }));
-    const requestRepoFileSearch = vi.fn(async () => createSearchPage({ query: "", items: [] }));
-    const requestRepoFileContentLocal = vi.fn(async () => {
-      throw new Error("requestRepoFileContent should not be called");
-    });
-    const requestRepoFileResolveReferences = vi.fn(async () => ({
-      linkableRawTokens: ["src/exists.ts:2", "index.ts"],
+    const requestRepoFileContentLocal = vi.fn(async (_paneId: string, targetPath: string) => ({
+      path: targetPath,
+      sizeBytes: 12,
+      isBinary: false,
+      truncated: false,
+      languageHint: "typescript" as const,
+      content: "export {};",
     }));
 
     const { result } = renderHook(() =>
@@ -1278,7 +1225,6 @@ describe("useSessionFiles", () => {
         requestRepoFileTree,
         requestRepoFileSearch,
         requestRepoFileContent: requestRepoFileContentLocal,
-        requestRepoFileResolveReferences,
       }),
     );
 
@@ -1288,83 +1234,7 @@ describe("useSessionFiles", () => {
       sourceRepoRoot: "/repo",
     });
 
-    expect(requestRepoFileResolveReferences).toHaveBeenCalledWith("pane-log", [
-      {
-        rawToken: "src/exists.ts:2",
-        normalizedPath: "src/exists.ts",
-        filename: "exists.ts",
-      },
-      {
-        rawToken: "src/missing.ts:1",
-        normalizedPath: "src/missing.ts",
-        filename: "missing.ts",
-      },
-      {
-        rawToken: "index.ts",
-        filename: "index.ts",
-      },
-    ]);
-    expect(requestRepoFileContentLocal).not.toHaveBeenCalled();
-    expect(requestRepoFileSearch).not.toHaveBeenCalled();
     expect(linkable).toEqual(["src/exists.ts:2", "index.ts"]);
-  });
-
-  it("forwards all candidate references to batch resolve API without cap", async () => {
-    const requestRepoFileTree = vi.fn(async () => createTreePage({ basePath: ".", entries: [] }));
-    const requestRepoFileSearch = vi.fn(async () => createSearchPage({ query: "", items: [] }));
-    const requestRepoFileContentLocal = vi.fn(async () => {
-      throw new Error("requestRepoFileContent should not be called");
-    });
-    let receivedReferences: RepoFileResolveReference[] | null = null;
-    const requestRepoFileResolveReferences = vi.fn(
-      async (_paneId: string, references: RepoFileResolveReference[]) => {
-        receivedReferences = references;
-        return {
-          linkableRawTokens: [],
-        };
-      },
-    );
-
-    const { result } = renderHook(() =>
-      useSessionFiles({
-        paneId: "pane-current",
-        repoRoot: "/repo-current",
-        autoExpandMatchLimit: 100,
-        requestRepoFileTree,
-        requestRepoFileSearch,
-        requestRepoFileContent: requestRepoFileContentLocal,
-        requestRepoFileResolveReferences,
-      }),
-    );
-
-    const rawTokens = Array.from(
-      { length: 1205 },
-      (_, index) => `src/file-${index}.ts:${index + 1}`,
-    );
-    const linkable = await result.current.onResolveLogFileReferenceCandidates({
-      rawTokens,
-      sourcePaneId: "pane-log",
-      sourceRepoRoot: "/repo",
-    });
-
-    expect(requestRepoFileResolveReferences).toHaveBeenCalledTimes(1);
-    expect(receivedReferences).not.toBeNull();
-    if (receivedReferences == null) {
-      throw new Error("expected batch references");
-    }
-    const references = receivedReferences as RepoFileResolveReference[];
-    expect(references).toHaveLength(1205);
-    expect(references[0]).toEqual({
-      rawToken: "src/file-0.ts:1",
-      normalizedPath: "src/file-0.ts",
-      filename: "file-0.ts",
-    });
-    const lastReference = references[references.length - 1];
-    expect(lastReference).toEqual({
-      rawToken: "src/file-1204.ts:1205",
-      normalizedPath: "src/file-1204.ts",
-      filename: "file-1204.ts",
-    });
-    expect(linkable).toEqual([]);
+    expect(requestRepoFileContentLocal).not.toHaveBeenCalled();
   });
 });

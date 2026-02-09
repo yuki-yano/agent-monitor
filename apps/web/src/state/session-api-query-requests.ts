@@ -5,8 +5,6 @@ import type {
   DiffFile,
   DiffSummary,
   RepoFileContent,
-  RepoFileResolveReference,
-  RepoFileResolveResult,
   RepoFileSearchPage,
   RepoFileTreePage,
   SessionStateTimeline,
@@ -22,7 +20,6 @@ import {
   buildDiffFileQuery,
   buildForceQuery,
   buildRepoFileContentQuery,
-  buildRepoFileResolveJson,
   buildRepoFileSearchQuery,
   buildRepoFileTreeQuery,
   buildTimelineQuery,
@@ -33,7 +30,6 @@ type RequestPaneQueryField = <T, K extends keyof T>(params: {
   request: (param: PaneParam) => Promise<Response>;
   field: K;
   fallbackMessage: string;
-  suppressConnectionIssue?: boolean;
 }) => Promise<NonNullable<T[K]>>;
 
 type RequestPaneHashField = <T, K extends keyof T>(params: {
@@ -168,7 +164,7 @@ export const createSessionQueryRequests = ({
   const requestRepoFileContent = async (
     paneId: string,
     path: string,
-    options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
+    options?: { maxBytes?: number },
   ): Promise<RepoFileContent> => {
     const query = buildRepoFileContentQuery(path, options);
     return requestPaneQueryField<{ file?: RepoFileContent }, "file">({
@@ -176,26 +172,7 @@ export const createSessionQueryRequests = ({
       request: (param) => apiClient.sessions[":paneId"].files.content.$get({ param, query }),
       field: "file",
       fallbackMessage: API_ERROR_MESSAGES.fileContent,
-      suppressConnectionIssue: options?.suppressConnectionIssue,
     });
-  };
-
-  const requestRepoFileResolveReferences = async (
-    paneId: string,
-    references: RepoFileResolveReference[],
-  ): Promise<RepoFileResolveResult> => {
-    const json = buildRepoFileResolveJson(references);
-    const linkableRawTokens = await requestPaneQueryField<
-      { linkableRawTokens?: string[] },
-      "linkableRawTokens"
-    >({
-      paneId,
-      request: (param) => apiClient.sessions[":paneId"].files.resolve.$post({ param, json }),
-      field: "linkableRawTokens",
-      fallbackMessage: API_ERROR_MESSAGES.fileResolve,
-      suppressConnectionIssue: true,
-    });
-    return { linkableRawTokens };
   };
 
   return {
@@ -208,6 +185,5 @@ export const createSessionQueryRequests = ({
     requestRepoFileTree,
     requestRepoFileSearch,
     requestRepoFileContent,
-    requestRepoFileResolveReferences,
   };
 };

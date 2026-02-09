@@ -11,8 +11,6 @@ import type {
   ImageAttachment,
   RawItem,
   RepoFileContent,
-  RepoFileResolveReference,
-  RepoFileResolveResult,
   RepoFileSearchPage,
   RepoFileTreePage,
   ScreenResponse,
@@ -64,12 +62,8 @@ export type SessionApi = {
   requestRepoFileContent: (
     paneId: string,
     path: string,
-    options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
+    options?: { maxBytes?: number },
   ) => Promise<RepoFileContent>;
-  requestRepoFileResolveReferences?: (
-    paneId: string,
-    references: RepoFileResolveReference[],
-  ) => Promise<RepoFileResolveResult>;
   requestScreen: (
     paneId: string,
     options: { lines?: number; mode?: "text" | "image"; cursor?: string },

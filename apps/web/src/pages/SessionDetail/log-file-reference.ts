@@ -222,7 +222,10 @@ const extractCandidateTokensFromText = (sourceText: string) => {
 const buildLinkifiedTextFragment = (
   sourceText: string,
   document: Document,
-  options?: { isLinkableToken?: (rawToken: string) => boolean },
+  options?: {
+    isLinkableToken?: (rawToken: string) => boolean;
+    isActiveToken?: (rawToken: string) => boolean;
+  },
 ) => {
   const fragment = document.createDocumentFragment();
   let hasReplacements = false;
@@ -244,14 +247,22 @@ const buildLinkifiedTextFragment = (
     if (!isLinkable) {
       fragment.append(rawToken);
     } else {
+      const isActive = options?.isActiveToken?.(rawToken) ?? false;
       const element = document.createElement("span");
       element.textContent = rawToken;
       element.dataset.vdeFileRef = rawToken;
       element.setAttribute("role", "button");
       element.tabIndex = 0;
       element.setAttribute("aria-label", `Open file ${rawToken}`);
-      element.className =
-        "cursor-pointer transition-colors hover:text-latte-lavender focus-visible:text-latte-lavender";
+      element.className = [
+        "cursor-pointer",
+        "transition-colors",
+        "hover:text-latte-lavender",
+        "focus-visible:text-latte-lavender",
+        isActive ? "text-latte-lavender" : "",
+      ]
+        .filter((item) => item.length > 0)
+        .join(" ");
       fragment.append(element);
       hasReplacements = true;
     }
@@ -293,7 +304,10 @@ export const extractLogReferenceTokensFromLine = (lineHtml: string) => {
 
 export const linkifyLogLineFileReferences = (
   lineHtml: string,
-  options?: { isLinkableToken?: (rawToken: string) => boolean },
+  options?: {
+    isLinkableToken?: (rawToken: string) => boolean;
+    isActiveToken?: (rawToken: string) => boolean;
+  },
 ) => {
   if (!sharedParser) {
     return lineHtml;

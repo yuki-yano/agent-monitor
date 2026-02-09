@@ -9,7 +9,6 @@ import {
   buildPaneParam,
   buildRefreshFailureResult,
   buildRepoFileContentQuery,
-  buildRepoFileResolveJson,
   buildRepoFileSearchQuery,
   buildRepoFileTreeQuery,
   buildScreenRequestJson,
@@ -186,16 +185,6 @@ describe("session-api-utils", () => {
     expect(buildRepoFileContentQuery("src/index.ts", { maxBytes: 10.8 })).toEqual({
       path: "src/index.ts",
       maxBytes: "10",
-    });
-
-    expect(
-      buildRepoFileResolveJson([
-        { rawToken: "src/index.ts:1", normalizedPath: "src/index.ts", filename: "index.ts" },
-      ]),
-    ).toEqual({
-      references: [
-        { rawToken: "src/index.ts:1", normalizedPath: "src/index.ts", filename: "index.ts" },
-      ],
     });
   });
 });

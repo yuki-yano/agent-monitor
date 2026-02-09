@@ -11,8 +11,6 @@ import type {
   ImageAttachment,
   RawItem,
   RepoFileContent,
-  RepoFileResolveReference,
-  RepoFileResolveResult,
   RepoFileSearchPage,
   RepoFileTreePage,
   ScreenResponse,
@@ -86,12 +84,8 @@ type SessionContextValue = {
   requestRepoFileContent: (
     paneId: string,
     path: string,
-    options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
+    options?: { maxBytes?: number },
   ) => Promise<RepoFileContent>;
-  requestRepoFileResolveReferences?: (
-    paneId: string,
-    references: RepoFileResolveReference[],
-  ) => Promise<RepoFileResolveResult>;
   requestScreen: (
     paneId: string,
     options: { lines?: number; mode?: "text" | "image"; cursor?: string },
@@ -171,7 +165,6 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     requestRepoFileTree,
     requestRepoFileSearch,
     requestRepoFileContent,
-    requestRepoFileResolveReferences,
     requestScreen,
     focusPane,
     uploadImageAttachment,
@@ -283,7 +276,6 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         requestRepoFileTree,
         requestRepoFileSearch,
         requestRepoFileContent,
-        requestRepoFileResolveReferences,
         requestScreen,
         focusPane,
         uploadImageAttachment,

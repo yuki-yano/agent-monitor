@@ -36,7 +36,6 @@ type RequestSessionFieldParams<T, K extends keyof T> = {
   field: K;
   fallbackMessage: string;
   includeStatus?: boolean;
-  suppressConnectionIssue?: boolean;
   ensureToken: EnsureToken;
   onConnectionIssue: OnConnectionIssue;
   handleSessionMissing: HandleSessionMissing;
@@ -48,7 +47,6 @@ export const requestSessionField = async <T, K extends keyof T>({
   field,
   fallbackMessage,
   includeStatus,
-  suppressConnectionIssue,
   ensureToken,
   onConnectionIssue,
   handleSessionMissing,
@@ -62,15 +60,11 @@ export const requestSessionField = async <T, K extends keyof T>({
       throw new Error(message);
     }
     const value = expectField(res, data, field, fallbackMessage);
-    if (!suppressConnectionIssue) {
-      onConnectionIssue(null);
-    }
+    onConnectionIssue(null);
     return value;
   } catch (error) {
     const message = error instanceof Error ? error.message : fallbackMessage;
-    if (!suppressConnectionIssue) {
-      onConnectionIssue(message);
-    }
+    onConnectionIssue(message);
     throw error instanceof Error ? error : new Error(message);
   }
 };

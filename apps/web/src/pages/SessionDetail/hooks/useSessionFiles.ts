@@ -1,8 +1,6 @@
 import type {
   RepoFileContent,
   RepoFileNodeKind,
-  RepoFileResolveReference,
-  RepoFileResolveResult,
   RepoFileSearchPage,
   RepoFileTreeNode,
   RepoFileTreePage,
@@ -20,7 +18,6 @@ const SEARCH_DEBOUNCE_MS = 120;
 const FILE_CONTENT_MAX_BYTES = 256 * 1024;
 const LOG_FILE_RESOLVE_MATCH_LIMIT = 20;
 const LOG_FILE_RESOLVE_PAGE_LIMIT = 100;
-const LOG_FILE_RESOLVE_MAX_PAGES = 5;
 const LOG_REFERENCE_LINKABLE_CACHE_MAX = 1000;
 
 type LogFileCandidateItem = Pick<
@@ -57,12 +54,8 @@ type UseSessionFilesParams = {
   requestRepoFileContent: (
     paneId: string,
     path: string,
-    options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
+    options?: { maxBytes?: number },
   ) => Promise<RepoFileContent>;
-  requestRepoFileResolveReferences?: (
-    paneId: string,
-    references: RepoFileResolveReference[],
-  ) => Promise<RepoFileResolveResult>;
 };
 
 const resolveUnknownErrorMessage = (error: unknown, fallbackMessage: string) =>
@@ -385,7 +378,6 @@ export const useSessionFiles = ({
   requestRepoFileTree,
   requestRepoFileSearch,
   requestRepoFileContent,
-  requestRepoFileResolveReferences,
 }: UseSessionFilesParams) => {
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [expandedDirSet, setExpandedDirSet] = useState<Set<string>>(new Set());
@@ -982,23 +974,20 @@ export const useSessionFiles = ({
       paneId: targetPaneId,
       filename,
       maxMatches,
-      maxPages,
       limitPerPage,
       requestId,
     }: {
       paneId: string;
       filename: string;
       maxMatches: number;
-      maxPages: number;
       limitPerPage: number;
       requestId?: number;
     }): Promise<LogFileCandidateItem[] | null> => {
       const matches: LogFileCandidateItem[] = [];
       const knownPaths = new Set<string>();
       let cursor: string | undefined = undefined;
-      let pageCount = 0;
 
-      while (pageCount < maxPages && matches.length < maxMatches) {
+      while (matches.length < maxMatches) {
         if (requestId != null && activeLogResolveRequestIdRef.current !== requestId) {
           return null;
         }
@@ -1020,7 +1009,6 @@ export const useSessionFiles = ({
             isIgnored: item.isIgnored,
           });
         });
-        pageCount += 1;
         if (!page.nextCursor) {
           break;
         }
@@ -1028,6 +1016,46 @@ export const useSessionFiles = ({
       }
 
       return matches.slice(0, maxMatches);
+    },
+    [requestRepoFileSearch],
+  );
+
+  const hasExactPathMatch = useCallback(
+    async ({
+      paneId: targetPaneId,
+      path,
+      limitPerPage,
+      requestId,
+    }: {
+      paneId: string;
+      path: string;
+      limitPerPage: number;
+      requestId?: number;
+    }): Promise<boolean | null> => {
+      let cursor: string | undefined = undefined;
+
+      while (true) {
+        if (requestId != null && activeLogResolveRequestIdRef.current !== requestId) {
+          return null;
+        }
+        const page = await requestRepoFileSearch(targetPaneId, path, {
+          cursor,
+          limit: limitPerPage,
+        });
+        if (requestId != null && activeLogResolveRequestIdRef.current !== requestId) {
+          return null;
+        }
+
+        const hasMatch = page.items.some((item) => item.kind === "file" && item.path === path);
+        if (hasMatch) {
+          return true;
+        }
+
+        if (!page.nextCursor) {
+          return false;
+        }
+        cursor = page.nextCursor;
+      }
     },
     [requestRepoFileSearch],
   );
@@ -1093,11 +1121,14 @@ export const useSessionFiles = ({
       const request = (async () => {
         if (reference.normalizedPath) {
           try {
-            await requestRepoFileContent(sourcePaneId, reference.normalizedPath, {
-              maxBytes: 1,
-              suppressConnectionIssue: true,
+            const pathMatched = await hasExactPathMatch({
+              paneId: sourcePaneId,
+              path: reference.normalizedPath,
+              limitPerPage: LOG_FILE_RESOLVE_PAGE_LIMIT,
             });
-            return true;
+            if (pathMatched === true) {
+              return true;
+            }
           } catch {
             // path resolve failed; continue to filename fallback
           }
@@ -1112,7 +1143,6 @@ export const useSessionFiles = ({
             paneId: sourcePaneId,
             filename: reference.filename,
             maxMatches: 1,
-            maxPages: LOG_FILE_RESOLVE_MAX_PAGES,
             limitPerPage: LOG_FILE_RESOLVE_PAGE_LIMIT,
           });
           return (matches?.length ?? 0) > 0;
@@ -1135,7 +1165,7 @@ export const useSessionFiles = ({
         logReferenceLinkableRequestMapRef.current.delete(cacheKey);
       }
     },
-    [buildLogReferenceLinkableCacheKey, findExactNameMatches, requestRepoFileContent],
+    [buildLogReferenceLinkableCacheKey, findExactNameMatches, hasExactPathMatch],
   );
 
   const onResolveLogFileReferenceCandidates = useCallback(
@@ -1156,8 +1186,7 @@ export const useSessionFiles = ({
       }
 
       const linkableRawTokenSet = new Set<string>();
-      const pendingCacheKeys: string[] = [];
-      const pendingBatchReferences: RepoFileResolveReference[] = [];
+      const pendingRawTokens: string[] = [];
 
       uniqueTokens.forEach((rawToken) => {
         const reference = normalizeLogReference(rawToken, {
@@ -1181,74 +1210,25 @@ export const useSessionFiles = ({
           }
           return;
         }
-        pendingCacheKeys.push(cacheKey);
-        pendingBatchReferences.push({
-          rawToken,
-          normalizedPath: reference.normalizedPath ?? undefined,
-          filename: reference.filename ?? undefined,
-        });
+        pendingRawTokens.push(rawToken);
       });
 
-      if (pendingBatchReferences.length > 0 && requestRepoFileResolveReferences) {
-        try {
-          const batchResult = await requestRepoFileResolveReferences(
-            sourcePaneId,
-            pendingBatchReferences,
-          );
-          const linkableBatchTokenSet = new Set(batchResult.linkableRawTokens);
-          pendingBatchReferences.forEach((reference, index) => {
-            const cacheKey = pendingCacheKeys[index];
-            if (!cacheKey) {
-              return;
-            }
-            const linkable = linkableBatchTokenSet.has(reference.rawToken);
-            if (linkable) {
-              linkableRawTokenSet.add(reference.rawToken);
-            }
-            setMapEntryWithMaxSize(
-              logReferenceLinkableCacheRef.current,
-              cacheKey,
-              linkable,
-              LOG_REFERENCE_LINKABLE_CACHE_MAX,
-            );
-          });
-        } catch {
-          const fallbackResults = await Promise.all(
-            pendingBatchReferences.map(async (reference) => {
-              try {
-                const linkable = await isLogFileReferenceLinkable({
-                  rawToken: reference.rawToken,
-                  sourcePaneId,
-                  sourceRepoRoot,
-                });
-                return linkable ? reference.rawToken : null;
-              } catch {
-                return null;
-              }
-            }),
-          );
-          fallbackResults.forEach((rawToken) => {
-            if (rawToken) {
-              linkableRawTokenSet.add(rawToken);
-            }
-          });
-        }
-      } else if (pendingBatchReferences.length > 0) {
-        const fallbackResults = await Promise.all(
-          pendingBatchReferences.map(async (reference) => {
+      if (pendingRawTokens.length > 0) {
+        const resolvedTokens = await Promise.all(
+          pendingRawTokens.map(async (rawToken) => {
             try {
               const linkable = await isLogFileReferenceLinkable({
-                rawToken: reference.rawToken,
+                rawToken,
                 sourcePaneId,
                 sourceRepoRoot,
               });
-              return linkable ? reference.rawToken : null;
+              return linkable ? rawToken : null;
             } catch {
               return null;
             }
           }),
         );
-        fallbackResults.forEach((rawToken) => {
+        resolvedTokens.forEach((rawToken) => {
           if (rawToken) {
             linkableRawTokenSet.add(rawToken);
           }
@@ -1257,11 +1237,7 @@ export const useSessionFiles = ({
 
       return uniqueTokens.filter((token) => linkableRawTokenSet.has(token));
     },
-    [
-      buildLogReferenceLinkableCacheKey,
-      isLogFileReferenceLinkable,
-      requestRepoFileResolveReferences,
-    ],
+    [buildLogReferenceLinkableCacheKey, isLogFileReferenceLinkable],
   );
 
   const tryOpenExistingPath = useCallback(
@@ -1277,10 +1253,15 @@ export const useSessionFiles = ({
       highlightLine?: number | null;
     }) => {
       try {
-        await requestRepoFileContent(targetPaneId, path, {
-          maxBytes: 1,
-          suppressConnectionIssue: true,
+        const exists = await hasExactPathMatch({
+          paneId: targetPaneId,
+          path,
+          requestId,
+          limitPerPage: LOG_FILE_RESOLVE_PAGE_LIMIT,
         });
+        if (!exists) {
+          return false;
+        }
       } catch {
         return false;
       }
@@ -1294,7 +1275,7 @@ export const useSessionFiles = ({
       });
       return true;
     },
-    [openFileModalByPath, requestRepoFileContent],
+    [hasExactPathMatch, openFileModalByPath],
   );
 
   const onResolveLogFileReference = useCallback(
@@ -1356,7 +1337,6 @@ export const useSessionFiles = ({
           paneId: sourcePaneId,
           filename: reference.filename,
           maxMatches: LOG_FILE_RESOLVE_MATCH_LIMIT,
-          maxPages: LOG_FILE_RESOLVE_MAX_PAGES,
           limitPerPage: LOG_FILE_RESOLVE_PAGE_LIMIT,
           requestId,
         });

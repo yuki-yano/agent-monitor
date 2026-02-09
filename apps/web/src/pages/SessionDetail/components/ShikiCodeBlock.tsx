@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import { Button, Callout } from "@/components/ui";
+import { Button, Callout, Spinner } from "@/components/ui";
 import { cn } from "@/lib/cn";
-import { highlightCode, resetShikiHighlighter } from "@/lib/shiki/highlighter";
+import { highlightCode, peekHighlightedCode, resetShikiHighlighter } from "@/lib/shiki/highlighter";
 import type { Theme } from "@/lib/theme";
 
 type ShikiCodeBlockProps = {
@@ -24,10 +24,10 @@ export const ShikiCodeBlock = ({
   highlightLine = null,
   className,
 }: ShikiCodeBlockProps) => {
+  const normalizedCode = useMemo(() => code.replace(/\n$/, ""), [code]);
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
-  const normalizedCode = useMemo(() => code.replace(/\n$/, ""), [code]);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const horizontalScrollRef = useRef(0);
   const verticalScrollRef = useRef(0);
@@ -41,8 +41,7 @@ export const ShikiCodeBlock = ({
     verticalScrollRef.current = scroller.scrollTop;
   }, []);
 
-  useEffect(() => {
-    let alive = true;
+  useLayoutEffect(() => {
     horizontalScrollRef.current = 0;
     verticalScrollRef.current = 0;
     const scroller = scrollerRef.current;
@@ -51,7 +50,16 @@ export const ShikiCodeBlock = ({
       scroller.scrollTop = 0;
     }
     setError(null);
-    setHtml(null);
+    const cached = peekHighlightedCode({
+      code: normalizedCode,
+      lang: language,
+      theme,
+    });
+    setHtml(cached?.html ?? null);
+  }, [language, normalizedCode, retryToken, theme]);
+
+  useEffect(() => {
+    let alive = true;
     void highlightCode({
       code: normalizedCode,
       lang: language,
@@ -185,7 +193,7 @@ export const ShikiCodeBlock = ({
             className={cn(shikiClassName, showLineNumbers ? "vde-shiki-with-line-numbers" : "")}
             dangerouslySetInnerHTML={{ __html: highlightedHtml }}
           />
-        ) : (
+        ) : error ? (
           <pre
             className={cn(
               fallbackPreClassName,
@@ -194,6 +202,10 @@ export const ShikiCodeBlock = ({
           >
             <code>{fallbackLinesContent}</code>
           </pre>
+        ) : (
+          <div className="text-latte-subtext0 flex h-full min-h-[120px] items-center justify-center">
+            <Spinner size="sm" />
+          </div>
         )}
       </div>
       {error ? (

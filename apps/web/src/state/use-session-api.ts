@@ -118,14 +118,12 @@ export const useSessionApi = ({
       field,
       fallbackMessage,
       includeStatus,
-      suppressConnectionIssue,
     }: {
       paneId: string;
       request: Promise<Response>;
       field: K;
       fallbackMessage: string;
       includeStatus?: boolean;
-      suppressConnectionIssue?: boolean;
     }): Promise<NonNullable<T[K]>> =>
       executeRequestSessionField({
         paneId,
@@ -133,7 +131,6 @@ export const useSessionApi = ({
         field,
         fallbackMessage,
         includeStatus,
-        suppressConnectionIssue,
         ensureToken,
         onConnectionIssue,
         handleSessionMissing,
@@ -162,13 +159,11 @@ export const useSessionApi = ({
       request,
       field,
       fallbackMessage,
-      suppressConnectionIssue,
     }: {
       paneId: string;
       request: Promise<Response>;
       field: K;
       fallbackMessage: string;
-      suppressConnectionIssue?: boolean;
     }) =>
       requestSessionField<T, K>({
         paneId,
@@ -176,7 +171,6 @@ export const useSessionApi = ({
         field,
         fallbackMessage,
         includeStatus: true,
-        suppressConnectionIssue,
       }),
     [requestSessionField],
   );
@@ -187,20 +181,17 @@ export const useSessionApi = ({
       request,
       field,
       fallbackMessage,
-      suppressConnectionIssue,
     }: {
       paneId: string;
       request: (param: PaneParam) => Promise<Response>;
       field: K;
       fallbackMessage: string;
-      suppressConnectionIssue?: boolean;
     }) =>
       requestPaneField<T, K>({
         paneId,
         request: request(buildPaneParam(paneId)),
         field,
         fallbackMessage,
-        suppressConnectionIssue,
       }),
     [requestPaneField],
   );
@@ -238,7 +229,6 @@ export const useSessionApi = ({
     requestRepoFileTree,
     requestRepoFileSearch,
     requestRepoFileContent,
-    requestRepoFileResolveReferences,
   } = useMemo(
     () =>
       createSessionQueryRequests({
@@ -358,7 +348,6 @@ export const useSessionApi = ({
     requestRepoFileTree,
     requestRepoFileSearch,
     requestRepoFileContent,
-    requestRepoFileResolveReferences,
     requestScreen,
     sendText,
     focusPane,

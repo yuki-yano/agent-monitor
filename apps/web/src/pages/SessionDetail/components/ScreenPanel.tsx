@@ -158,6 +158,8 @@ const ScreenContent = ({
   onScrollToBottom,
   onResolveFileReference,
   onResolveFileReferenceKeyDown,
+  onResolveFileReferenceHover,
+  onResolveFileReferenceHoverLeave,
 }: {
   mode: ScreenMode;
   imageBase64: string | null;
@@ -173,6 +175,8 @@ const ScreenContent = ({
   onScrollToBottom: (behavior: "auto" | "smooth") => void;
   onResolveFileReference: (event: MouseEvent<HTMLDivElement>) => void;
   onResolveFileReferenceKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
+  onResolveFileReferenceHover: (event: MouseEvent<HTMLDivElement>) => void;
+  onResolveFileReferenceHoverLeave: () => void;
 }) => {
   const showImage = mode === "image" && Boolean(imageBase64);
 
@@ -204,6 +208,8 @@ const ScreenContent = ({
                 className="min-h-4 whitespace-pre leading-4"
                 onClick={onResolveFileReference}
                 onKeyDown={onResolveFileReferenceKeyDown}
+                onMouseMove={onResolveFileReferenceHover}
+                onMouseLeave={onResolveFileReferenceHoverLeave}
                 dangerouslySetInnerHTML={{ __html: line || "&#x200B;" }}
               />
             )}
@@ -267,10 +273,20 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
   } = actions;
   const showError = shouldShowErrorMessage(error, connectionIssue);
   const [linkableTokens, setLinkableTokens] = useState<Set<string>>(new Set());
+  const [hoveredFileReferenceToken, setHoveredFileReferenceToken] = useState<string | null>(null);
   const [visibleRange, setVisibleRange] = useState<{ startIndex: number; endIndex: number } | null>(
     null,
   );
   const activeResolveCandidatesRequestIdRef = useRef(0);
+  const hoveredFileReferenceTokenRef = useRef<string | null>(null);
+
+  const updateHoveredFileReferenceToken = useCallback((nextToken: string | null) => {
+    if (hoveredFileReferenceTokenRef.current === nextToken) {
+      return;
+    }
+    hoveredFileReferenceTokenRef.current = nextToken;
+    setHoveredFileReferenceToken(nextToken);
+  }, []);
   const referenceCandidateTokens = useMemo(() => {
     if (mode !== "text") {
       return [];
@@ -327,9 +343,10 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     return screenLines.map((line) =>
       linkifyLogLineFileReferences(line, {
         isLinkableToken: (rawToken) => linkableTokens.has(rawToken),
+        isActiveToken: (rawToken) => hoveredFileReferenceToken === rawToken,
       }),
     );
-  }, [linkableTokens, mode, screenLines]);
+  }, [hoveredFileReferenceToken, linkableTokens, mode, screenLines]);
 
   useEffect(() => {
     const requestId = activeResolveCandidatesRequestIdRef.current + 1;
@@ -447,6 +464,18 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     [onResolveFileReference],
   );
 
+  const handleResolveFileReferenceHover = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      const rawToken = resolveRawTokenFromEventTarget(event.target);
+      updateHoveredFileReferenceToken(rawToken);
+    },
+    [updateHoveredFileReferenceToken],
+  );
+
+  const handleResolveFileReferenceHoverLeave = useCallback(() => {
+    updateHoveredFileReferenceToken(null);
+  }, [updateHoveredFileReferenceToken]);
+
   return (
     <Card className="flex min-w-0 flex-col gap-3 p-4">
       <Toolbar className="gap-3">
@@ -488,6 +517,8 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
           onScrollToBottom={onScrollToBottom}
           onResolveFileReference={handleResolveFileReference}
           onResolveFileReferenceKeyDown={handleResolveFileReferenceKeyDown}
+          onResolveFileReferenceHover={handleResolveFileReferenceHover}
+          onResolveFileReferenceHoverLeave={handleResolveFileReferenceHoverLeave}
         />
       </div>
       {contextLeftLabel ? (

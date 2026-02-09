@@ -55,8 +55,5 @@ export type RepoFileSearchQuery = NonNullable<
 export type RepoFileContentQuery = NonNullable<
   InferRequestType<SessionClient["files"]["content"]["$get"]>["query"]
 >;
-export type RepoFileResolveJson = NonNullable<
-  InferRequestType<SessionClient["files"]["resolve"]["$post"]>["json"]
->;
 
 export type { ApiClientContract };
