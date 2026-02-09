@@ -109,6 +109,33 @@ describe("session-api-request-executors", () => {
     expect(onConnectionIssue).toHaveBeenCalledWith("pane not found");
   });
 
+  it("requestSessionField can suppress connection issue updates", async () => {
+    const requestJsonMock = vi.mocked(requestJson);
+    const ensureToken = vi.fn();
+    const onConnectionIssue = vi.fn();
+    const handleSessionMissing = vi.fn();
+    requestJsonMock.mockResolvedValueOnce({
+      res: new Response(null, { status: 404 }),
+      data: { error: { code: "NOT_FOUND", message: "path not found" } },
+    });
+
+    await expect(
+      requestSessionField<{ file?: { path: string } }, "file">({
+        paneId: "pane-1",
+        request: Promise.resolve(new Response()),
+        field: "file",
+        fallbackMessage: "failed",
+        ensureToken,
+        onConnectionIssue,
+        handleSessionMissing,
+        suppressConnectionIssue: true,
+      }),
+    ).rejects.toThrow("path not found");
+
+    expect(handleSessionMissing).toHaveBeenCalledTimes(1);
+    expect(onConnectionIssue).not.toHaveBeenCalled();
+  });
+
   it("mutateSession updates session when payload contains session", async () => {
     const requestJsonMock = vi.mocked(requestJson);
     const ensureToken = vi.fn();

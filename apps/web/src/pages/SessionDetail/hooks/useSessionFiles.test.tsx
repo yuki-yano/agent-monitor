@@ -817,7 +817,11 @@ describe("useSessionFiles", () => {
     const requestRepoFileTree = vi.fn(async () => createTreePage({ basePath: ".", entries: [] }));
     const requestRepoFileSearch = vi.fn();
     const requestRepoFileContentLocal = vi.fn(
-      async (paneId: string, targetPath: string, options?: { maxBytes?: number }) => ({
+      async (
+        paneId: string,
+        targetPath: string,
+        options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
+      ) => ({
         path: targetPath,
         sizeBytes: options?.maxBytes === 1 ? 1 : 100,
         isBinary: false,
@@ -857,6 +861,7 @@ describe("useSessionFiles", () => {
     expect(requestRepoFileSearch).not.toHaveBeenCalled();
     expect(requestRepoFileContentLocal).toHaveBeenCalledWith("pane-log", "apps/web/src/index.ts", {
       maxBytes: 1,
+      suppressConnectionIssue: true,
     });
     expect(requestRepoFileContentLocal).toHaveBeenCalledWith("pane-log", "apps/web/src/index.ts", {
       maxBytes: 256 * 1024,
@@ -881,7 +886,11 @@ describe("useSessionFiles", () => {
       }),
     );
     const requestRepoFileContentLocal = vi.fn(
-      async (_paneId: string, targetPath: string, options?: { maxBytes?: number }) => {
+      async (
+        _paneId: string,
+        targetPath: string,
+        options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
+      ) => {
         if (options?.maxBytes === 1) {
           throw new Error("not found");
         }
@@ -953,7 +962,11 @@ describe("useSessionFiles", () => {
       }),
     );
     const requestRepoFileContentLocal = vi.fn(
-      async (_paneId: string, targetPath: string, options?: { maxBytes?: number }) => {
+      async (
+        _paneId: string,
+        targetPath: string,
+        options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
+      ) => {
         if (options?.maxBytes === 1) {
           throw new Error("path not found");
         }
@@ -1019,7 +1032,11 @@ describe("useSessionFiles", () => {
       }),
     );
     const requestRepoFileContentLocal = vi.fn(
-      async (_paneId: string, _targetPath: string, options?: { maxBytes?: number }) => {
+      async (
+        _paneId: string,
+        _targetPath: string,
+        options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
+      ) => {
         if (options?.maxBytes === 1) {
           throw new Error("not found");
         }
@@ -1073,7 +1090,11 @@ describe("useSessionFiles", () => {
       );
     });
     const requestRepoFileContentLocal = vi.fn(
-      async (_paneId: string, targetPath: string, options?: { maxBytes?: number }) => {
+      async (
+        _paneId: string,
+        targetPath: string,
+        options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
+      ) => {
         if (options?.maxBytes === 1) {
           throw new Error(`missing: ${targetPath}`);
         }
@@ -1185,7 +1206,11 @@ describe("useSessionFiles", () => {
       }),
     );
     const requestRepoFileContentLocal = vi.fn(
-      async (_paneId: string, targetPath: string, options?: { maxBytes?: number }) => {
+      async (
+        _paneId: string,
+        targetPath: string,
+        options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
+      ) => {
         if (targetPath === "src/exists.ts" && options?.maxBytes === 1) {
           return {
             path: targetPath,

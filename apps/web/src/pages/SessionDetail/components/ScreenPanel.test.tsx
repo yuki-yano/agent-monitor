@@ -168,9 +168,15 @@ describe("ScreenPanel", () => {
     await waitFor(() => {
       expect(onResolveFileReferenceCandidates).toHaveBeenCalled();
     });
-    const ref = container.querySelector<HTMLElement>("[data-vde-file-ref='src/main.ts(10,2):']");
-    expect(ref).toBeTruthy();
-    fireEvent.click(ref as HTMLElement);
+    let ref: HTMLElement | null = null;
+    await waitFor(() => {
+      ref = container.querySelector<HTMLElement>("[data-vde-file-ref='src/main.ts(10,2):']");
+      expect(ref).toBeTruthy();
+    });
+    if (!ref) {
+      throw new Error("expected linkified file reference");
+    }
+    fireEvent.click(ref);
 
     await waitFor(() => {
       expect(onResolveFileReference).toHaveBeenCalledWith("src/main.ts(10,2):");

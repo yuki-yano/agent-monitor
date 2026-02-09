@@ -84,7 +84,7 @@ type SessionContextValue = {
   requestRepoFileContent: (
     paneId: string,
     path: string,
-    options?: { maxBytes?: number },
+    options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
   ) => Promise<RepoFileContent>;
   requestScreen: (
     paneId: string,

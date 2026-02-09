@@ -55,7 +55,7 @@ type UseSessionFilesParams = {
   requestRepoFileContent: (
     paneId: string,
     path: string,
-    options?: { maxBytes?: number },
+    options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
   ) => Promise<RepoFileContent>;
 };
 
@@ -1054,6 +1054,7 @@ export const useSessionFiles = ({
           try {
             await requestRepoFileContent(sourcePaneId, reference.normalizedPath, {
               maxBytes: 1,
+              suppressConnectionIssue: true,
             });
             return true;
           } catch {
@@ -1136,7 +1137,10 @@ export const useSessionFiles = ({
       highlightLine?: number | null;
     }) => {
       try {
-        await requestRepoFileContent(targetPaneId, path, { maxBytes: 1 });
+        await requestRepoFileContent(targetPaneId, path, {
+          maxBytes: 1,
+          suppressConnectionIssue: true,
+        });
       } catch {
         return false;
       }
