@@ -298,6 +298,10 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     }
     return ordered;
   }, [screenLines]);
+  const referenceCandidateTokenSet = useMemo(
+    () => new Set(referenceCandidateTokens),
+    [referenceCandidateTokens],
+  );
   const linkifiedScreenLines = useMemo(() => {
     if (mode !== "text" || linkableTokens.size === 0) {
       return screenLines;
@@ -323,15 +327,32 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
         if (activeResolveCandidatesRequestIdRef.current !== requestId) {
           return;
         }
-        setLinkableTokens(new Set(resolvedTokens));
+        const resolvedTokenSet = new Set(resolvedTokens);
+        setLinkableTokens((previous) => {
+          const next = new Set<string>();
+          referenceCandidateTokens.forEach((token) => {
+            if (resolvedTokenSet.has(token) || previous.has(token)) {
+              next.add(token);
+            }
+          });
+          return next;
+        });
       })
       .catch(() => {
         if (activeResolveCandidatesRequestIdRef.current !== requestId) {
           return;
         }
-        setLinkableTokens(new Set());
+        setLinkableTokens((previous) => {
+          const next = new Set<string>();
+          previous.forEach((token) => {
+            if (referenceCandidateTokenSet.has(token)) {
+              next.add(token);
+            }
+          });
+          return next;
+        });
       });
-  }, [onResolveFileReferenceCandidates, referenceCandidateTokens]);
+  }, [onResolveFileReferenceCandidates, referenceCandidateTokenSet, referenceCandidateTokens]);
   const { scrollerRef: stableScrollerRef, handleRangeChanged } = useStableVirtuosoScroll({
     items: screenLines,
     isAtBottom,

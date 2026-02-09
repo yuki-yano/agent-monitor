@@ -318,4 +318,60 @@ describe("ScreenPanel", () => {
     fireEvent.click(container.querySelector("[data-vde-file-ref='src/exists.ts:2']") as Element);
     expect(onResolveFileReference).toHaveBeenCalledWith("src/exists.ts:2");
   });
+
+  it("linkifies comma-separated filename tokens in explored logs", async () => {
+    const state = buildState({
+      screenLines: ["└ Read SessionDetailView.test.tsx, useSessionDetailVM.test.tsx"],
+    });
+    const actions = buildActions();
+    const { container } = render(<ScreenPanel state={state} actions={actions} controls={null} />);
+
+    await waitFor(() => {
+      expect(container.querySelector("[data-vde-file-ref='SessionDetailView.test.tsx,']")).toBeTruthy();
+      expect(container.querySelector("[data-vde-file-ref='useSessionDetailVM.test.tsx']")).toBeTruthy();
+    });
+  });
+
+  it("keeps existing verified links when follow-up candidate resolution returns empty", async () => {
+    const onResolveFileReferenceCandidates = vi
+      .fn<ScreenPanelActions["onResolveFileReferenceCandidates"]>()
+      .mockImplementationOnce(async (rawTokens) => rawTokens)
+      .mockImplementationOnce(async () => []);
+    const actions = buildActions({ onResolveFileReferenceCandidates });
+    const { container, rerender } = render(
+      <ScreenPanel
+        state={buildState({
+          screenLines: ["└ Read SessionDetailView.test.tsx, useSessionDetailVM.test.tsx"],
+        })}
+        actions={actions}
+        controls={null}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector("[data-vde-file-ref='SessionDetailView.test.tsx,']")).toBeTruthy();
+      expect(container.querySelector("[data-vde-file-ref='useSessionDetailVM.test.tsx']")).toBeTruthy();
+    });
+
+    rerender(
+      <ScreenPanel
+        state={buildState({
+          screenLines: [
+            "• Explored",
+            "└ Read SessionDetailView.test.tsx, useSessionDetailVM.test.tsx",
+          ],
+        })}
+        actions={actions}
+        controls={null}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(onResolveFileReferenceCandidates).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
+      expect(container.querySelector("[data-vde-file-ref='SessionDetailView.test.tsx,']")).toBeTruthy();
+      expect(container.querySelector("[data-vde-file-ref='useSessionDetailVM.test.tsx']")).toBeTruthy();
+    });
+  });
 });
