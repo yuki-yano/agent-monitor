@@ -327,8 +327,12 @@ describe("ScreenPanel", () => {
     const { container } = render(<ScreenPanel state={state} actions={actions} controls={null} />);
 
     await waitFor(() => {
-      expect(container.querySelector("[data-vde-file-ref='SessionDetailView.test.tsx,']")).toBeTruthy();
-      expect(container.querySelector("[data-vde-file-ref='useSessionDetailVM.test.tsx']")).toBeTruthy();
+      expect(
+        container.querySelector("[data-vde-file-ref='SessionDetailView.test.tsx,']"),
+      ).toBeTruthy();
+      expect(
+        container.querySelector("[data-vde-file-ref='useSessionDetailVM.test.tsx']"),
+      ).toBeTruthy();
     });
   });
 
@@ -349,8 +353,12 @@ describe("ScreenPanel", () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelector("[data-vde-file-ref='SessionDetailView.test.tsx,']")).toBeTruthy();
-      expect(container.querySelector("[data-vde-file-ref='useSessionDetailVM.test.tsx']")).toBeTruthy();
+      expect(
+        container.querySelector("[data-vde-file-ref='SessionDetailView.test.tsx,']"),
+      ).toBeTruthy();
+      expect(
+        container.querySelector("[data-vde-file-ref='useSessionDetailVM.test.tsx']"),
+      ).toBeTruthy();
     });
 
     rerender(
@@ -370,8 +378,12 @@ describe("ScreenPanel", () => {
       expect(onResolveFileReferenceCandidates).toHaveBeenCalledTimes(2);
     });
     await waitFor(() => {
-      expect(container.querySelector("[data-vde-file-ref='SessionDetailView.test.tsx,']")).toBeTruthy();
-      expect(container.querySelector("[data-vde-file-ref='useSessionDetailVM.test.tsx']")).toBeTruthy();
+      expect(
+        container.querySelector("[data-vde-file-ref='SessionDetailView.test.tsx,']"),
+      ).toBeTruthy();
+      expect(
+        container.querySelector("[data-vde-file-ref='useSessionDetailVM.test.tsx']"),
+      ).toBeTruthy();
     });
   });
 });
