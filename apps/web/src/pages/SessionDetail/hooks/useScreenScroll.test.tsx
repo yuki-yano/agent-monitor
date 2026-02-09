@@ -55,7 +55,7 @@ describe("useScreenScroll", () => {
     expect(onFlushPending).toHaveBeenCalledTimes(1);
   });
 
-  it("flushes when reaching bottom and clears force follow timer", () => {
+  it("keeps force follow until reaching bottom", () => {
     vi.useFakeTimers();
     const isUserScrollingRef = { current: false };
     const onFlushPending = vi.fn();
@@ -94,12 +94,13 @@ describe("useScreenScroll", () => {
       vi.advanceTimersByTime(500);
     });
 
-    expect(result.current.forceFollow).toBe(false);
+    expect(result.current.forceFollow).toBe(true);
 
     act(() => {
       result.current.handleAtBottomChange(true);
     });
 
+    expect(result.current.forceFollow).toBe(false);
     expect(onFlushPending).toHaveBeenCalledTimes(1);
   });
 
