@@ -18,6 +18,7 @@ const SEARCH_DEBOUNCE_MS = 120;
 const FILE_CONTENT_MAX_BYTES = 256 * 1024;
 const LOG_FILE_RESOLVE_MATCH_LIMIT = 20;
 const LOG_FILE_RESOLVE_PAGE_LIMIT = 100;
+const LOG_FILE_RESOLVE_MAX_SEARCH_PAGES = 20;
 const LOG_REFERENCE_LINKABLE_CACHE_MAX = 1000;
 
 type LogFileCandidateItem = Pick<
@@ -1033,8 +1034,10 @@ export const useSessionFiles = ({
       requestId?: number;
     }): Promise<boolean | null> => {
       let cursor: string | undefined = undefined;
+      let pageCount = 0;
+      const visitedCursors = new Set<string>();
 
-      while (true) {
+      while (pageCount < LOG_FILE_RESOLVE_MAX_SEARCH_PAGES) {
         if (requestId != null && activeLogResolveRequestIdRef.current !== requestId) {
           return null;
         }
@@ -1042,6 +1045,7 @@ export const useSessionFiles = ({
           cursor,
           limit: limitPerPage,
         });
+        pageCount += 1;
         if (requestId != null && activeLogResolveRequestIdRef.current !== requestId) {
           return null;
         }
@@ -1054,8 +1058,14 @@ export const useSessionFiles = ({
         if (!page.nextCursor) {
           return false;
         }
+        if (visitedCursors.has(page.nextCursor)) {
+          return false;
+        }
+        visitedCursors.add(page.nextCursor);
         cursor = page.nextCursor;
       }
+
+      return false;
     },
     [requestRepoFileSearch],
   );

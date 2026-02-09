@@ -940,6 +940,83 @@ describe("useSessionFiles", () => {
     });
   });
 
+  it("falls back to filename search when path lookup cursor repeats", async () => {
+    const requestRepoFileTree = vi.fn(async () => createTreePage({ basePath: ".", entries: [] }));
+    const requestRepoFileSearch = vi.fn(
+      async (_paneId: string, query: string, options?: { cursor?: string; limit?: number }) => {
+        if (query === "src/index.ts") {
+          return createSearchPage({
+            query,
+            items: [],
+            totalMatchedCount: 0,
+            nextCursor: options?.cursor ?? "cursor-1",
+          });
+        }
+        if (query === "index.ts") {
+          return createSearchPage({
+            query,
+            items: [
+              {
+                path: "apps/server/src/index.ts",
+                name: "index.ts",
+                kind: "file",
+                score: 1,
+                highlights: [0],
+              },
+            ],
+            totalMatchedCount: 1,
+          });
+        }
+        return createSearchPage({ query, items: [], totalMatchedCount: 0 });
+      },
+    );
+    const requestRepoFileContentLocal = vi.fn(async (_paneId: string, targetPath: string) => ({
+      path: targetPath,
+      sizeBytes: 123,
+      isBinary: false,
+      truncated: false,
+      languageHint: "typescript" as const,
+      content: "export const value = 1;",
+    }));
+
+    const { result } = renderHook(() =>
+      useSessionFiles({
+        paneId: "pane-current",
+        repoRoot: "/repo-current",
+        autoExpandMatchLimit: 100,
+        requestRepoFileTree,
+        requestRepoFileSearch,
+        requestRepoFileContent: requestRepoFileContentLocal,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.onResolveLogFileReference({
+        rawToken: "src/index.ts:9",
+        sourcePaneId: "pane-log",
+        sourceRepoRoot: "/repo",
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.fileModalPath).toBe("apps/server/src/index.ts");
+      expect(result.current.fileModalLoading).toBe(false);
+    });
+    expect(result.current.fileModalHighlightLine).toBe(9);
+    expect(requestRepoFileSearch).toHaveBeenNthCalledWith(1, "pane-log", "src/index.ts", {
+      cursor: undefined,
+      limit: 100,
+    });
+    expect(requestRepoFileSearch).toHaveBeenNthCalledWith(2, "pane-log", "src/index.ts", {
+      cursor: "cursor-1",
+      limit: 100,
+    });
+    expect(requestRepoFileSearch).toHaveBeenNthCalledWith(3, "pane-log", "index.ts", {
+      cursor: undefined,
+      limit: 100,
+    });
+  });
+
   it("opens candidate modal when multiple exact filename matches are found", async () => {
     const requestRepoFileTree = vi.fn(async () => createTreePage({ basePath: ".", entries: [] }));
     const requestRepoFileSearch = vi.fn(async () =>
