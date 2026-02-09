@@ -1,6 +1,8 @@
 import type {
   RepoFileContent,
   RepoFileNodeKind,
+  RepoFileResolveReference,
+  RepoFileResolveResult,
   RepoFileSearchPage,
   RepoFileTreeNode,
   RepoFileTreePage,
@@ -19,7 +21,7 @@ const FILE_CONTENT_MAX_BYTES = 256 * 1024;
 const LOG_FILE_RESOLVE_MATCH_LIMIT = 20;
 const LOG_FILE_RESOLVE_PAGE_LIMIT = 100;
 const LOG_FILE_RESOLVE_MAX_PAGES = 5;
-const LOG_FILE_LINKIFY_TOKEN_LIMIT = 80;
+const LOG_FILE_LINKIFY_TOKEN_LIMIT = 1000;
 const LOG_REFERENCE_LINKABLE_CACHE_MAX = 1000;
 
 type LogFileCandidateItem = Pick<
@@ -58,6 +60,10 @@ type UseSessionFilesParams = {
     path: string,
     options?: { maxBytes?: number; suppressConnectionIssue?: boolean },
   ) => Promise<RepoFileContent>;
+  requestRepoFileResolveReferences?: (
+    paneId: string,
+    references: RepoFileResolveReference[],
+  ) => Promise<RepoFileResolveResult>;
 };
 
 const resolveUnknownErrorMessage = (error: unknown, fallbackMessage: string) =>
@@ -380,6 +386,7 @@ export const useSessionFiles = ({
   requestRepoFileTree,
   requestRepoFileSearch,
   requestRepoFileContent,
+  requestRepoFileResolveReferences,
 }: UseSessionFilesParams) => {
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [expandedDirSet, setExpandedDirSet] = useState<Set<string>>(new Set());
@@ -1026,6 +1033,28 @@ export const useSessionFiles = ({
     [requestRepoFileSearch],
   );
 
+  const buildLogReferenceLinkableCacheKey = useCallback(
+    ({
+      sourcePaneId,
+      sourceRepoRoot,
+      kind,
+      normalizedPath,
+      filename,
+      display,
+    }: {
+      sourcePaneId: string;
+      sourceRepoRoot: string | null;
+      kind: "path" | "filename" | "unknown";
+      normalizedPath: string | null;
+      filename: string | null;
+      display: string;
+    }) => {
+      const normalizedCacheSubject = normalizedPath ?? filename ?? display;
+      return `${sourcePaneId}:${sourceRepoRoot ?? ""}:${kind}:${normalizedCacheSubject}`;
+    },
+    [],
+  );
+
   const isLogFileReferenceLinkable = useCallback(
     async ({
       rawToken,
@@ -1045,9 +1074,14 @@ export const useSessionFiles = ({
       if (reference.kind === "unknown") {
         return false;
       }
-      const normalizedCacheSubject =
-        reference.normalizedPath ?? reference.filename ?? reference.display;
-      const cacheKey = `${sourcePaneId}:${sourceRepoRoot ?? ""}:${reference.kind}:${normalizedCacheSubject}`;
+      const cacheKey = buildLogReferenceLinkableCacheKey({
+        sourcePaneId,
+        sourceRepoRoot,
+        kind: reference.kind,
+        normalizedPath: reference.normalizedPath,
+        filename: reference.filename,
+        display: reference.display,
+      });
       const cached = logReferenceLinkableCacheRef.current.get(cacheKey);
       if (cached != null) {
         return cached;
@@ -1102,7 +1136,7 @@ export const useSessionFiles = ({
         logReferenceLinkableRequestMapRef.current.delete(cacheKey);
       }
     },
-    [findExactNameMatches, requestRepoFileContent],
+    [buildLogReferenceLinkableCacheKey, findExactNameMatches, requestRepoFileContent],
   );
 
   const onResolveLogFileReferenceCandidates = useCallback(
@@ -1122,23 +1156,113 @@ export const useSessionFiles = ({
         return [] as string[];
       }
 
-      const results = await Promise.all(
-        uniqueTokens.map(async (rawToken) => {
-          try {
-            const linkable = await isLogFileReferenceLinkable({
-              rawToken,
-              sourcePaneId,
-              sourceRepoRoot,
-            });
-            return linkable ? rawToken : null;
-          } catch {
-            return null;
+      const linkableRawTokenSet = new Set<string>();
+      const pendingCacheKeys: string[] = [];
+      const pendingBatchReferences: RepoFileResolveReference[] = [];
+
+      uniqueTokens.forEach((rawToken) => {
+        const reference = normalizeLogReference(rawToken, {
+          sourceRepoRoot,
+        });
+        if (reference.kind === "unknown") {
+          return;
+        }
+        const cacheKey = buildLogReferenceLinkableCacheKey({
+          sourcePaneId,
+          sourceRepoRoot,
+          kind: reference.kind,
+          normalizedPath: reference.normalizedPath,
+          filename: reference.filename,
+          display: reference.display,
+        });
+        const cached = logReferenceLinkableCacheRef.current.get(cacheKey);
+        if (cached != null) {
+          if (cached) {
+            linkableRawTokenSet.add(rawToken);
           }
-        }),
-      );
-      return results.filter((value): value is string => value != null);
+          return;
+        }
+        pendingCacheKeys.push(cacheKey);
+        pendingBatchReferences.push({
+          rawToken,
+          normalizedPath: reference.normalizedPath ?? undefined,
+          filename: reference.filename ?? undefined,
+        });
+      });
+
+      if (pendingBatchReferences.length > 0 && requestRepoFileResolveReferences) {
+        try {
+          const batchResult = await requestRepoFileResolveReferences(
+            sourcePaneId,
+            pendingBatchReferences,
+          );
+          const linkableBatchTokenSet = new Set(batchResult.linkableRawTokens);
+          pendingBatchReferences.forEach((reference, index) => {
+            const cacheKey = pendingCacheKeys[index];
+            if (!cacheKey) {
+              return;
+            }
+            const linkable = linkableBatchTokenSet.has(reference.rawToken);
+            if (linkable) {
+              linkableRawTokenSet.add(reference.rawToken);
+            }
+            setMapEntryWithMaxSize(
+              logReferenceLinkableCacheRef.current,
+              cacheKey,
+              linkable,
+              LOG_REFERENCE_LINKABLE_CACHE_MAX,
+            );
+          });
+        } catch {
+          const fallbackResults = await Promise.all(
+            pendingBatchReferences.map(async (reference) => {
+              try {
+                const linkable = await isLogFileReferenceLinkable({
+                  rawToken: reference.rawToken,
+                  sourcePaneId,
+                  sourceRepoRoot,
+                });
+                return linkable ? reference.rawToken : null;
+              } catch {
+                return null;
+              }
+            }),
+          );
+          fallbackResults.forEach((rawToken) => {
+            if (rawToken) {
+              linkableRawTokenSet.add(rawToken);
+            }
+          });
+        }
+      } else if (pendingBatchReferences.length > 0) {
+        const fallbackResults = await Promise.all(
+          pendingBatchReferences.map(async (reference) => {
+            try {
+              const linkable = await isLogFileReferenceLinkable({
+                rawToken: reference.rawToken,
+                sourcePaneId,
+                sourceRepoRoot,
+              });
+              return linkable ? reference.rawToken : null;
+            } catch {
+              return null;
+            }
+          }),
+        );
+        fallbackResults.forEach((rawToken) => {
+          if (rawToken) {
+            linkableRawTokenSet.add(rawToken);
+          }
+        });
+      }
+
+      return uniqueTokens.filter((token) => linkableRawTokenSet.has(token));
     },
-    [isLogFileReferenceLinkable],
+    [
+      buildLogReferenceLinkableCacheKey,
+      isLogFileReferenceLinkable,
+      requestRepoFileResolveReferences,
+    ],
   );
 
   const tryOpenExistingPath = useCallback(

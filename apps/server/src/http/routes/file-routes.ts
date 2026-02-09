@@ -23,6 +23,23 @@ const contentQuerySchema = z.object({
   maxBytes: z.string().optional(),
 });
 
+const resolveReferenceSchema = z
+  .object({
+    rawToken: z.string().trim().min(1).max(1024),
+    normalizedPath: z.string().trim().min(1).max(4096).optional(),
+    filename: z.string().trim().min(1).max(512).optional(),
+  })
+  .refine((value) => Boolean(value.normalizedPath || value.filename), {
+    message: "normalizedPath or filename is required",
+  });
+
+const resolveReferencesBodySchema = z.object({
+  references: z.array(resolveReferenceSchema).min(1).max(1000),
+});
+
+const RESOLVE_REFERENCE_SEARCH_PAGE_LIMIT = 100;
+const RESOLVE_REFERENCE_SEARCH_MAX_PAGES = 5;
+
 const parseLimit = ({
   rawLimit,
   fallback,
@@ -68,6 +85,37 @@ const mapServiceError = (error: RepoFileServiceError) => {
     error: buildError(error.code, error.message),
     status: error.status,
   };
+};
+
+const hasExactFilenameMatch = async ({
+  repoRoot,
+  filename,
+  repoFileService,
+}: {
+  repoRoot: string;
+  filename: string;
+  repoFileService: ReturnType<typeof createRepoFileService>;
+}): Promise<boolean> => {
+  let cursor: string | undefined = undefined;
+  let pageCount = 0;
+  while (pageCount < RESOLVE_REFERENCE_SEARCH_MAX_PAGES) {
+    const page = await repoFileService.searchFiles({
+      repoRoot,
+      query: filename,
+      cursor,
+      limit: RESOLVE_REFERENCE_SEARCH_PAGE_LIMIT,
+    });
+    const found = page.items.some((item) => item.kind === "file" && item.name === filename);
+    if (found) {
+      return true;
+    }
+    pageCount += 1;
+    if (!page.nextCursor) {
+      break;
+    }
+    cursor = page.nextCursor;
+  }
+  return false;
 };
 
 export const createFileRoutes = ({ resolvePane, config }: FileRouteDeps) => {
@@ -192,5 +240,74 @@ export const createFileRoutes = ({ resolvePane, config }: FileRouteDeps) => {
         }
         return c.json({ error: buildError("INTERNAL", "failed to load file content") }, 500);
       }
-    });
+    })
+    .post(
+      "/sessions/:paneId/files/resolve",
+      zValidator("json", resolveReferencesBodySchema),
+      async (c) => {
+        const pane = resolvePane(c);
+        if (pane instanceof Response) {
+          return pane;
+        }
+        const repoRoot = resolveRepoRoot(pane.detail.repoRoot);
+        if (!repoRoot) {
+          return c.json({ error: buildError("REPO_UNAVAILABLE", "repo root is unavailable") }, 400);
+        }
+
+        const body = c.req.valid("json");
+        const normalizedReferences = body.references;
+        const pathCache = new Map<string, boolean>();
+        const filenameCache = new Map<string, boolean>();
+        const linkableRawTokens = new Set<string>();
+
+        for (const reference of normalizedReferences) {
+          let linkable = false;
+          const normalizedPath = reference.normalizedPath?.trim();
+          const filename = reference.filename?.trim();
+
+          if (normalizedPath && normalizedPath.length > 0) {
+            const cached = pathCache.get(normalizedPath);
+            if (cached != null) {
+              linkable = cached;
+            } else {
+              try {
+                await repoFileService.getFileContent({
+                  repoRoot,
+                  path: normalizedPath,
+                  maxBytes: 1,
+                });
+                linkable = true;
+              } catch {
+                linkable = false;
+              }
+              pathCache.set(normalizedPath, linkable);
+            }
+          }
+
+          if (!linkable && filename && filename.length > 0) {
+            const cached = filenameCache.get(filename);
+            if (cached != null) {
+              linkable = cached;
+            } else {
+              try {
+                linkable = await hasExactFilenameMatch({
+                  repoRoot,
+                  filename,
+                  repoFileService,
+                });
+              } catch {
+                linkable = false;
+              }
+              filenameCache.set(filename, linkable);
+            }
+          }
+
+          if (linkable) {
+            linkableRawTokens.add(reference.rawToken);
+          }
+        }
+
+        return c.json({ linkableRawTokens: Array.from(linkableRawTokens) });
+      },
+    );
 };

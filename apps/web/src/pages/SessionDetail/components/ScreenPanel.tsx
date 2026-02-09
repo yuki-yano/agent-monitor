@@ -74,7 +74,9 @@ const shouldShowErrorMessage = (error: string | null, connectionIssue: string | 
   Boolean(error) &&
   (!connectionIssue || (error !== connectionIssue && error !== DISCONNECTED_MESSAGE));
 
-const MAX_LOG_REFERENCE_CANDIDATES = 160;
+const MAX_LOG_REFERENCE_CANDIDATES = 1000;
+const VISIBLE_REFERENCE_LINE_PADDING = 20;
+const FALLBACK_VISIBLE_REFERENCE_WINDOW = 120;
 
 const resolveRawTokenFromEventTarget = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) {
@@ -266,11 +268,31 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
   } = actions;
   const showError = shouldShowErrorMessage(error, connectionIssue);
   const [linkableTokens, setLinkableTokens] = useState<Set<string>>(new Set());
+  const [visibleRange, setVisibleRange] = useState<{ startIndex: number; endIndex: number } | null>(
+    null,
+  );
   const activeResolveCandidatesRequestIdRef = useRef(0);
   const referenceCandidateTokens = useMemo(() => {
+    if (mode !== "text") {
+      return [];
+    }
+    if (screenLines.length === 0) {
+      return [];
+    }
     const seen = new Set<string>();
     const ordered: string[] = [];
-    for (let index = screenLines.length - 1; index >= 0; index -= 1) {
+    const maxIndex = screenLines.length - 1;
+    const fallbackStart = Math.max(0, maxIndex - FALLBACK_VISIBLE_REFERENCE_WINDOW);
+    const startIndex =
+      visibleRange == null
+        ? fallbackStart
+        : Math.max(0, visibleRange.startIndex - VISIBLE_REFERENCE_LINE_PADDING);
+    const endIndex =
+      visibleRange == null
+        ? maxIndex
+        : Math.min(maxIndex, visibleRange.endIndex + VISIBLE_REFERENCE_LINE_PADDING);
+
+    for (let index = endIndex; index >= startIndex; index -= 1) {
       const line = screenLines[index];
       if (!line) {
         continue;
@@ -297,7 +319,7 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
       }
     }
     return ordered;
-  }, [screenLines]);
+  }, [mode, screenLines, visibleRange]);
   const referenceCandidateTokenSet = useMemo(
     () => new Set(referenceCandidateTokens),
     [referenceCandidateTokens],
@@ -361,6 +383,13 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     isUserScrolling: forceFollow,
     onUserScrollStateChange,
   });
+  const handleScreenRangeChanged = useCallback(
+    (range: { startIndex: number; endIndex: number }) => {
+      setVisibleRange(range);
+      handleRangeChanged(range);
+    },
+    [handleRangeChanged],
+  );
 
   const VirtuosoScroller = useMemo(() => {
     const Component = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
@@ -458,7 +487,7 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
           screenLines={linkifiedScreenLines}
           virtuosoRef={virtuosoRef}
           onAtBottomChange={onAtBottomChange}
-          handleRangeChanged={handleRangeChanged}
+          handleRangeChanged={handleScreenRangeChanged}
           VirtuosoScroller={VirtuosoScroller}
           onScrollToBottom={onScrollToBottom}
           onResolveFileReference={handleResolveFileReference}

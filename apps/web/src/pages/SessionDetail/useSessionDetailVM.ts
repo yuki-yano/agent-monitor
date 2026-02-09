@@ -61,6 +61,7 @@ export const useSessionDetailVM = (paneId: string) => {
     requestRepoFileTree,
     requestStateTimeline,
     requestScreen,
+    requestRepoFileResolveReferences,
     focusPane,
     uploadImageAttachment,
     sendText,
@@ -217,6 +218,7 @@ export const useSessionDetailVM = (paneId: string) => {
     requestRepoFileTree,
     requestRepoFileSearch,
     requestRepoFileContent,
+    requestRepoFileResolveReferences,
   });
 
   const {

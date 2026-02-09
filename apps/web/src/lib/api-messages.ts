@@ -23,6 +23,7 @@ export const API_ERROR_MESSAGES = {
   fileTree: "Failed to load file tree",
   fileSearch: "Failed to search files",
   fileContent: "Failed to load file content",
+  fileResolve: "Failed to resolve file references",
   repoUnavailable: "This session does not have a repository root.",
   forbiddenPath: "Access to this path is forbidden.",
   permissionDenied: "Permission denied while loading files.",

@@ -1254,4 +1254,53 @@ describe("useSessionFiles", () => {
 
     expect(linkable).toEqual(["src/exists.ts:2", "index.ts"]);
   });
+
+  it("uses batch resolve API when provided for log-linkify candidate resolution", async () => {
+    const requestRepoFileTree = vi.fn(async () => createTreePage({ basePath: ".", entries: [] }));
+    const requestRepoFileSearch = vi.fn(async () => createSearchPage({ query: "", items: [] }));
+    const requestRepoFileContentLocal = vi.fn(async () => {
+      throw new Error("requestRepoFileContent should not be called");
+    });
+    const requestRepoFileResolveReferences = vi.fn(async () => ({
+      linkableRawTokens: ["src/exists.ts:2", "index.ts"],
+    }));
+
+    const { result } = renderHook(() =>
+      useSessionFiles({
+        paneId: "pane-current",
+        repoRoot: "/repo-current",
+        autoExpandMatchLimit: 100,
+        requestRepoFileTree,
+        requestRepoFileSearch,
+        requestRepoFileContent: requestRepoFileContentLocal,
+        requestRepoFileResolveReferences,
+      }),
+    );
+
+    const linkable = await result.current.onResolveLogFileReferenceCandidates({
+      rawTokens: ["src/exists.ts:2", "src/missing.ts:1", "index.ts", "https://example.com"],
+      sourcePaneId: "pane-log",
+      sourceRepoRoot: "/repo",
+    });
+
+    expect(requestRepoFileResolveReferences).toHaveBeenCalledWith("pane-log", [
+      {
+        rawToken: "src/exists.ts:2",
+        normalizedPath: "src/exists.ts",
+        filename: "exists.ts",
+      },
+      {
+        rawToken: "src/missing.ts:1",
+        normalizedPath: "src/missing.ts",
+        filename: "missing.ts",
+      },
+      {
+        rawToken: "index.ts",
+        filename: "index.ts",
+      },
+    ]);
+    expect(requestRepoFileContentLocal).not.toHaveBeenCalled();
+    expect(requestRepoFileSearch).not.toHaveBeenCalled();
+    expect(linkable).toEqual(["src/exists.ts:2", "index.ts"]);
+  });
 });

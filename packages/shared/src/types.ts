@@ -232,6 +232,16 @@ export type RepoFileContent = {
   content: string | null;
 };
 
+export type RepoFileResolveReference = {
+  rawToken: string;
+  normalizedPath?: string;
+  filename?: string;
+};
+
+export type RepoFileResolveResult = {
+  linkableRawTokens: string[];
+};
+
 export type FileNavigatorConfig = {
   includeIgnoredPaths: string[];
   autoExpandMatchLimit: number;

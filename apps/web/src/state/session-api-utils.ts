@@ -20,6 +20,7 @@ import type {
   PaneHashParam,
   PaneParam,
   RepoFileContentQuery,
+  RepoFileResolveJson,
   RepoFileSearchQuery,
   RepoFileTreeQuery,
   ScreenRequestJson,
@@ -345,3 +346,9 @@ export const buildRepoFileContentQuery = (
   }
   return query;
 };
+
+export const buildRepoFileResolveJson = (
+  references: RepoFileResolveJson["references"],
+): RepoFileResolveJson => ({
+  references,
+});

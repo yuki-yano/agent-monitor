@@ -238,6 +238,7 @@ export const useSessionApi = ({
     requestRepoFileTree,
     requestRepoFileSearch,
     requestRepoFileContent,
+    requestRepoFileResolveReferences,
   } = useMemo(
     () =>
       createSessionQueryRequests({
@@ -357,6 +358,7 @@ export const useSessionApi = ({
     requestRepoFileTree,
     requestRepoFileSearch,
     requestRepoFileContent,
+    requestRepoFileResolveReferences,
     requestScreen,
     sendText,
     focusPane,

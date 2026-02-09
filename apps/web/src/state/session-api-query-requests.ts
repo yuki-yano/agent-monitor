@@ -5,6 +5,8 @@ import type {
   DiffFile,
   DiffSummary,
   RepoFileContent,
+  RepoFileResolveReference,
+  RepoFileResolveResult,
   RepoFileSearchPage,
   RepoFileTreePage,
   SessionStateTimeline,
@@ -20,6 +22,7 @@ import {
   buildDiffFileQuery,
   buildForceQuery,
   buildRepoFileContentQuery,
+  buildRepoFileResolveJson,
   buildRepoFileSearchQuery,
   buildRepoFileTreeQuery,
   buildTimelineQuery,
@@ -177,6 +180,24 @@ export const createSessionQueryRequests = ({
     });
   };
 
+  const requestRepoFileResolveReferences = async (
+    paneId: string,
+    references: RepoFileResolveReference[],
+  ): Promise<RepoFileResolveResult> => {
+    const json = buildRepoFileResolveJson(references);
+    const linkableRawTokens = await requestPaneQueryField<
+      { linkableRawTokens?: string[] },
+      "linkableRawTokens"
+    >({
+      paneId,
+      request: (param) => apiClient.sessions[":paneId"].files.resolve.$post({ param, json }),
+      field: "linkableRawTokens",
+      fallbackMessage: API_ERROR_MESSAGES.fileResolve,
+      suppressConnectionIssue: true,
+    });
+    return { linkableRawTokens };
+  };
+
   return {
     requestDiffSummary,
     requestDiffFile,
@@ -187,5 +208,6 @@ export const createSessionQueryRequests = ({
     requestRepoFileTree,
     requestRepoFileSearch,
     requestRepoFileContent,
+    requestRepoFileResolveReferences,
   };
 };
