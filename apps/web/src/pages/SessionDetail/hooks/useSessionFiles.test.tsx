@@ -102,8 +102,20 @@ describe("useSessionFiles", () => {
       createSearchPage({
         query: "index",
         items: [
-          { path: "src/app/index.ts", name: "index.ts", kind: "file", score: 0.8, highlights: [0, 1] },
-          { path: "src/lib/index.test.ts", name: "index.test.ts", kind: "file", score: 0.6, highlights: [0, 1] },
+          {
+            path: "src/app/index.ts",
+            name: "index.ts",
+            kind: "file",
+            score: 0.8,
+            highlights: [0, 1],
+          },
+          {
+            path: "src/lib/index.test.ts",
+            name: "index.test.ts",
+            kind: "file",
+            score: 0.6,
+            highlights: [0, 1],
+          },
         ],
         totalMatchedCount: 2,
       }),
@@ -442,7 +454,15 @@ describe("useSessionFiles", () => {
     const requestRepoFileSearch = vi.fn(async () =>
       createSearchPage({
         query: "index",
-        items: [{ path: "src/app/index.ts", name: "index.ts", kind: "file", score: 0.9, highlights: [0, 1] }],
+        items: [
+          {
+            path: "src/app/index.ts",
+            name: "index.ts",
+            kind: "file",
+            score: 0.9,
+            highlights: [0, 1],
+          },
+        ],
         totalMatchedCount: 1,
       }),
     );
@@ -572,7 +592,15 @@ describe("useSessionFiles", () => {
         if (query === "index" && !options?.cursor) {
           return createSearchPage({
             query: "index",
-            items: [{ path: "src/index.ts", name: "index.ts", kind: "file", score: 1, highlights: [0, 1] }],
+            items: [
+              {
+                path: "src/index.ts",
+                name: "index.ts",
+                kind: "file",
+                score: 1,
+                highlights: [0, 1],
+              },
+            ],
             totalMatchedCount: 2,
             truncated: true,
             nextCursor: "cursor-1",
@@ -612,7 +640,13 @@ describe("useSessionFiles", () => {
         createSearchPage({
           query: "index",
           items: [
-            { path: "src/index.test.ts", name: "index.test.ts", kind: "file", score: 0.8, highlights: [0] },
+            {
+              path: "src/index.test.ts",
+              name: "index.test.ts",
+              kind: "file",
+              score: 0.8,
+              highlights: [0],
+            },
           ],
           totalMatchedCount: 2,
           truncated: false,

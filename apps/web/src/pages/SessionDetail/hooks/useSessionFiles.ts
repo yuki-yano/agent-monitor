@@ -170,9 +170,13 @@ const normalizeSearchTree = (items: RepoFileSearchPage["items"]) => {
     let parentPath: string | null = null;
     segments.forEach((segment, index) => {
       const currentPath = segments.slice(0, index + 1).join("/");
-      const kind: RepoFileNodeKind =
-        index === segments.length - 1 ? item.kind : "directory";
-      const current = ensureNode(currentPath, segment, kind, kind === "file" && item.isIgnored === true);
+      const kind: RepoFileNodeKind = index === segments.length - 1 ? item.kind : "directory";
+      const current = ensureNode(
+        currentPath,
+        segment,
+        kind,
+        kind === "file" && item.isIgnored === true,
+      );
       if (!parentPath) {
         rootChildren.add(current.path);
       } else {
