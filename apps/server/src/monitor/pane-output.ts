@@ -273,7 +273,8 @@ export const updatePaneOutputState = async ({
         paneState,
         result: detectResult,
       });
-    } catch {
+    } catch (error) {
+      void error;
       inputTouchedAt = null;
     }
   }

@@ -302,7 +302,8 @@ export const detectExternalInputFromLogDelta = async ({
       nextCursorBytes: fileSize,
       signature,
     });
-  } catch {
+  } catch (error) {
+    void error;
     return createResult({
       reason: "no-log",
       nextCursorBytes: previousCursor,
