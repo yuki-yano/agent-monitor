@@ -10,9 +10,9 @@ import { screenAtBottomAtom, screenForceFollowAtom } from "../atoms/screenAtoms"
 import { useScreenScroll } from "./useScreenScroll";
 
 describe("useScreenScroll", () => {
-  const createWrapper = () => {
+  const createWrapper = (initialAtBottom = true) => {
     const store = createStore();
-    store.set(screenAtBottomAtom, true);
+    store.set(screenAtBottomAtom, initialAtBottom);
     store.set(screenForceFollowAtom, false);
     return ({ children }: { children: ReactNode }) => (
       <JotaiProvider store={store}>{children}</JotaiProvider>
@@ -61,7 +61,7 @@ describe("useScreenScroll", () => {
     const onFlushPending = vi.fn();
     const onClearPending = vi.fn();
 
-    const wrapper = createWrapper();
+    const wrapper = createWrapper(false);
     const { result } = renderHook(
       () =>
         useScreenScroll({
@@ -102,6 +102,45 @@ describe("useScreenScroll", () => {
 
     expect(result.current.forceFollow).toBe(false);
     expect(onFlushPending).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not enable force follow when already at bottom", () => {
+    vi.useFakeTimers();
+    const isUserScrollingRef = { current: false };
+    const onFlushPending = vi.fn();
+    const onClearPending = vi.fn();
+
+    const wrapper = createWrapper(true);
+    const { result } = renderHook(
+      () =>
+        useScreenScroll({
+          mode: "text",
+          screenLinesLength: 2,
+          isUserScrollingRef,
+          onFlushPending,
+          onClearPending,
+        }),
+      { wrapper },
+    );
+
+    act(() => {
+      result.current.virtuosoRef.current = {
+        scrollToIndex: vi.fn(),
+      } as unknown as typeof result.current.virtuosoRef.current;
+      result.current.scrollerRef.current = {
+        scrollTo: vi.fn(),
+        scrollHeight: 200,
+      } as unknown as HTMLDivElement;
+      result.current.scrollToBottom("auto");
+    });
+
+    expect(result.current.forceFollow).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(result.current.forceFollow).toBe(false);
   });
 
   it("clears pending on image mode and snaps on image->text", () => {

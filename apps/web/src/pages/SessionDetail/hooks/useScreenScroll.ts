@@ -44,14 +44,17 @@ export const useScreenScroll = ({
       if (!virtuosoRef.current || screenLinesLength === 0) return;
       const index = screenLinesLength - 1;
       virtuosoRef.current.scrollToIndex({ index, align: "end", behavior });
-      setForceFollow(true);
-      if (forceFollowTimerRef.current != null) {
-        window.clearTimeout(forceFollowTimerRef.current);
-      }
-      forceFollowTimerRef.current = window.setTimeout(() => {
+      if (isAtBottom) {
         stopForceFollow();
-        forceFollowTimerRef.current = null;
-      }, forceFollowFallbackMs);
+      } else {
+        setForceFollow(true);
+        if (forceFollowTimerRef.current != null) {
+          window.clearTimeout(forceFollowTimerRef.current);
+        }
+        forceFollowTimerRef.current = window.setTimeout(() => {
+          stopForceFollow();
+        }, forceFollowFallbackMs);
+      }
       window.requestAnimationFrame(() => {
         const scroller = scrollerRef.current;
         if (scroller) {
@@ -59,7 +62,7 @@ export const useScreenScroll = ({
         }
       });
     },
-    [forceFollowFallbackMs, screenLinesLength, setForceFollow, stopForceFollow],
+    [forceFollowFallbackMs, isAtBottom, screenLinesLength, setForceFollow, stopForceFollow],
   );
 
   const handleAtBottomChange = useCallback(
