@@ -88,7 +88,7 @@ describe("buildSessionGroups", () => {
     expect(groups[0]?.sessions.map((session) => session.paneId)).toEqual(["%2", "%1", "%3"]);
   });
 
-  it("uses the latest timestamp between repo pin and input for group sorting", () => {
+  it("uses the latest timestamp between sort anchor and input for group sorting", () => {
     const sessions = [
       buildSession({
         paneId: "%1",
@@ -103,14 +103,14 @@ describe("buildSessionGroups", () => {
     ];
 
     const groups = buildSessionGroups(sessions, {
-      getRepoPinnedAt: (repoRoot) =>
+      getRepoSortAnchorAt: (repoRoot) =>
         repoRoot === "/repo/a" ? Date.parse("2026-02-01T03:00:00Z") : null,
     });
 
     expect(groups.map((group) => group.repoRoot)).toEqual(["/repo/a", "/repo/b"]);
   });
 
-  it("does not keep repo pin above fresher input when pin timestamp is stale", () => {
+  it("does not keep repo anchor above fresher input when anchor timestamp is stale", () => {
     const sessions = [
       buildSession({
         paneId: "%1",
@@ -125,7 +125,7 @@ describe("buildSessionGroups", () => {
     ];
 
     const groups = buildSessionGroups(sessions, {
-      getRepoPinnedAt: (repoRoot) => (repoRoot === "/repo/a" ? 2000 : null),
+      getRepoSortAnchorAt: (repoRoot) => (repoRoot === "/repo/a" ? 2000 : null),
     });
 
     expect(groups.map((group) => group.repoRoot)).toEqual(["/repo/b", "/repo/a"]);

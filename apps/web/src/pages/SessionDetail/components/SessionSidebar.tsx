@@ -48,7 +48,7 @@ import { buildTimelineDisplay } from "./state-timeline-display";
 
 type SessionSidebarState = {
   sessionGroups: SessionGroup[];
-  getRepoPinnedAt?: (repoRoot: string | null) => number | null;
+  getRepoSortAnchorAt?: (repoRoot: string | null) => number | null;
   nowMs: number;
   connected: boolean;
   connectionIssue: string | null;
@@ -70,7 +70,7 @@ type SessionSidebarActions = {
   onSelectSession?: (paneId: string) => void;
   onFocusPane?: (paneId: string) => Promise<void> | void;
   onTouchSession?: (paneId: string) => void;
-  onToggleRepoPin?: (repoRoot: string | null) => void;
+  onTouchRepoPin?: (repoRoot: string | null) => void;
 };
 
 type SessionSidebarProps = {
@@ -514,7 +514,7 @@ SessionPreviewPopover.displayName = "SessionPreviewPopover";
 export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
   const {
     sessionGroups,
-    getRepoPinnedAt,
+    getRepoSortAnchorAt,
     nowMs,
     connected,
     connectionIssue,
@@ -525,7 +525,7 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
     currentPaneId,
     className,
   } = state;
-  const { onSelectSession, onFocusPane, onTouchSession, onToggleRepoPin } = actions;
+  const { onSelectSession, onFocusPane, onTouchSession, onTouchRepoPin } = actions;
   const [filter, setFilter] = useState<SessionListFilter>(DEFAULT_SESSION_LIST_FILTER);
   const [focusPendingPaneIds, setFocusPendingPaneIds] = useState<Set<string>>(() => new Set());
 
@@ -538,8 +538,8 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
   );
 
   const filteredSessionGroups = useMemo(() => {
-    return buildSessionGroups(filteredSessions, { getRepoPinnedAt });
-  }, [filteredSessions, getRepoPinnedAt]);
+    return buildSessionGroups(filteredSessions, { getRepoSortAnchorAt });
+  }, [filteredSessions, getRepoSortAnchorAt]);
 
   const sidebarGroups = useMemo(() => {
     return filteredSessionGroups
@@ -642,11 +642,11 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
     setFilter(next);
   }, []);
 
-  const handleToggleRepoPin = useCallback(
+  const handleTouchRepoPin = useCallback(
     (repoRoot: string | null) => {
-      onToggleRepoPin?.(repoRoot);
+      onTouchRepoPin?.(repoRoot);
     },
-    [onToggleRepoPin],
+    [onTouchRepoPin],
   );
 
   const handleTouchPane = useCallback(
@@ -706,7 +706,7 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
                         aria-label="Pin repo to top"
                         title="Pin repo to top"
                         className="border-latte-lavender/35 bg-latte-base/85 text-latte-lavender hover:bg-latte-lavender/12"
-                        onClick={() => handleToggleRepoPin(group.repoRoot)}
+                        onClick={() => handleTouchRepoPin(group.repoRoot)}
                       >
                         <Pin className="h-3.5 w-3.5" />
                       </IconButton>

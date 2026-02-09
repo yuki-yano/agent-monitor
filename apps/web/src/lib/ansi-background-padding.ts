@@ -1,10 +1,9 @@
-import { isPromptStartLine } from "@vde-monitor/shared";
+import { collectPromptBlockRanges, isPromptStartLine } from "@vde-monitor/shared";
 
 import { extractBackgroundColor, stripAnsi, wrapLineBackground } from "./ansi-text-utils";
 
 type NullableColor = string | null;
 
-const lineStartsWithWhitespacePattern = /^\s/;
 // eslint-disable-next-line no-control-regex
 const sgrPattern = /\u001b\[([0-9;]*)m/g;
 
@@ -119,24 +118,6 @@ const resolveNextColor = (
   return typeof nextIndex === "number" && nextIndex >= 0 ? (baseColors[nextIndex] ?? null) : null;
 };
 
-const findPromptBlockEnd = (
-  start: number,
-  lineCount: number,
-  isPromptStart: boolean[],
-  lineHasContent: boolean[],
-  lineStartsWithWhitespace: boolean[],
-) => {
-  for (let index = start + 1; index < lineCount; index += 1) {
-    if (isPromptStart[index]) {
-      return index;
-    }
-    if (lineHasContent[index] && !lineStartsWithWhitespace[index]) {
-      return index;
-    }
-  }
-  return lineCount;
-};
-
 const fillPromptHighlightMask = (
   highlightMask: boolean[],
   start: number,
@@ -163,29 +144,18 @@ const fillPromptHighlightMask = (
 };
 
 const buildPromptHighlightMask = (
-  rawLines: string[],
   plainLines: string[],
   isPromptStart: boolean[],
   lineHasContent: boolean[],
 ): boolean[] => {
-  const lineStartsWithWhitespace = plainLines.map(
-    (line) => line.length > 0 && lineStartsWithWhitespacePattern.test(line),
-  );
-  const highlightMask = new Array<boolean>(rawLines.length).fill(false);
-  for (let index = 0; index < rawLines.length; index += 1) {
-    if (!isPromptStart[index]) {
-      continue;
-    }
-    const endExclusive = findPromptBlockEnd(
-      index,
-      rawLines.length,
-      isPromptStart,
-      lineHasContent,
-      lineStartsWithWhitespace,
-    );
-    fillPromptHighlightMask(highlightMask, index, endExclusive, isPromptStart, lineHasContent);
-    index = endExclusive - 1;
-  }
+  const highlightMask = new Array<boolean>(plainLines.length).fill(false);
+  const promptBlockRanges = collectPromptBlockRanges({
+    lines: plainLines,
+    isPromptStart: (line) => isPromptStartLine(line, "codex"),
+  });
+  promptBlockRanges.forEach(({ start, endExclusive }) => {
+    fillPromptHighlightMask(highlightMask, start, endExclusive, isPromptStart, lineHasContent);
+  });
   return highlightMask;
 };
 
@@ -385,12 +355,7 @@ export const applyAdjacentBackgroundPadding = (
   const nextColorIndex = buildNextColorIndex(baseColors);
 
   if (isPromptStart.some(Boolean)) {
-    const highlightMask = buildPromptHighlightMask(
-      rawLines,
-      plainLines,
-      isPromptStart,
-      lineHasContent,
-    );
+    const highlightMask = buildPromptHighlightMask(plainLines, isPromptStart, lineHasContent);
     const paddedColors = buildPromptPaddedColors(baseColors, highlightMask, nextColorIndex);
     return applyPaddedColors(htmlLines, paddedColors);
   }

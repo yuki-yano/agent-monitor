@@ -193,7 +193,7 @@ describe("SessionSidebar", () => {
   });
 
   it("applies repo pin timestamps to filtered group sorting like session list", () => {
-    const repoPinUpdatedAt = Date.parse("2026-02-07T13:00:00.000Z");
+    const repoSortAnchorUpdatedAt = Date.parse("2026-02-07T13:00:00.000Z");
     const repoAAgent = createSessionDetail({
       paneId: "pane-a-agent",
       title: "Repo A Agent",
@@ -224,7 +224,8 @@ describe("SessionSidebar", () => {
     });
 
     const state = buildState({
-      getRepoPinnedAt: (repoRoot) => (repoRoot === "/Users/test/repo-a" ? repoPinUpdatedAt : null),
+      getRepoSortAnchorAt: (repoRoot) =>
+        repoRoot === "/Users/test/repo-a" ? repoSortAnchorUpdatedAt : null,
       sessionGroups: [
         {
           repoRoot: "/Users/test/repo-a",
@@ -246,7 +247,7 @@ describe("SessionSidebar", () => {
     expect(links[1]?.textContent).toContain("Repo B Agent");
   });
 
-  it("calls onToggleRepoPin when repo pin button is pressed", () => {
+  it("calls onTouchRepoPin when repo pin button is pressed", () => {
     const repoAAgent = createSessionDetail({
       paneId: "pane-a-agent",
       title: "Repo A Agent",
@@ -265,7 +266,7 @@ describe("SessionSidebar", () => {
       state: "RUNNING",
       lastInputAt: "2026-02-07T11:00:00.000Z",
     });
-    const onToggleRepoPin = vi.fn();
+    const onTouchRepoPin = vi.fn();
     const state = buildState({
       sessionGroups: [
         {
@@ -281,11 +282,11 @@ describe("SessionSidebar", () => {
       ],
     });
 
-    renderWithRouter(<SessionSidebar state={state} actions={{ onToggleRepoPin }} />);
+    renderWithRouter(<SessionSidebar state={state} actions={{ onTouchRepoPin }} />);
 
     const repoPinButtons = screen.getAllByRole("button", { name: "Pin repo to top" });
     fireEvent.click(repoPinButtons[1]!);
-    expect(onToggleRepoPin).toHaveBeenCalledWith("/Users/test/repo-a");
+    expect(onTouchRepoPin).toHaveBeenCalledWith("/Users/test/repo-a");
   });
 
   it("calls onFocusPane without triggering session selection", () => {

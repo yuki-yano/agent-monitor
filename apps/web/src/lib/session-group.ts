@@ -7,7 +7,7 @@ export type SessionGroup = {
 };
 
 export type BuildSessionGroupOptions = {
-  getRepoPinnedAt?: (repoRoot: string | null) => number | null;
+  getRepoSortAnchorAt?: (repoRoot: string | null) => number | null;
 };
 
 const parseTime = (value: string | null) => {
@@ -26,24 +26,24 @@ const compareTimeDesc = (a: string | null, b: string | null) => {
   return bTs - aTs;
 };
 
-const resolveComparablePinTime = (value: number | null | undefined) =>
+const resolveComparableSortAnchorTime = (value: number | null | undefined) =>
   typeof value === "number" && Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
 
 const resolveComparableGroupActivityTime = ({
   lastInputAt,
-  pinnedAt,
+  sortAnchorAt,
 }: {
   lastInputAt: string | null;
-  pinnedAt: number | null | undefined;
+  sortAnchorAt: number | null | undefined;
 }) => {
   const inputTs = resolveComparableTime(lastInputAt);
-  const pinTs = resolveComparablePinTime(pinnedAt);
-  return Math.max(inputTs, pinTs);
+  const sortAnchorTs = resolveComparableSortAnchorTime(sortAnchorAt);
+  return Math.max(inputTs, sortAnchorTs);
 };
 
 const compareGroupActivityDesc = (
-  a: { lastInputAt: string | null; pinnedAt: number | null | undefined },
-  b: { lastInputAt: string | null; pinnedAt: number | null | undefined },
+  a: { lastInputAt: string | null; sortAnchorAt: number | null | undefined },
+  b: { lastInputAt: string | null; sortAnchorAt: number | null | undefined },
 ) => {
   const aTs = resolveComparableGroupActivityTime(a);
   const bTs = resolveComparableGroupActivityTime(b);
@@ -105,11 +105,11 @@ export const buildSessionGroups = (
     const activityCompare = compareGroupActivityDesc(
       {
         lastInputAt: a.lastInputAt,
-        pinnedAt: options?.getRepoPinnedAt?.(a.repoRoot),
+        sortAnchorAt: options?.getRepoSortAnchorAt?.(a.repoRoot),
       },
       {
         lastInputAt: b.lastInputAt,
-        pinnedAt: options?.getRepoPinnedAt?.(b.repoRoot),
+        sortAnchorAt: options?.getRepoSortAnchorAt?.(b.repoRoot),
       },
     );
     if (activityCompare !== 0) {

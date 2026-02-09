@@ -24,6 +24,12 @@ describe("prompt-start", () => {
     expect(isPromptStartLine("\u276F hello", "any")).toBe(true);
   });
 
+  it("matches only agent prompt starts with agent target", () => {
+    expect(isPromptStartLine("› run", "agent")).toBe(true);
+    expect(isPromptStartLine("\u276F hello", "agent")).toBe(true);
+    expect(isPromptStartLine("> run", "agent")).toBe(false);
+  });
+
   it("strips prompt markers by target", () => {
     expect(stripPromptStartMarker("› run", "codex")).toBe("run");
     expect(stripPromptStartMarker("> run", "shell")).toBe("run");
@@ -34,6 +40,7 @@ describe("prompt-start", () => {
     expect(getPromptStartPatterns("codex")).toHaveLength(1);
     expect(getPromptStartPatterns("claude")).toHaveLength(1);
     expect(getPromptStartPatterns("shell")).toHaveLength(1);
+    expect(getPromptStartPatterns("agent")).toHaveLength(2);
     expect(getPromptStartPatterns("any")).toHaveLength(3);
   });
 });

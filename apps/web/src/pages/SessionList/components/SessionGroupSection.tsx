@@ -15,16 +15,16 @@ type SessionGroupSectionProps = {
   group: SessionGroup;
   nowMs: number;
   allSessions: SessionSummary[];
-  onToggleRepoPin: (repoRoot: string | null) => void;
-  onTogglePanePin: (paneId: string) => void;
+  onTouchRepoPin: (repoRoot: string | null) => void;
+  onTouchPanePin: (paneId: string) => void;
 };
 
 export const SessionGroupSection = ({
   group,
   nowMs,
   allSessions,
-  onToggleRepoPin,
-  onTogglePanePin,
+  onTouchRepoPin,
+  onTouchPanePin,
 }: SessionGroupSectionProps) => {
   const groupTone = getLastInputTone(group.lastInputAt, nowMs);
   const repoName = formatRepoName(group.repoRoot);
@@ -104,7 +104,7 @@ export const SessionGroupSection = ({
               variant="base"
               aria-label="Pin repo to top"
               title="Pin repo to top"
-              onClick={() => onToggleRepoPin(group.repoRoot)}
+              onClick={() => onTouchRepoPin(group.repoRoot)}
             >
               <Pin className="h-3.5 w-3.5" />
             </IconButton>
@@ -137,7 +137,7 @@ export const SessionGroupSection = ({
                       windowGroup.sessions.length
                     }
                     nowMs={nowMs}
-                    onTogglePanePin={onTogglePanePin}
+                    onTouchPanePin={onTouchPanePin}
                   />
                 ))}
               </div>

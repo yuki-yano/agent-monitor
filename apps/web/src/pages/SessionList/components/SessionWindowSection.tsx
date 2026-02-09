@@ -9,14 +9,14 @@ type SessionWindowSectionProps = {
   group: SessionWindowGroup;
   totalPanes: number;
   nowMs: number;
-  onTogglePanePin: (paneId: string) => void;
+  onTouchPanePin: (paneId: string) => void;
 };
 
 export const SessionWindowSection = ({
   group,
   totalPanes,
   nowMs,
-  onTogglePanePin,
+  onTouchPanePin,
 }: SessionWindowSectionProps) => {
   return (
     <InsetPanel className="p-3 sm:p-4">
@@ -45,7 +45,7 @@ export const SessionWindowSection = ({
             key={session.paneId}
             session={session}
             nowMs={nowMs}
-            onTouchPin={onTogglePanePin}
+            onTouchPin={onTouchPanePin}
           />
         ))}
       </div>

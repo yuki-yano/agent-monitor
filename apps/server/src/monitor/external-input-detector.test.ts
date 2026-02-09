@@ -109,6 +109,26 @@ describe("detectExternalInputFromLogDelta", () => {
     expect(result.signature).toBe("prev-signature");
   });
 
+  it("does not treat shell-style quoted output as agent prompt input", async () => {
+    const statLogSize = vi.fn(async () => ({ size: 170 }));
+    const readLogSlice = vi.fn(async () => "> quoted output\nnormal output");
+
+    const result = await detectExternalInputFromLogDelta({
+      paneId: "%1",
+      isAgentPane: true,
+      logPath: "/tmp/pane.log",
+      previousCursorBytes: 120,
+      previousSignature: "prev-signature",
+      now: () => new Date(FIXED_NOW_ISO),
+      deps: { statLogSize, readLogSlice },
+    });
+
+    expect(result.reason).toBe("no-pattern");
+    expect(result.detectedAt).toBeNull();
+    expect(result.nextCursorBytes).toBe(170);
+    expect(result.signature).toBe("prev-signature");
+  });
+
   it("suppresses duplicate updates for the same prompt signature", async () => {
     const statLogSize = vi.fn(async () => ({ size: 80 }));
     const readLogSlice = vi.fn(async () => "\u203A same prompt");

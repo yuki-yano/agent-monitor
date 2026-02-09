@@ -1,13 +1,16 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 
-import { getPromptStartPatterns, stripPromptStartMarker } from "@vde-monitor/shared";
+import {
+  collectPromptBlockRanges,
+  getPromptStartPatterns,
+  stripPromptStartMarker,
+} from "@vde-monitor/shared";
 
 const DEFAULT_MAX_READ_BYTES = 128 * 1024;
 const DEFAULT_MAX_PROMPT_LINES = 24;
 const CLAMP_OVERLAP_BYTES = 4;
-const DEFAULT_PROMPT_START_PATTERNS = getPromptStartPatterns("any");
-const DEFAULT_CONTINUATION_LINE_PATTERN = /^\s+/;
+const DEFAULT_PROMPT_START_PATTERNS = getPromptStartPatterns("agent");
 const replacementCharPattern = /^\uFFFD+/;
 
 const ansiEscapePattern = new RegExp(String.raw`\u001b\[[0-?]*[ -/]*[@-~]`, "g");
@@ -37,7 +40,6 @@ export type ExternalInputDetectArgs = {
   previousCursorBytes: number | null;
   previousSignature: string | null;
   promptStartPatterns?: readonly RegExp[];
-  continuationLinePattern?: RegExp;
   deps?: ExternalInputDetectorDeps;
 };
 
@@ -122,7 +124,7 @@ const hasPromptContent = (lines: string[]) => {
     return false;
   }
   const [firstLine, ...rest] = lines;
-  const firstPayload = stripPromptStartMarker(firstLine ?? "", "any").trim();
+  const firstPayload = stripPromptStartMarker(firstLine ?? "", "agent").trim();
   if (firstPayload.length > 0) {
     return true;
   }
@@ -132,43 +134,26 @@ const hasPromptContent = (lines: string[]) => {
 const pickLatestPromptBlock = ({
   normalizedText,
   promptStartPatterns,
-  continuationLinePattern,
   maxPromptLines,
 }: {
   normalizedText: string;
   promptStartPatterns: readonly RegExp[];
-  continuationLinePattern: RegExp;
   maxPromptLines: number;
 }) => {
   const lines = normalizedText.split("\n");
+  const promptBlockRanges = collectPromptBlockRanges({
+    lines,
+    isPromptStart: (line) => matchesPromptStart(line, promptStartPatterns),
+  });
   let latestBlock: string[] | null = null;
 
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? "";
-    if (!matchesPromptStart(line, promptStartPatterns)) {
-      continue;
-    }
-
-    const block: string[] = [line];
-    let cursor = index + 1;
-    while (cursor < lines.length && block.length < maxPromptLines) {
-      const nextLine = lines[cursor] ?? "";
-      if (matchesPromptStart(nextLine, promptStartPatterns)) {
-        break;
-      }
-      if (nextLine.trim() === "" || continuationLinePattern.test(nextLine)) {
-        block.push(nextLine);
-        cursor += 1;
-        continue;
-      }
-      break;
-    }
-
+  for (const { start, endExclusive } of promptBlockRanges) {
+    const limitedEndExclusive = Math.min(endExclusive, start + maxPromptLines);
+    const block = lines.slice(start, limitedEndExclusive);
     const trimmedBlock = trimTrailingEmptyLines(block);
     if (hasPromptContent(trimmedBlock)) {
       latestBlock = trimmedBlock;
     }
-    index = cursor - 1;
   }
 
   if (!latestBlock || latestBlock.length === 0) {
@@ -254,7 +239,6 @@ const detectPromptFromSegment = async ({
   maxPromptLines,
   prevSignature,
   promptStartPatterns,
-  continuationLinePattern,
   readLogSlice,
 }: {
   paneId: string;
@@ -264,7 +248,6 @@ const detectPromptFromSegment = async ({
   maxPromptLines: number;
   prevSignature: string | null;
   promptStartPatterns: readonly RegExp[];
-  continuationLinePattern: RegExp;
   readLogSlice: (logPath: string, offsetBytes: number, lengthBytes: number) => Promise<string>;
 }) => {
   if (segment.lengthBytes <= 0) {
@@ -280,7 +263,6 @@ const detectPromptFromSegment = async ({
   const promptBlock = pickLatestPromptBlock({
     normalizedText: scanText,
     promptStartPatterns,
-    continuationLinePattern,
     maxPromptLines,
   });
   if (!promptBlock) {
@@ -309,7 +291,6 @@ export const detectExternalInputFromLogDelta = async ({
   previousCursorBytes,
   previousSignature,
   promptStartPatterns = DEFAULT_PROMPT_START_PATTERNS,
-  continuationLinePattern = DEFAULT_CONTINUATION_LINE_PATTERN,
   deps = {},
 }: ExternalInputDetectArgs): Promise<ExternalInputDetectResult> => {
   const previousCursor = normalizeCursorBytes(previousCursorBytes);
@@ -392,7 +373,6 @@ export const detectExternalInputFromLogDelta = async ({
         maxPromptLines: safeMaxPromptLines,
         prevSignature,
         promptStartPatterns,
-        continuationLinePattern,
         readLogSlice,
       });
       if (!segmentResult.matched) {

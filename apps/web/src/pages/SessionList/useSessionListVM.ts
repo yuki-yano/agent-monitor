@@ -56,7 +56,7 @@ export const useSessionListVM = () => {
     storeSessionListPins(pins);
   }, [pins]);
 
-  const getRepoPinnedAt = useCallback(
+  const getRepoSortAnchorAt = useCallback(
     (repoRoot: string | null) => repoPinValues[createRepoPinKey(repoRoot)] ?? null,
     [repoPinValues],
   );
@@ -70,16 +70,16 @@ export const useSessionListVM = () => {
   );
 
   const groups = useMemo(
-    () => buildSessionGroups(visibleSessions, { getRepoPinnedAt }),
-    [getRepoPinnedAt, visibleSessions],
+    () => buildSessionGroups(visibleSessions, { getRepoSortAnchorAt }),
+    [getRepoSortAnchorAt, visibleSessions],
   );
   const sidebarSessionGroups = useMemo(
-    () => buildSessionGroups(sessions, { getRepoPinnedAt }),
-    [getRepoPinnedAt, sessions],
+    () => buildSessionGroups(sessions, { getRepoSortAnchorAt }),
+    [getRepoSortAnchorAt, sessions],
   );
   const quickPanelGroups = useMemo(
-    () => buildSessionGroups(visibleSessions, { getRepoPinnedAt }),
-    [getRepoPinnedAt, visibleSessions],
+    () => buildSessionGroups(visibleSessions, { getRepoSortAnchorAt }),
+    [getRepoSortAnchorAt, visibleSessions],
   );
 
   const {
@@ -139,12 +139,12 @@ export const useSessionListVM = () => {
     refreshSessions();
   }, [refreshSessions]);
 
-  const handleToggleRepoPin = useCallback((repoRoot: string | null) => {
+  const handleTouchRepoPin = useCallback((repoRoot: string | null) => {
     const key = createRepoPinKey(repoRoot);
     setPins((prev) => touchSessionListPin(prev, "repos", key));
   }, []);
 
-  const handleTogglePanePin = useCallback(
+  const handleTouchPanePin = useCallback(
     (paneId: string) => {
       if (paneRepoRootMap.has(paneId)) {
         const repoRoot = paneRepoRootMap.get(paneId) ?? null;
@@ -188,8 +188,8 @@ export const useSessionListVM = () => {
     onOpenPaneHere: handleOpenPaneHere,
     onOpenHere: handleOpenHere,
     onOpenNewTab: handleOpenInNewTab,
-    onToggleRepoPin: handleToggleRepoPin,
-    onTogglePanePin: handleTogglePanePin,
+    onTouchRepoPin: handleTouchRepoPin,
+    onTouchPanePin: handleTouchPanePin,
   };
 };
 

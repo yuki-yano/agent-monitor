@@ -118,7 +118,7 @@ const TestComponent = () => {
       <button type="button" onClick={() => vm.onFilterChange("invalid")}>
         set-invalid
       </button>
-      <button type="button" onClick={() => vm.onTogglePanePin("pane-test")}>
+      <button type="button" onClick={() => vm.onTouchPanePin("pane-test")}>
         touch-pane
       </button>
     </div>

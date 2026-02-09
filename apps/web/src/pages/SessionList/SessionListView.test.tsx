@@ -154,8 +154,8 @@ const createViewProps = (overrides: Partial<SessionListViewProps> = {}): Session
     onOpenPaneHere: vi.fn(),
     onOpenHere: vi.fn(),
     onOpenNewTab: vi.fn(),
-    onToggleRepoPin: vi.fn(),
-    onTogglePanePin: vi.fn(),
+    onTouchRepoPin: vi.fn(),
+    onTouchPanePin: vi.fn(),
     ...overrides,
   };
 };
@@ -342,12 +342,12 @@ describe("SessionListView", () => {
       windowIndex: 7,
       repoRoot: "/Users/test/repo-pin-target",
     });
-    const onToggleRepoPin = vi.fn();
-    const onTogglePanePin = vi.fn();
+    const onTouchRepoPin = vi.fn();
+    const onTouchPanePin = vi.fn();
     const props = createViewProps({
       sessions: [session],
-      onToggleRepoPin,
-      onTogglePanePin,
+      onTouchRepoPin,
+      onTouchPanePin,
     });
 
     renderWithRouter(<SessionListView {...props} />);
@@ -355,8 +355,8 @@ describe("SessionListView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Pin repo to top" }));
     fireEvent.click(screen.getByRole("button", { name: "Pin pane to top" }));
 
-    expect(onToggleRepoPin).toHaveBeenCalledWith("/Users/test/repo-pin-target");
-    expect(onTogglePanePin).toHaveBeenCalledWith("pane-pin-target");
+    expect(onTouchRepoPin).toHaveBeenCalledWith("/Users/test/repo-pin-target");
+    expect(onTouchPanePin).toHaveBeenCalledWith("pane-pin-target");
   });
 
   it("opens GitHub repository from repo header button", () => {

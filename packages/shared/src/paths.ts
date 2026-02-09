@@ -69,7 +69,7 @@ export const resolveMonitorServerKey = ({
 
 export const resolveLogPaths = (baseDir: string, serverKey: string, paneId: string) => {
   const paneIdEncoded = encodePaneId(paneId);
-  const paneLogFileId = paneIdEncoded.replaceAll("%", "");
+  const paneLogFileId = paneIdEncoded.replaceAll("_", "_u").replaceAll("%", "_p");
   const panesDir = path.join(baseDir, "panes", serverKey);
   const eventsDir = path.join(baseDir, "events", serverKey);
   return {

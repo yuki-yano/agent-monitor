@@ -14,7 +14,7 @@ import type { SessionListVM } from "./useSessionListVM";
 
 export type SessionListViewProps = SessionListVM;
 
-type PinScrollTarget = { scope: "repo"; key: string } | { scope: "pane"; key: string };
+type ReorderScrollTarget = { scope: "repo"; key: string } | { scope: "pane"; key: string };
 
 export const SessionListView = ({
   sessions,
@@ -49,46 +49,46 @@ export const SessionListView = ({
   onOpenPaneHere,
   onOpenHere,
   onOpenNewTab,
-  onToggleRepoPin,
-  onTogglePanePin,
+  onTouchRepoPin,
+  onTouchPanePin,
 }: SessionListViewProps) => {
-  const [pinScrollTarget, setPinScrollTarget] = useState<PinScrollTarget | null>(null);
+  const [reorderScrollTarget, setReorderScrollTarget] = useState<ReorderScrollTarget | null>(null);
 
-  const handleToggleRepoPinWithScroll = useCallback(
+  const handleTouchRepoPinWithScroll = useCallback(
     (repoRoot: string | null) => {
-      onToggleRepoPin(repoRoot);
-      setPinScrollTarget({
+      onTouchRepoPin(repoRoot);
+      setReorderScrollTarget({
         scope: "repo",
         key: createRepoPinKey(repoRoot),
       });
     },
-    [onToggleRepoPin],
+    [onTouchRepoPin],
   );
 
-  const handleTogglePanePinWithScroll = useCallback(
+  const handleTouchPanePinWithScroll = useCallback(
     (paneId: string) => {
-      onTogglePanePin(paneId);
-      setPinScrollTarget({
+      onTouchPanePin(paneId);
+      setReorderScrollTarget({
         scope: "pane",
         key: paneId,
       });
     },
-    [onTogglePanePin],
+    [onTouchPanePin],
   );
 
   useEffect(() => {
-    if (pinScrollTarget == null) {
+    if (reorderScrollTarget == null) {
       return;
     }
 
     const resolveTarget = () => {
-      if (pinScrollTarget.scope === "repo") {
+      if (reorderScrollTarget.scope === "repo") {
         return Array.from(document.querySelectorAll<HTMLElement>("[data-repo-scroll-key]")).find(
-          (element) => element.dataset.repoScrollKey === pinScrollTarget.key,
+          (element) => element.dataset.repoScrollKey === reorderScrollTarget.key,
         );
       }
       return Array.from(document.querySelectorAll<HTMLElement>("[data-pane-scroll-key]")).find(
-        (element) => element.dataset.paneScrollKey === pinScrollTarget.key,
+        (element) => element.dataset.paneScrollKey === reorderScrollTarget.key,
       );
     };
 
@@ -98,16 +98,17 @@ export const SessionListView = ({
         return;
       }
       target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-      setPinScrollTarget(null);
+      setReorderScrollTarget(null);
     };
 
-    const delays = pinScrollTarget.scope === "repo" ? [0, 80, 180] : [220, 420, 700, 1100, 1600];
+    const delays =
+      reorderScrollTarget.scope === "repo" ? [0, 80, 180] : [220, 420, 700, 1100, 1600];
     const timeoutIds = delays.map((delay) => window.setTimeout(tryScroll, delay));
 
     return () => {
       timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
     };
-  }, [groups, pinScrollTarget, sessions]);
+  }, [groups, reorderScrollTarget, sessions]);
 
   return (
     <>
@@ -205,8 +206,8 @@ export const SessionListView = ({
                     group={group}
                     allSessions={sessions}
                     nowMs={nowMs}
-                    onToggleRepoPin={handleToggleRepoPinWithScroll}
-                    onTogglePanePin={handleTogglePanePinWithScroll}
+                    onTouchRepoPin={handleTouchRepoPinWithScroll}
+                    onTouchPanePin={handleTouchPanePinWithScroll}
                   />
                 </div>
               ))}

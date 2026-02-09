@@ -1,4 +1,4 @@
-export type PromptStartTarget = "codex" | "claude" | "shell" | "any";
+export type PromptStartTarget = "codex" | "claude" | "shell" | "agent" | "any";
 
 const codexPromptStartPattern = /^\s*\u203A(?:\s|$)/;
 const shellPromptStartPattern = /^\s*>\s/;
@@ -8,6 +8,7 @@ const promptStartPatternsByTarget: Record<PromptStartTarget, readonly RegExp[]> 
   codex: [codexPromptStartPattern],
   claude: [claudePromptStartPattern],
   shell: [shellPromptStartPattern],
+  agent: [codexPromptStartPattern, claudePromptStartPattern],
   any: [codexPromptStartPattern, shellPromptStartPattern, claudePromptStartPattern],
 };
 
@@ -15,6 +16,7 @@ const promptMarkerReplacePatternByTarget: Record<PromptStartTarget, RegExp> = {
   codex: /^\s*\u203A\s?/,
   claude: /^\s*\u276F(?:[\s\u00A0])?/,
   shell: /^\s*>\s?/,
+  agent: /^\s*(?:\u203A|\u276F)(?:[\s\u00A0])?/,
   any: /^\s*(?:\u203A|>|\u276F)(?:[\s\u00A0])?/,
 };
 
