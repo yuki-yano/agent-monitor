@@ -3,6 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createPaneLogManager } from "./pane-log-manager";
 
+const resolveMockLogPaths = (paneId: string, paneLogPath = `/logs/${paneId}.log`) => ({
+  paneIdEncoded: paneId,
+  panesDir: "/logs",
+  eventsDir: "/logs",
+  paneLogPath,
+  eventLogPath: "/logs/events.log",
+});
+
 describe("pane-log-manager", () => {
   it("attaches pipe when allowed and updates logging", async () => {
     const pipeManager = {
@@ -22,13 +30,7 @@ describe("pane-log-manager", () => {
       pipeManager,
       logActivity,
       deps: {
-        resolveLogPaths: (_base, _key, paneId) => ({
-          paneIdEncoded: paneId,
-          panesDir: "/logs",
-          eventsDir: "/logs",
-          paneLogPath: `/logs/${paneId}.log`,
-          eventLogPath: "/logs/events.log",
-        }),
+        resolveLogPaths: (_base, _key, paneId) => resolveMockLogPaths(paneId),
         ensureDir: vi.fn(async () => {}),
         rotateLogIfNeeded: vi.fn(async () => {}),
         openLogFile: vi.fn(async () => {}),
@@ -41,16 +43,21 @@ describe("pane-log-manager", () => {
       pipeTagValue: "0",
     });
 
-    expect(pipeManager.attachPipe).toHaveBeenCalledWith("1", "/logs/1.log", {
-      panePipe: false,
-      pipeTagValue: "0",
-    });
+    expect(pipeManager.attachPipe).toHaveBeenCalledWith(
+      "1",
+      "/logs/1.log",
+      {
+        panePipe: false,
+        pipeTagValue: "0",
+      },
+      { forceReattach: false },
+    );
     expect(logActivity.register).toHaveBeenCalledWith("1", "/logs/1.log");
     expect(result.pipeAttached).toBe(true);
     expect(result.pipeConflict).toBe(false);
   });
 
-  it("does not re-attach when pipe is actually attached and tagged", async () => {
+  it("re-attaches once when pipe is already attached and tagged", async () => {
     const pipeManager = {
       hasConflict: vi.fn(() => false),
       attachPipe: vi.fn(async () => ({ attached: true, conflict: false })),
@@ -68,28 +75,38 @@ describe("pane-log-manager", () => {
       pipeManager,
       logActivity,
       deps: {
-        resolveLogPaths: (_base, _key, paneId) => ({
-          paneIdEncoded: paneId,
-          panesDir: "/logs",
-          eventsDir: "/logs",
-          paneLogPath: `/logs/${paneId}.log`,
-          eventLogPath: "/logs/events.log",
-        }),
+        resolveLogPaths: (_base, _key, paneId) => resolveMockLogPaths(paneId),
         ensureDir: vi.fn(async () => {}),
         rotateLogIfNeeded: vi.fn(async () => {}),
         openLogFile: vi.fn(async () => {}),
       },
     });
 
-    const result = await manager.preparePaneLogging({
+    const first = await manager.preparePaneLogging({
       paneId: "1",
       panePipe: true,
       pipeTagValue: "1",
     });
+    expect(pipeManager.attachPipe).toHaveBeenCalledWith(
+      "1",
+      "/logs/1.log",
+      {
+        panePipe: true,
+        pipeTagValue: "1",
+      },
+      { forceReattach: true },
+    );
+    expect(first.pipeAttached).toBe(true);
+    expect(first.pipeConflict).toBe(false);
 
-    expect(pipeManager.attachPipe).not.toHaveBeenCalled();
-    expect(result.pipeAttached).toBe(true);
-    expect(result.pipeConflict).toBe(false);
+    const second = await manager.preparePaneLogging({
+      paneId: "1",
+      panePipe: true,
+      pipeTagValue: "1",
+    });
+    expect(pipeManager.attachPipe).toHaveBeenCalledTimes(1);
+    expect(second.pipeAttached).toBe(true);
+    expect(second.pipeConflict).toBe(false);
   });
 
   it("re-attaches when pane pipe is detached even if tag remains attached", async () => {
@@ -110,13 +127,7 @@ describe("pane-log-manager", () => {
       pipeManager,
       logActivity,
       deps: {
-        resolveLogPaths: (_base, _key, paneId) => ({
-          paneIdEncoded: paneId,
-          panesDir: "/logs",
-          eventsDir: "/logs",
-          paneLogPath: `/logs/${paneId}.log`,
-          eventLogPath: "/logs/events.log",
-        }),
+        resolveLogPaths: (_base, _key, paneId) => resolveMockLogPaths(paneId),
         ensureDir: vi.fn(async () => {}),
         rotateLogIfNeeded: vi.fn(async () => {}),
         openLogFile: vi.fn(async () => {}),
@@ -129,10 +140,15 @@ describe("pane-log-manager", () => {
       pipeTagValue: "1",
     });
 
-    expect(pipeManager.attachPipe).toHaveBeenCalledWith("1", "/logs/1.log", {
-      panePipe: false,
-      pipeTagValue: "1",
-    });
+    expect(pipeManager.attachPipe).toHaveBeenCalledWith(
+      "1",
+      "/logs/1.log",
+      {
+        panePipe: false,
+        pipeTagValue: "1",
+      },
+      { forceReattach: false },
+    );
     expect(result.pipeAttached).toBe(true);
     expect(result.pipeConflict).toBe(false);
   });
@@ -155,13 +171,7 @@ describe("pane-log-manager", () => {
       pipeManager,
       logActivity,
       deps: {
-        resolveLogPaths: (_base, _key, paneId) => ({
-          paneIdEncoded: paneId,
-          panesDir: "/logs",
-          eventsDir: "/logs",
-          paneLogPath: `/logs/${paneId}.log`,
-          eventLogPath: "/logs/events.log",
-        }),
+        resolveLogPaths: (_base, _key, paneId) => resolveMockLogPaths(paneId),
         ensureDir: vi.fn(async () => {}),
         rotateLogIfNeeded: vi.fn(async () => {}),
         openLogFile: vi.fn(async () => {}),
@@ -196,13 +206,7 @@ describe("pane-log-manager", () => {
       pipeManager,
       logActivity,
       deps: {
-        resolveLogPaths: (_base, _key, paneId) => ({
-          paneIdEncoded: paneId,
-          panesDir: "/logs",
-          eventsDir: "/logs",
-          paneLogPath: `/logs/${paneId}.log`,
-          eventLogPath: "/logs/events.log",
-        }),
+        resolveLogPaths: (_base, _key, paneId) => resolveMockLogPaths(paneId),
         ensureDir: vi.fn(async () => {}),
         rotateLogIfNeeded: vi.fn(async () => {}),
         openLogFile: vi.fn(async () => {}),

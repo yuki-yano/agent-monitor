@@ -8,7 +8,7 @@ import type {
   SessionSummary,
 } from "@vde-monitor/shared";
 import { Clock, Pin, SquareTerminal } from "lucide-react";
-import { memo, type MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, type MouseEvent, useCallback, useMemo, useState } from "react";
 
 import {
   Badge,
@@ -33,12 +33,6 @@ import {
   SESSION_LIST_FILTER_VALUES,
   type SessionListFilter,
 } from "@/pages/SessionList/sessionListFilters";
-import {
-  createRepoPinKey,
-  readStoredSessionListPins,
-  storeSessionListPins,
-  touchSessionListPin,
-} from "@/pages/SessionList/sessionListPins";
 
 import { type PreviewFrame, useSidebarPreview } from "../hooks/useSidebarPreview";
 import {
@@ -54,6 +48,7 @@ import { buildTimelineDisplay } from "./state-timeline-display";
 
 type SessionSidebarState = {
   sessionGroups: SessionGroup[];
+  getRepoSortAnchorAt?: (repoRoot: string | null) => number | null;
   nowMs: number;
   connected: boolean;
   connectionIssue: string | null;
@@ -75,6 +70,7 @@ type SessionSidebarActions = {
   onSelectSession?: (paneId: string) => void;
   onFocusPane?: (paneId: string) => Promise<void> | void;
   onTouchSession?: (paneId: string) => void;
+  onTouchRepoPin?: (repoRoot: string | null) => void;
 };
 
 type SessionSidebarProps = {
@@ -518,6 +514,7 @@ SessionPreviewPopover.displayName = "SessionPreviewPopover";
 export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
   const {
     sessionGroups,
+    getRepoSortAnchorAt,
     nowMs,
     connected,
     connectionIssue,
@@ -528,20 +525,9 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
     currentPaneId,
     className,
   } = state;
-  const { onSelectSession, onFocusPane, onTouchSession } = actions;
+  const { onSelectSession, onFocusPane, onTouchSession, onTouchRepoPin } = actions;
   const [filter, setFilter] = useState<SessionListFilter>(DEFAULT_SESSION_LIST_FILTER);
-  const [pins, setPins] = useState(() => readStoredSessionListPins());
   const [focusPendingPaneIds, setFocusPendingPaneIds] = useState<Set<string>>(() => new Set());
-  const repoPinValues = pins.repos;
-
-  useEffect(() => {
-    storeSessionListPins(pins);
-  }, [pins]);
-
-  const getRepoPinnedAt = useCallback(
-    (repoRoot: string | null) => repoPinValues[createRepoPinKey(repoRoot)] ?? null,
-    [repoPinValues],
-  );
 
   const filteredSessions = useMemo(
     () =>
@@ -550,19 +536,10 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
         .filter((session) => matchesSessionListFilter(session, filter)),
     [filter, sessionGroups],
   );
-  const paneRepoRootMap = useMemo(
-    () =>
-      new Map(
-        sessionGroups
-          .flatMap((group) => group.sessions)
-          .map((session) => [session.paneId, session.repoRoot ?? null] as const),
-      ),
-    [sessionGroups],
-  );
 
   const filteredSessionGroups = useMemo(() => {
-    return buildSessionGroups(filteredSessions, { getRepoPinnedAt });
-  }, [filteredSessions, getRepoPinnedAt]);
+    return buildSessionGroups(filteredSessions, { getRepoSortAnchorAt });
+  }, [filteredSessions, getRepoSortAnchorAt]);
 
   const sidebarGroups = useMemo(() => {
     return filteredSessionGroups
@@ -665,19 +642,18 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
     setFilter(next);
   }, []);
 
-  const handleToggleRepoPin = useCallback((repoRoot: string | null) => {
-    setPins((prev) => touchSessionListPin(prev, "repos", createRepoPinKey(repoRoot)));
-  }, []);
+  const handleTouchRepoPin = useCallback(
+    (repoRoot: string | null) => {
+      onTouchRepoPin?.(repoRoot);
+    },
+    [onTouchRepoPin],
+  );
 
   const handleTouchPane = useCallback(
     (paneId: string) => {
-      if (paneRepoRootMap.has(paneId)) {
-        const repoRoot = paneRepoRootMap.get(paneId) ?? null;
-        setPins((prev) => touchSessionListPin(prev, "repos", createRepoPinKey(repoRoot)));
-      }
       onTouchSession?.(paneId);
     },
-    [onTouchSession, paneRepoRootMap],
+    [onTouchSession],
   );
 
   return (
@@ -730,7 +706,7 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
                         aria-label="Pin repo to top"
                         title="Pin repo to top"
                         className="border-latte-lavender/35 bg-latte-base/85 text-latte-lavender hover:bg-latte-lavender/12"
-                        onClick={() => handleToggleRepoPin(group.repoRoot)}
+                        onClick={() => handleTouchRepoPin(group.repoRoot)}
                       >
                         <Pin className="h-3.5 w-3.5" />
                       </IconButton>

@@ -1,11 +1,17 @@
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { buildSessionGroups } from "@/lib/session-group";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { useNowMs } from "@/lib/use-now-ms";
 import { useSidebarWidth } from "@/lib/use-sidebar-width";
 import { useSplitRatio } from "@/lib/use-split-ratio";
+import {
+  createRepoPinKey,
+  readStoredSessionListPins,
+  storeSessionListPins,
+  touchSessionListPin,
+} from "@/pages/SessionList/sessionListPins";
 
 import { screenTextAtom } from "./atoms/screenAtoms";
 import {
@@ -64,6 +70,27 @@ export const useSessionDetailVM = (paneId: string) => {
     updateSessionTitle,
   } = sessionApi;
   const nowMs = useNowMs();
+  const [pins, setPins] = useState(() => readStoredSessionListPins());
+  const repoPinValues = pins.repos;
+
+  useEffect(() => {
+    storeSessionListPins(pins);
+  }, [pins]);
+
+  const getRepoSortAnchorAt = useCallback(
+    (repoRoot: string | null) => repoPinValues[createRepoPinKey(repoRoot)] ?? null,
+    [repoPinValues],
+  );
+  const paneRepoRootMap = useMemo(
+    () =>
+      new Map(
+        sessions.map((sessionItem) => [sessionItem.paneId, sessionItem.repoRoot ?? null] as const),
+      ),
+    [sessions],
+  );
+  const touchRepoSortAnchor = useCallback((repoRoot: string | null) => {
+    setPins((prev) => touchSessionListPin(prev, "repos", createRepoPinKey(repoRoot)));
+  }, []);
 
   const {
     mode,
@@ -245,6 +272,24 @@ export const useSessionDetailVM = (paneId: string) => {
     focusPane,
     setScreenError,
   });
+  const currentRepoRoot = session?.repoRoot ?? null;
+  const handleTouchRepoPin = useCallback(
+    (repoRoot: string | null) => {
+      touchRepoSortAnchor(repoRoot);
+    },
+    [touchRepoSortAnchor],
+  );
+  const handleTouchCurrentSession = useCallback(() => {
+    touchRepoSortAnchor(currentRepoRoot);
+    handleTouchSession();
+  }, [touchRepoSortAnchor, currentRepoRoot, handleTouchSession]);
+  const handleTouchPaneWithRepoAnchor = useCallback(
+    (targetPaneId: string) => {
+      touchRepoSortAnchor(paneRepoRootMap.get(targetPaneId) ?? null);
+      handleTouchPane(targetPaneId);
+    },
+    [touchRepoSortAnchor, paneRepoRootMap, handleTouchPane],
+  );
 
   const {
     titleDraft,
@@ -262,7 +307,10 @@ export const useSessionDetailVM = (paneId: string) => {
     updateSessionTitle,
   });
 
-  const sessionGroups = useMemo(() => buildSessionGroups(sessions), [sessions]);
+  const sessionGroups = useMemo(
+    () => buildSessionGroups(sessions, { getRepoSortAnchorAt }),
+    [sessions, getRepoSortAnchorAt],
+  );
   const contextLeftLabel = useMemo(
     () => (session?.agent === "codex" ? extractCodexContextLeft(screenText) : null),
     [screenText, session?.agent],
@@ -312,6 +360,7 @@ export const useSessionDetailVM = (paneId: string) => {
     },
     sidebar: {
       sessionGroups,
+      getRepoSortAnchorAt,
       connected,
       connectionIssue,
       requestStateTimeline,
@@ -379,7 +428,7 @@ export const useSessionDetailVM = (paneId: string) => {
       toggleCtrl,
       toggleRawMode,
       toggleAllowDangerKeys,
-      handleTouchSession,
+      handleTouchSession: handleTouchCurrentSession,
     },
     diffs: {
       diffSummary,
@@ -471,7 +520,8 @@ export const useSessionDetailVM = (paneId: string) => {
     },
     actions: {
       handleFocusPane,
-      handleTouchPane,
+      handleTouchPane: handleTouchPaneWithRepoAnchor,
+      handleTouchRepoPin,
       handleOpenPaneHere,
       handleOpenHere,
       handleOpenInNewTab,

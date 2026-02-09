@@ -1,4 +1,5 @@
 import type { HighlightCorrectionConfig } from "@vde-monitor/shared";
+import { findPromptBlockEnd, isPromptStartLine } from "@vde-monitor/shared";
 import AnsiToHtml from "ansi-to-html";
 
 import type { Theme } from "@/lib/theme";
@@ -274,21 +275,7 @@ const renderClaudeLines = (
   return normalizeClaudePromptBackgrounds(rendered, plainLines);
 };
 
-const claudePromptStartPattern = /^\s*\u276f(?:\s|$)/;
-const startsWithWhitespacePattern = /^\s/;
-
-const resolvePromptBlockEnd = (plainLines: string[], start: number) => {
-  for (let index = start + 1; index < plainLines.length; index += 1) {
-    const line = plainLines[index] ?? "";
-    if (claudePromptStartPattern.test(line)) {
-      return index;
-    }
-    if (line.trim().length > 0 && !startsWithWhitespacePattern.test(line)) {
-      return index;
-    }
-  }
-  return plainLines.length;
-};
+const isClaudePromptStartLine = (line: string) => isPromptStartLine(line, "claude");
 
 const pickPromptBlockColor = (renderedLines: string[], start: number, endExclusive: number) => {
   const entries = new Map<string, { count: number; first: number }>();
@@ -335,11 +322,15 @@ const normalizeClaudePromptBackgrounds = (renderedLines: string[], plainLines: s
   let index = 0;
   while (index < plainLines.length) {
     const line = plainLines[index] ?? "";
-    if (!claudePromptStartPattern.test(line)) {
+    if (!isClaudePromptStartLine(line)) {
       index += 1;
       continue;
     }
-    const endExclusive = resolvePromptBlockEnd(plainLines, index);
+    const endExclusive = findPromptBlockEnd({
+      lines: plainLines,
+      start: index,
+      isPromptStart: isClaudePromptStartLine,
+    });
     const color = pickPromptBlockColor(normalized, index, endExclusive);
     if (color) {
       for (let cursor = index; cursor < endExclusive; cursor += 1) {

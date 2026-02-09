@@ -7,7 +7,7 @@ export type SessionGroup = {
 };
 
 export type BuildSessionGroupOptions = {
-  getRepoPinnedAt?: (repoRoot: string | null) => number | null;
+  getRepoSortAnchorAt?: (repoRoot: string | null) => number | null;
 };
 
 const parseTime = (value: string | null) => {
@@ -26,12 +26,27 @@ const compareTimeDesc = (a: string | null, b: string | null) => {
   return bTs - aTs;
 };
 
-const resolveComparablePinTime = (value: number | null | undefined) =>
+const resolveComparableSortAnchorTime = (value: number | null | undefined) =>
   typeof value === "number" && Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
 
-const comparePinTimeDesc = (a: number | null | undefined, b: number | null | undefined) => {
-  const aTs = resolveComparablePinTime(a);
-  const bTs = resolveComparablePinTime(b);
+const resolveComparableGroupActivityTime = ({
+  lastInputAt,
+  sortAnchorAt,
+}: {
+  lastInputAt: string | null;
+  sortAnchorAt: number | null | undefined;
+}) => {
+  const inputTs = resolveComparableTime(lastInputAt);
+  const sortAnchorTs = resolveComparableSortAnchorTime(sortAnchorAt);
+  return Math.max(inputTs, sortAnchorTs);
+};
+
+const compareGroupActivityDesc = (
+  a: { lastInputAt: string | null; sortAnchorAt: number | null | undefined },
+  b: { lastInputAt: string | null; sortAnchorAt: number | null | undefined },
+) => {
+  const aTs = resolveComparableGroupActivityTime(a);
+  const bTs = resolveComparableGroupActivityTime(b);
   if (aTs === bTs) {
     return 0;
   }
@@ -87,12 +102,18 @@ export const buildSessionGroups = (
   });
 
   groups.sort((a, b) => {
-    const repoPinnedCompare = comparePinTimeDesc(
-      options?.getRepoPinnedAt?.(a.repoRoot),
-      options?.getRepoPinnedAt?.(b.repoRoot),
+    const activityCompare = compareGroupActivityDesc(
+      {
+        lastInputAt: a.lastInputAt,
+        sortAnchorAt: options?.getRepoSortAnchorAt?.(a.repoRoot),
+      },
+      {
+        lastInputAt: b.lastInputAt,
+        sortAnchorAt: options?.getRepoSortAnchorAt?.(b.repoRoot),
+      },
     );
-    if (repoPinnedCompare !== 0) {
-      return repoPinnedCompare;
+    if (activityCompare !== 0) {
+      return activityCompare;
     }
 
     const inputCompare = compareTimeDesc(a.lastInputAt, b.lastInputAt);

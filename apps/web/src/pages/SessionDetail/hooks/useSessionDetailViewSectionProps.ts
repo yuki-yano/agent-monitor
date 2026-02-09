@@ -18,6 +18,7 @@ export const useSessionDetailViewSectionProps = ({
   const { paneId, session, nowMs, connectionIssue } = meta;
   const {
     sessionGroups,
+    getRepoSortAnchorAt,
     connected,
     connectionIssue: sidebarConnectionIssue,
     requestStateTimeline,
@@ -170,6 +171,7 @@ export const useSessionDetailViewSectionProps = ({
   const {
     handleFocusPane,
     handleTouchPane,
+    handleTouchRepoPin,
     handleOpenPaneHere,
     handleOpenHere,
     handleOpenInNewTab,
@@ -515,6 +517,7 @@ export const useSessionDetailViewSectionProps = ({
     () => ({
       state: {
         sessionGroups,
+        getRepoSortAnchorAt,
         nowMs,
         connected,
         connectionIssue: sidebarConnectionIssue,
@@ -528,10 +531,12 @@ export const useSessionDetailViewSectionProps = ({
       actions: {
         onFocusPane: handleFocusPane,
         onTouchSession: handleTouchPane,
+        onTouchRepoPin: handleTouchRepoPin,
       },
     }),
     [
       sessionGroups,
+      getRepoSortAnchorAt,
       nowMs,
       connected,
       sidebarConnectionIssue,
@@ -542,6 +547,7 @@ export const useSessionDetailViewSectionProps = ({
       paneId,
       handleFocusPane,
       handleTouchPane,
+      handleTouchRepoPin,
     ],
   );
 
