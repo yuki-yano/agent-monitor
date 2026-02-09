@@ -1,6 +1,11 @@
 // @vitest-environment happy-dom
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type { RepoFileContent, RepoFileSearchPage, RepoFileTreePage } from "@vde-monitor/shared";
+import type {
+  RepoFileContent,
+  RepoFileResolveReference,
+  RepoFileSearchPage,
+  RepoFileTreePage,
+} from "@vde-monitor/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { useSessionFiles } from "./useSessionFiles";
@@ -1302,5 +1307,64 @@ describe("useSessionFiles", () => {
     expect(requestRepoFileContentLocal).not.toHaveBeenCalled();
     expect(requestRepoFileSearch).not.toHaveBeenCalled();
     expect(linkable).toEqual(["src/exists.ts:2", "index.ts"]);
+  });
+
+  it("forwards all candidate references to batch resolve API without cap", async () => {
+    const requestRepoFileTree = vi.fn(async () => createTreePage({ basePath: ".", entries: [] }));
+    const requestRepoFileSearch = vi.fn(async () => createSearchPage({ query: "", items: [] }));
+    const requestRepoFileContentLocal = vi.fn(async () => {
+      throw new Error("requestRepoFileContent should not be called");
+    });
+    let receivedReferences: RepoFileResolveReference[] | null = null;
+    const requestRepoFileResolveReferences = vi.fn(
+      async (_paneId: string, references: RepoFileResolveReference[]) => {
+        receivedReferences = references;
+        return {
+          linkableRawTokens: [],
+        };
+      },
+    );
+
+    const { result } = renderHook(() =>
+      useSessionFiles({
+        paneId: "pane-current",
+        repoRoot: "/repo-current",
+        autoExpandMatchLimit: 100,
+        requestRepoFileTree,
+        requestRepoFileSearch,
+        requestRepoFileContent: requestRepoFileContentLocal,
+        requestRepoFileResolveReferences,
+      }),
+    );
+
+    const rawTokens = Array.from(
+      { length: 1205 },
+      (_, index) => `src/file-${index}.ts:${index + 1}`,
+    );
+    const linkable = await result.current.onResolveLogFileReferenceCandidates({
+      rawTokens,
+      sourcePaneId: "pane-log",
+      sourceRepoRoot: "/repo",
+    });
+
+    expect(requestRepoFileResolveReferences).toHaveBeenCalledTimes(1);
+    expect(receivedReferences).not.toBeNull();
+    if (receivedReferences == null) {
+      throw new Error("expected batch references");
+    }
+    const references = receivedReferences as RepoFileResolveReference[];
+    expect(references).toHaveLength(1205);
+    expect(references[0]).toEqual({
+      rawToken: "src/file-0.ts:1",
+      normalizedPath: "src/file-0.ts",
+      filename: "file-0.ts",
+    });
+    const lastReference = references[references.length - 1];
+    expect(lastReference).toEqual({
+      rawToken: "src/file-1204.ts:1205",
+      normalizedPath: "src/file-1204.ts",
+      filename: "file-1204.ts",
+    });
+    expect(linkable).toEqual([]);
   });
 });

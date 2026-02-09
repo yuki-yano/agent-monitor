@@ -34,7 +34,7 @@ const resolveReferenceSchema = z
   });
 
 const resolveReferencesBodySchema = z.object({
-  references: z.array(resolveReferenceSchema).min(1).max(1000),
+  references: z.array(resolveReferenceSchema).min(1),
 });
 
 const RESOLVE_REFERENCE_SEARCH_PAGE_LIMIT = 100;

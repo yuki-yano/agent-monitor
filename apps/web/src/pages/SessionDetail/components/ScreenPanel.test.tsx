@@ -254,6 +254,27 @@ describe("ScreenPanel", () => {
     });
   });
 
+  it("passes all visible-range candidates without token cap", async () => {
+    const onResolveFileReferenceCandidates = vi.fn(async (rawTokens: string[]) => rawTokens);
+    const manyTokens = Array.from({ length: 1205 }, (_, index) => `file-${index}.ts`).join(" ");
+    const state = buildState({
+      screenLines: [manyTokens],
+    });
+    const actions = buildActions({ onResolveFileReferenceCandidates });
+    render(<ScreenPanel state={state} actions={actions} controls={null} />);
+
+    await waitFor(() => {
+      expect(onResolveFileReferenceCandidates).toHaveBeenCalled();
+    });
+
+    const firstCallArgs = onResolveFileReferenceCandidates.mock.calls[0]?.[0] as
+      | string[]
+      | undefined;
+    expect(firstCallArgs?.length).toBe(1205);
+    expect(firstCallArgs?.[0]).toBe("file-0.ts");
+    expect(firstCallArgs?.at(-1)).toBe("file-1204.ts");
+  });
+
   it("prioritizes latest path-like tokens when building candidates", async () => {
     const onResolveFileReferenceCandidates = vi.fn(async (rawTokens: string[]) => rawTokens);
     const oldFilenameTokens = Array.from({ length: 120 }, (_, index) => `old-${index}.ts`).join(

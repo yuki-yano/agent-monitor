@@ -675,6 +675,49 @@ describe("createApiRouter", () => {
     }
   });
 
+  it("accepts more than 1000 references in resolve payload", async () => {
+    const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "vde-monitor-files-resolve-many-"));
+    try {
+      await mkdir(path.join(tmpRoot, "src"), { recursive: true });
+      await writeFile(path.join(tmpRoot, ".gitignore"), "");
+      await writeFile(path.join(tmpRoot, "src", "exists.ts"), "export const exists = true;\n");
+
+      const { api, monitor, detail } = createTestContext();
+      monitor.registry.update({
+        ...detail,
+        repoRoot: tmpRoot,
+        currentPath: tmpRoot,
+      });
+
+      const references = [
+        {
+          rawToken: "src/exists.ts:1",
+          normalizedPath: "src/exists.ts",
+          filename: "exists.ts",
+        },
+        ...Array.from({ length: 1200 }, (_, index) => ({
+          rawToken: `missing-${index}.ts`,
+          filename: "missing.ts",
+        })),
+      ];
+
+      const res = await api.request("/sessions/pane-1/files/resolve", {
+        method: "POST",
+        headers: {
+          ...authHeaders,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ references }),
+      });
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.linkableRawTokens).toEqual(["src/exists.ts:1"]);
+    } finally {
+      await rm(tmpRoot, { recursive: true, force: true });
+    }
+  });
+
   it("returns 400 when resolve references payload is invalid", async () => {
     const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "vde-monitor-files-resolve-invalid-"));
     try {

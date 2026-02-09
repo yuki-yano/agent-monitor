@@ -21,7 +21,6 @@ const FILE_CONTENT_MAX_BYTES = 256 * 1024;
 const LOG_FILE_RESOLVE_MATCH_LIMIT = 20;
 const LOG_FILE_RESOLVE_PAGE_LIMIT = 100;
 const LOG_FILE_RESOLVE_MAX_PAGES = 5;
-const LOG_FILE_LINKIFY_TOKEN_LIMIT = 1000;
 const LOG_REFERENCE_LINKABLE_CACHE_MAX = 1000;
 
 type LogFileCandidateItem = Pick<
@@ -1151,7 +1150,7 @@ export const useSessionFiles = ({
     }) => {
       const uniqueTokens = Array.from(
         new Set(rawTokens.filter((token) => token.trim().length > 0)),
-      ).slice(0, LOG_FILE_LINKIFY_TOKEN_LIMIT);
+      );
       if (uniqueTokens.length === 0 || sourcePaneId.trim().length === 0) {
         return [] as string[];
       }

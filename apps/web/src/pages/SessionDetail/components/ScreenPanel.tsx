@@ -74,7 +74,6 @@ const shouldShowErrorMessage = (error: string | null, connectionIssue: string | 
   Boolean(error) &&
   (!connectionIssue || (error !== connectionIssue && error !== DISCONNECTED_MESSAGE));
 
-const MAX_LOG_REFERENCE_CANDIDATES = 1000;
 const VISIBLE_REFERENCE_LINE_PADDING = 20;
 const FALLBACK_VISIBLE_REFERENCE_WINDOW = 120;
 
@@ -313,9 +312,6 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
       for (const token of [...pathTokens, ...filenameTokens]) {
         seen.add(token);
         ordered.push(token);
-        if (ordered.length >= MAX_LOG_REFERENCE_CANDIDATES) {
-          return ordered;
-        }
       }
     }
     return ordered;
