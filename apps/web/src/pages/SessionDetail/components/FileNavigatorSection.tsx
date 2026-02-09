@@ -161,9 +161,9 @@ export const FileNavigatorSection = ({ state, actions }: FileNavigatorSectionPro
             </div>
           ) : null}
 
-          <div className="relative">
-            <div className="custom-scrollbar max-h-[340px] overflow-auto px-3 pb-3">
-              <InsetPanel className="overflow-hidden">
+          <div className="px-3 pb-3">
+            <InsetPanel className="overflow-hidden">
+              <div className="custom-scrollbar max-h-[340px] overflow-auto overscroll-contain">
                 {state.treeLoading && state.treeNodes.length === 0 ? (
                   <div className="flex items-center gap-2 px-3 py-3 text-xs">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -218,33 +218,33 @@ export const FileNavigatorSection = ({ state, actions }: FileNavigatorSectionPro
                     className="py-6"
                   />
                 ) : null}
-              </InsetPanel>
 
-              {isSearchActive && state.searchHasMore ? (
-                <div className="pt-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={actions.onLoadMoreSearch}
-                    className="h-7 w-full text-xs"
-                  >
-                    Load more matches
-                  </Button>
-                </div>
-              ) : null}
-              {!isSearchActive && state.rootTreeHasMore ? (
-                <div className="pt-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={actions.onLoadMoreTreeRoot}
-                    className="h-7 w-full text-xs"
-                  >
-                    Load more files
-                  </Button>
-                </div>
-              ) : null}
-            </div>
+                {isSearchActive && state.searchHasMore ? (
+                  <div className="px-2 pb-2 pt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={actions.onLoadMoreSearch}
+                      className="h-7 w-full text-xs"
+                    >
+                      Load more matches
+                    </Button>
+                  </div>
+                ) : null}
+                {!isSearchActive && state.rootTreeHasMore ? (
+                  <div className="px-2 pb-2 pt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={actions.onLoadMoreTreeRoot}
+                      className="h-7 w-full text-xs"
+                    >
+                      Load more files
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            </InsetPanel>
           </div>
         </>
       )}
