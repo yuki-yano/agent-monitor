@@ -11,6 +11,7 @@ type ShikiCodeBlockProps = {
   theme: Theme;
   flush?: boolean;
   showLineNumbers?: boolean;
+  highlightLine?: number | null;
   className?: string;
 };
 
@@ -20,6 +21,7 @@ export const ShikiCodeBlock = ({
   theme,
   flush = false,
   showLineNumbers = false,
+  highlightLine = null,
   className,
 }: ShikiCodeBlockProps) => {
   const [html, setHtml] = useState<string | null>(null);
@@ -99,18 +101,76 @@ export const ShikiCodeBlock = ({
     : "m-0 min-h-full w-max min-w-full whitespace-pre p-3 font-mono text-xs leading-5";
   const emptyLineMarker = "\u200B";
   const fallbackLines = useMemo(() => normalizedCode.split("\n"), [normalizedCode]);
+  const applyHighlightToHtml = useCallback(
+    (sourceHtml: string) => {
+      if (highlightLine == null || highlightLine <= 0 || typeof DOMParser === "undefined") {
+        return sourceHtml;
+      }
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(`<div>${sourceHtml}</div>`, "text/html");
+      const container = doc.body.firstElementChild;
+      if (!container) {
+        return sourceHtml;
+      }
+      const lines = Array.from(container.querySelectorAll<HTMLElement>(".line"));
+      const target = lines[highlightLine - 1];
+      if (!target) {
+        return sourceHtml;
+      }
+      target.classList.add("vde-shiki-target-line");
+      target.dataset.vdeTargetLine = "true";
+      return container.innerHTML;
+    },
+    [highlightLine],
+  );
+
   const highlightedHtml = useMemo(() => {
     if (!html) {
       return null;
     }
-    if (!showLineNumbers) {
-      return html;
+    const normalized = showLineNumbers
+      ? html
+          .replace(/<span class="line"><\/span>/g, `<span class="line">${emptyLineMarker}</span>`)
+          .replace(/<\/span>\n<span class="line">/g, '</span><span class="line">')
+          .replace(/<\/span>\n<\/code>/g, "</span></code>")
+      : html;
+    return applyHighlightToHtml(normalized);
+  }, [applyHighlightToHtml, emptyLineMarker, html, showLineNumbers]);
+
+  useLayoutEffect(() => {
+    if (highlightLine == null || highlightLine <= 0) {
+      return;
     }
-    return html
-      .replace(/<span class="line"><\/span>/g, `<span class="line">${emptyLineMarker}</span>`)
-      .replace(/<\/span>\n<span class="line">/g, '</span><span class="line">')
-      .replace(/<\/span>\n<\/code>/g, "</span></code>");
-  }, [emptyLineMarker, html, showLineNumbers]);
+    const scroller = scrollerRef.current;
+    if (!scroller) {
+      return;
+    }
+    const target = scroller.querySelector<HTMLElement>(".vde-shiki-target-line");
+    if (!target) {
+      return;
+    }
+    const top = Math.max(target.offsetTop - scroller.clientHeight * 0.3, 0);
+    scroller.scrollTo({
+      top,
+      left: 0,
+      behavior: "auto",
+    });
+  }, [error, highlightLine, highlightedHtml]);
+
+  const fallbackLinesContent = useMemo(() => {
+    return fallbackLines.map((line, index) => (
+      <span
+        key={`${index}:${line}`}
+        className={cn(
+          "line block min-w-max",
+          highlightLine === index + 1 ? "vde-shiki-target-line" : "",
+          showLineNumbers ? "" : "pl-0",
+        )}
+      >
+        {line || emptyLineMarker}
+      </span>
+    ));
+  }, [emptyLineMarker, fallbackLines, highlightLine, showLineNumbers]);
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col", error ? "gap-2" : "gap-0", className)}>
@@ -132,15 +192,7 @@ export const ShikiCodeBlock = ({
               showLineNumbers ? "vde-shiki-with-line-numbers" : "",
             )}
           >
-            <code>
-              {showLineNumbers
-                ? fallbackLines.map((line, index) => (
-                    <span key={`${index}:${line}`} className="line">
-                      {line || emptyLineMarker}
-                    </span>
-                  ))
-                : normalizedCode || "\u200B"}
-            </code>
+            <code>{fallbackLinesContent}</code>
           </pre>
         )}
       </div>

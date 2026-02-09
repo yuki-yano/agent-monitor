@@ -30,6 +30,7 @@ type FileContentModalState = {
   showLineNumbers: boolean;
   copiedPath: boolean;
   copyError: string | null;
+  highlightLine: number | null;
   theme: Theme;
 };
 
@@ -70,6 +71,7 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
     showLineNumbers,
     copiedPath,
     copyError,
+    highlightLine,
     theme,
   } = state;
   const { onClose, onToggleLineNumbers, onCopyPath, onMarkdownViewModeChange } = actions;
@@ -218,11 +220,12 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
             language={match[1] ?? null}
             theme={theme}
             showLineNumbers={showLineNumbers}
+            highlightLine={highlightLine}
           />
         );
       },
     }),
-    [showLineNumbers, theme],
+    [highlightLine, showLineNumbers, theme],
   );
 
   if (!open) {
@@ -364,6 +367,7 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
               theme={theme}
               flush
               showLineNumbers={showLineNumbers}
+              highlightLine={highlightLine}
               className="h-full"
             />
           ) : null}

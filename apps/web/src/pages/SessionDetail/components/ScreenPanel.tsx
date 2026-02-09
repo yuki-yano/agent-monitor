@@ -3,10 +3,14 @@ import {
   type ClipboardEvent,
   forwardRef,
   type HTMLAttributes,
+  type MouseEvent,
   type ReactNode,
   type RefObject,
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
+  useState,
 } from "react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 
@@ -25,6 +29,10 @@ import { sanitizeLogCopyText } from "@/lib/clipboard";
 import type { ScreenMode } from "@/lib/screen-loading";
 
 import { useStableVirtuosoScroll } from "../hooks/useStableVirtuosoScroll";
+import {
+  extractLogReferenceTokensFromLine,
+  linkifyLogLineFileReferences,
+} from "../log-file-reference";
 import { DISCONNECTED_MESSAGE } from "../sessionDetailUtils";
 
 type ScreenPanelState = {
@@ -42,6 +50,7 @@ type ScreenPanelState = {
   forceFollow: boolean;
   rawMode: boolean;
   allowDangerKeys: boolean;
+  fileResolveError: string | null;
 };
 
 type ScreenPanelActions = {
@@ -50,6 +59,8 @@ type ScreenPanelActions = {
   onAtBottomChange: (value: boolean) => void;
   onScrollToBottom: (behavior: "auto" | "smooth") => void;
   onUserScrollStateChange: (value: boolean) => void;
+  onResolveFileReference: (rawToken: string) => Promise<void>;
+  onResolveFileReferenceCandidates: (rawTokens: string[]) => Promise<string[]>;
 };
 
 type ScreenPanelProps = {
@@ -80,13 +91,6 @@ const handleModeValueChange = (
   }
   onModeChange(nextMode);
 };
-
-const renderScreenLine = (_index: number, line: string) => (
-  <div
-    className="min-h-4 whitespace-pre leading-4"
-    dangerouslySetInnerHTML={{ __html: line || "&#x200B;" }}
-  />
-);
 
 const screenModeTabs = (mode: ScreenMode, onModeChange: (mode: ScreenMode) => void) => (
   <Tabs value={mode} onValueChange={(value) => handleModeValueChange(value, mode, onModeChange)}>
@@ -140,6 +144,7 @@ const ScreenContent = ({
   handleRangeChanged,
   VirtuosoScroller,
   onScrollToBottom,
+  onResolveFileReference,
 }: {
   mode: ScreenMode;
   imageBase64: string | null;
@@ -153,6 +158,7 @@ const ScreenContent = ({
     props: HTMLAttributes<HTMLDivElement> & { ref?: React.Ref<HTMLDivElement> },
   ) => ReactNode;
   onScrollToBottom: (behavior: "auto" | "smooth") => void;
+  onResolveFileReference: (event: MouseEvent<HTMLDivElement>) => void;
 }) => {
   const showImage = mode === "image" && Boolean(imageBase64);
 
@@ -179,7 +185,13 @@ const ScreenContent = ({
             components={{ Scroller: VirtuosoScroller, List: VirtuosoList }}
             className="w-full min-w-0 max-w-full"
             style={{ height: "60vh" }}
-            itemContent={renderScreenLine}
+            itemContent={(_index, line) => (
+              <div
+                className="min-h-4 whitespace-pre leading-4"
+                onClick={onResolveFileReference}
+                dangerouslySetInnerHTML={{ __html: line || "&#x200B;" }}
+              />
+            )}
           />
           {!isAtBottom && (
             <IconButton
@@ -227,10 +239,72 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     forceFollow,
     rawMode,
     allowDangerKeys,
+    fileResolveError,
   } = state;
-  const { onModeChange, onRefresh, onAtBottomChange, onScrollToBottom, onUserScrollStateChange } =
-    actions;
+  const {
+    onModeChange,
+    onRefresh,
+    onAtBottomChange,
+    onScrollToBottom,
+    onUserScrollStateChange,
+    onResolveFileReference,
+    onResolveFileReferenceCandidates,
+  } = actions;
   const showError = shouldShowErrorMessage(error, connectionIssue);
+  const [linkableTokens, setLinkableTokens] = useState<Set<string>>(new Set());
+  const activeResolveCandidatesRequestIdRef = useRef(0);
+  const referenceCandidateTokens = useMemo(() => {
+    const pathTokens = new Set<string>();
+    const filenameTokens = new Set<string>();
+    for (let index = screenLines.length - 1; index >= 0; index -= 1) {
+      const line = screenLines[index];
+      if (!line) {
+        continue;
+      }
+      const tokens = extractLogReferenceTokensFromLine(line);
+      for (const token of tokens) {
+        if (token.includes("/") || token.includes("\\")) {
+          pathTokens.add(token);
+          continue;
+        }
+        filenameTokens.add(token);
+      }
+    }
+    return [...pathTokens, ...filenameTokens];
+  }, [screenLines]);
+  const linkifiedScreenLines = useMemo(
+    () =>
+      screenLines.map((line) =>
+        linkifyLogLineFileReferences(line, {
+          isLinkableToken: (rawToken) => linkableTokens.has(rawToken),
+        }),
+      ),
+    [linkableTokens, screenLines],
+  );
+
+  useEffect(() => {
+    const requestId = activeResolveCandidatesRequestIdRef.current + 1;
+    activeResolveCandidatesRequestIdRef.current = requestId;
+
+    if (referenceCandidateTokens.length === 0) {
+      setLinkableTokens(new Set());
+      return;
+    }
+
+    void onResolveFileReferenceCandidates(referenceCandidateTokens)
+      .then((resolvedTokens) => {
+        if (activeResolveCandidatesRequestIdRef.current !== requestId) {
+          return;
+        }
+        setLinkableTokens(new Set(resolvedTokens));
+      })
+      .catch(() => {
+        if (activeResolveCandidatesRequestIdRef.current !== requestId) {
+          return;
+        }
+        setLinkableTokens(new Set());
+      });
+  }, [onResolveFileReferenceCandidates, referenceCandidateTokens]);
   const { scrollerRef: stableScrollerRef, handleRangeChanged } = useStableVirtuosoScroll({
     items: screenLines,
     isAtBottom,
@@ -271,6 +345,27 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     event.clipboardData.setData("text/plain", sanitized);
   }, []);
 
+  const handleResolveFileReference = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      const trigger = target.closest<HTMLElement>("[data-vde-file-ref]");
+      if (!trigger) {
+        return;
+      }
+      const rawToken = trigger.dataset.vdeFileRef;
+      if (!rawToken) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      void onResolveFileReference(rawToken);
+    },
+    [onResolveFileReference],
+  );
+
   return (
     <Card className="flex min-w-0 flex-col gap-3 p-4">
       <Toolbar className="gap-3">
@@ -293,18 +388,24 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
           {error}
         </Callout>
       )}
+      {fileResolveError && (
+        <Callout tone="error" size="xs">
+          {fileResolveError}
+        </Callout>
+      )}
       <div onCopy={handleCopy}>
         <ScreenContent
           mode={mode}
           imageBase64={imageBase64}
           isAtBottom={isAtBottom}
           isScreenLoading={isScreenLoading}
-          screenLines={screenLines}
+          screenLines={linkifiedScreenLines}
           virtuosoRef={virtuosoRef}
           onAtBottomChange={onAtBottomChange}
           handleRangeChanged={handleRangeChanged}
           VirtuosoScroller={VirtuosoScroller}
           onScrollToBottom={onScrollToBottom}
+          onResolveFileReference={handleResolveFileReference}
         />
       </div>
       {contextLeftLabel ? (

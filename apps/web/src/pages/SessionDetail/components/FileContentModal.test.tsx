@@ -28,6 +28,7 @@ const createState = (overrides: Partial<FileContentModalState> = {}): FileConten
   showLineNumbers: false,
   copiedPath: false,
   copyError: null,
+  highlightLine: null,
   theme: "latte",
   ...overrides,
 });
