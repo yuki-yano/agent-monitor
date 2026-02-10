@@ -374,3 +374,85 @@ export const configSchema = z.object({
     primaryClient: z.string().nullable(),
   }),
 });
+
+const strictObject = <TShape extends z.ZodRawShape>(shape: TShape) => z.object(shape).strict();
+
+export const configOverrideSchema = strictObject({
+  bind: z.enum(["127.0.0.1", "0.0.0.0"]).optional(),
+  port: z.number().optional(),
+  attachOnServe: z.boolean().optional(),
+  allowedOrigins: z.array(z.string()).optional(),
+  rateLimit: strictObject({
+    send: strictObject({
+      windowMs: z.number().optional(),
+      max: z.number().optional(),
+    }).optional(),
+    screen: strictObject({
+      windowMs: z.number().optional(),
+      max: z.number().optional(),
+    }).optional(),
+    raw: strictObject({
+      windowMs: z.number().optional(),
+      max: z.number().optional(),
+    }).optional(),
+  }).optional(),
+  dangerKeys: z.array(z.string()).optional(),
+  dangerCommandPatterns: z.array(z.string()).optional(),
+  activity: strictObject({
+    pollIntervalMs: z.number().optional(),
+    runningThresholdMs: z.number().optional(),
+    inactiveThresholdMs: z.number().optional(),
+  }).optional(),
+  hooks: strictObject({
+    ttyCacheTtlMs: z.number().optional(),
+    ttyCacheMax: z.number().optional(),
+  }).optional(),
+  input: strictObject({
+    maxTextLength: z.number().optional(),
+    enterKey: z.string().optional(),
+    enterDelayMs: z.number().optional(),
+  }).optional(),
+  screen: strictObject({
+    mode: z.enum(["text", "image"]).optional(),
+    defaultLines: z.number().optional(),
+    maxLines: z.number().optional(),
+    includeTruncated: z.boolean().optional(),
+    joinLines: z.boolean().optional(),
+    ansi: z.boolean().optional(),
+    altScreen: z.enum(["auto", "on", "off"]).optional(),
+    highlightCorrection: strictObject({
+      codex: z.boolean().optional(),
+      claude: z.boolean().optional(),
+    }).optional(),
+    image: strictObject({
+      enabled: z.boolean().optional(),
+      backend: z.enum(["alacritty", "terminal", "iterm", "wezterm", "ghostty"]).optional(),
+      format: z.enum(["png"]).optional(),
+      cropPane: z.boolean().optional(),
+      timeoutMs: z.number().optional(),
+    }).optional(),
+  }).optional(),
+  logs: strictObject({
+    maxPaneLogBytes: z.number().optional(),
+    maxEventLogBytes: z.number().optional(),
+    retainRotations: z.number().optional(),
+  }).optional(),
+  multiplexer: strictObject({
+    backend: z.enum(["tmux", "wezterm"]).optional(),
+    wezterm: strictObject({
+      cliPath: z.string().optional(),
+      target: z.string().nullable().optional(),
+    }).optional(),
+  }).optional(),
+  fileNavigator: strictObject({
+    includeIgnoredPaths: z.array(includeIgnoredPatternSchema).optional(),
+    autoExpandMatchLimit: z.number().int().min(1).max(500).optional(),
+  }).optional(),
+  tmux: strictObject({
+    socketName: z.string().nullable().optional(),
+    socketPath: z.string().nullable().optional(),
+    primaryClient: z.string().nullable().optional(),
+  }).optional(),
+});
+
+export type AgentMonitorConfigOverride = z.infer<typeof configOverrideSchema>;

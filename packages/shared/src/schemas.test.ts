@@ -4,6 +4,7 @@ import { defaultConfig } from "./constants";
 import {
   apiErrorSchema,
   claudeHookEventSchema,
+  configOverrideSchema,
   configSchema,
   imageAttachmentSchema,
   screenResponseSchema,
@@ -615,6 +616,60 @@ describe("configSchema", () => {
       fileNavigator: {
         includeIgnoredPaths: ["../dist/**"],
         autoExpandMatchLimit: 100,
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("configOverrideSchema", () => {
+  it("covers all top-level keys from configSchema", () => {
+    const configKeys = Object.keys(configSchema.shape).sort();
+    const overrideKeys = Object.keys(configOverrideSchema.shape).sort();
+    expect(overrideKeys).toEqual(configKeys);
+  });
+
+  it("accepts deep-partial override payload", () => {
+    const result = configOverrideSchema.safeParse({
+      rateLimit: {
+        send: {
+          max: 20,
+        },
+      },
+      fileNavigator: {
+        autoExpandMatchLimit: 120,
+      },
+      screen: {
+        image: {
+          backend: "wezterm",
+        },
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects invalid includeIgnoredPaths pattern in override", () => {
+    const result = configOverrideSchema.safeParse({
+      fileNavigator: {
+        includeIgnoredPaths: ["!dist/**"],
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects unknown top-level keys in override", () => {
+    const result = configOverrideSchema.safeParse({
+      unknownKey: true,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects unknown nested keys in override", () => {
+    const result = configOverrideSchema.safeParse({
+      rateLimit: {
+        send: {
+          unknownNested: 1,
+        },
       },
     });
     expect(result.success).toBe(false);
