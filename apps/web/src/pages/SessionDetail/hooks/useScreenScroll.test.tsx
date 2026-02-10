@@ -116,6 +116,7 @@ describe("useScreenScroll", () => {
     const { result } = renderHook(
       () =>
         useScreenScroll({
+          paneId: "pane-1",
           mode: "text",
           screenLinesLength: 2,
           isUserScrollingRef,
