@@ -32,20 +32,32 @@ export const useScreenScroll = ({
   const prevModeRef = useRef<ScreenMode>(mode);
   const prevPaneIdRef = useRef<string>(paneId);
   const snapToBottomRef = useRef(false);
+  const forceFollowFallbackMs = 5000;
+
+  const stopForceFollow = useCallback(() => {
+    setForceFollow(false);
+    if (forceFollowTimerRef.current != null) {
+      window.clearTimeout(forceFollowTimerRef.current);
+      forceFollowTimerRef.current = null;
+    }
+  }, [setForceFollow]);
 
   const scrollToBottom = useCallback(
     (behavior: "auto" | "smooth" = "auto") => {
       if (!virtuosoRef.current || screenLinesLength === 0) return false;
       const index = screenLinesLength - 1;
       virtuosoRef.current.scrollToIndex({ index, align: "end", behavior });
-      setForceFollow(true);
-      if (forceFollowTimerRef.current != null) {
-        window.clearTimeout(forceFollowTimerRef.current);
+      if (isAtBottom) {
+        stopForceFollow();
+      } else {
+        setForceFollow(true);
+        if (forceFollowTimerRef.current != null) {
+          window.clearTimeout(forceFollowTimerRef.current);
+        }
+        forceFollowTimerRef.current = window.setTimeout(() => {
+          stopForceFollow();
+        }, forceFollowFallbackMs);
       }
-      forceFollowTimerRef.current = window.setTimeout(() => {
-        setForceFollow(false);
-        forceFollowTimerRef.current = null;
-      }, 500);
       window.requestAnimationFrame(() => {
         const scroller = scrollerRef.current;
         if (scroller) {
@@ -54,22 +66,18 @@ export const useScreenScroll = ({
       });
       return true;
     },
-    [screenLinesLength, setForceFollow],
+    [forceFollowFallbackMs, isAtBottom, screenLinesLength, setForceFollow, stopForceFollow],
   );
 
   const handleAtBottomChange = useCallback(
     (value: boolean) => {
       setIsAtBottom(value);
       if (value) {
-        setForceFollow(false);
-        if (forceFollowTimerRef.current != null) {
-          window.clearTimeout(forceFollowTimerRef.current);
-          forceFollowTimerRef.current = null;
-        }
+        stopForceFollow();
         onFlushPending();
       }
     },
-    [onFlushPending, setForceFollow, setIsAtBottom],
+    [onFlushPending, setIsAtBottom, stopForceFollow],
   );
 
   const handleUserScrollStateChange = useCallback(
@@ -110,18 +118,16 @@ export const useScreenScroll = ({
   useEffect(() => {
     if (mode !== "text") {
       setIsAtBottom(true);
-      setForceFollow(false);
+      stopForceFollow();
       onClearPending();
     }
-  }, [mode, onClearPending, setForceFollow, setIsAtBottom]);
+  }, [mode, onClearPending, setIsAtBottom, stopForceFollow]);
 
   useEffect(() => {
     return () => {
-      if (forceFollowTimerRef.current != null) {
-        window.clearTimeout(forceFollowTimerRef.current);
-      }
+      stopForceFollow();
     };
-  }, []);
+  }, [stopForceFollow]);
 
   return {
     isAtBottom,
