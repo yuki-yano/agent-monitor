@@ -60,6 +60,7 @@ const tokenPath = path.resolve("/mock/home/.vde-monitor/token.json");
 const fileContents = new Map<string, string>();
 const writtenContents = new Map<string, string>();
 const directoryPaths = new Set<string>();
+const statErrorCodes = new Map<string, string>();
 let cwdSpy: ReturnType<typeof vi.spyOn> | null = null;
 
 const createFsError = (code: string, targetPath: string) => {
@@ -99,11 +100,16 @@ const setProjectConfigFile = (targetPath: string, config: unknown) => {
   setFile(path.resolve(targetPath), `${JSON.stringify(config, null, 2)}\n`);
 };
 
+const setStatError = (targetPath: string, code: string) => {
+  statErrorCodes.set(path.resolve(targetPath), code);
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   fileContents.clear();
   writtenContents.clear();
   directoryPaths.clear();
+  statErrorCodes.clear();
   setDirectory("/");
 
   cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(path.resolve("/mock/cwd"));
@@ -145,6 +151,10 @@ beforeEach(() => {
       throw new Error("unexpected stat args");
     }
     const resolved = path.resolve(targetPath);
+    const forcedCode = statErrorCodes.get(resolved);
+    if (forcedCode) {
+      throw createFsError(forcedCode, resolved);
+    }
     if (fileContents.has(resolved)) {
       return {
         isFile: () => true,
@@ -190,6 +200,15 @@ describe("resolveProjectConfigSearchBoundary", () => {
       cwd: "/mock/no-repo/project/subdir",
     });
     expect(boundary).toBe(path.resolve("/mock/no-repo/project/subdir"));
+  });
+
+  it("throws when git metadata cannot be inspected", () => {
+    setStatError("/mock/repo/.git", "EACCES");
+    expect(() =>
+      resolveProjectConfigSearchBoundary({
+        cwd: "/mock/repo/apps/server/src",
+      }),
+    ).toThrow(/failed to inspect git metadata/);
   });
 });
 
@@ -384,6 +403,16 @@ describe("ensureConfig", () => {
     });
 
     expect(() => ensureConfig()).toThrow(/invalid project config: .*includeIgnoredPaths/);
+  });
+
+  it("throws when project config path exists as non-regular file", () => {
+    setConfigFile(defaultConfig);
+    setTokenFile("existing-token");
+    setDirectory("/mock/repo/.git");
+    cwdSpy?.mockReturnValue(path.resolve("/mock/repo/apps/server"));
+    setDirectory("/mock/repo/.vde/monitor/config.json");
+
+    expect(() => ensureConfig()).toThrow(/project config path exists but is not a regular file/);
   });
 
   it("throws when config contains invalid includeIgnoredPaths pattern", () => {

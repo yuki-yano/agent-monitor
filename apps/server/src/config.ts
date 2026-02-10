@@ -81,14 +81,15 @@ const isPathUnderDirectory = (targetPath: string, directoryPath: string) => {
 };
 
 const hasGitMetadataEntry = (dirPath: string) => {
+  const gitMetadataPath = path.join(dirPath, ".git");
   try {
-    fs.statSync(path.join(dirPath, ".git"));
+    fs.statSync(gitMetadataPath);
     return true;
   } catch (error) {
     if (isMissingFileError(error)) {
       return false;
     }
-    return false;
+    throw new Error(`failed to inspect git metadata: ${gitMetadataPath}`);
   }
 };
 
@@ -113,10 +114,16 @@ export const resolveProjectConfigSearchBoundary = ({ cwd }: { cwd: string }) => 
 const resolveFileIfExists = (targetPath: string) => {
   try {
     const stats = fs.statSync(targetPath);
-    return stats.isFile() ? targetPath : null;
+    if (!stats.isFile()) {
+      throw new Error(`project config path exists but is not a regular file: ${targetPath}`);
+    }
+    return targetPath;
   } catch (error) {
     if (isMissingFileError(error)) {
       return null;
+    }
+    if (error instanceof Error && error.message.includes("project config path exists")) {
+      throw error;
     }
     throw new Error(`failed to read project config: ${targetPath}`);
   }
@@ -192,6 +199,7 @@ const deepMerge = (baseValue: unknown, overrideValue: unknown): unknown => {
   if (typeof overrideValue === "undefined") {
     return baseValue;
   }
+  // Arrays are replaced by higher-priority layers (not concatenated).
   if (Array.isArray(overrideValue)) {
     return [...overrideValue];
   }
