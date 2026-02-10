@@ -35,9 +35,11 @@ describe("buildSessionDetail", () => {
       pipeAttached: true,
       pipeConflict: false,
       customTitle: null,
+      branch: "main",
       repoRoot: "/Users/test/project",
     });
     expect(detail.title).toBe("MyPane");
+    expect(detail.branch).toBe("main");
   });
 
   it("falls back to default title when pane title is absent", () => {
@@ -58,6 +60,7 @@ describe("buildSessionDetail", () => {
     });
     expect(detail.title).toBe("project:w0:1");
     expect(detail.customTitle).toBe("Custom");
+    expect(detail.branch).toBeNull();
   });
 
   it("builds default title from session name when path is missing", () => {

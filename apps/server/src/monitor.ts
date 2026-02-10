@@ -16,6 +16,7 @@ import { createPaneLogManager } from "./monitor/pane-log-manager";
 import { processPane } from "./monitor/pane-processor";
 import { createPaneStateStore } from "./monitor/pane-state";
 import { cleanupRegistry } from "./monitor/registry-cleanup";
+import { resolveRepoBranchCached } from "./monitor/repo-branch";
 import { resolveRepoRootCached } from "./monitor/repo-root";
 import type { MultiplexerRuntime } from "./multiplexer/types";
 import { createSessionRegistry } from "./session-registry";
@@ -190,6 +191,7 @@ export const createSessionMonitor = (runtime: MultiplexerRuntime, config: AgentM
           applyRestored,
           getCustomTitle: (paneId) => customTitles.get(paneId) ?? null,
           resolveRepoRoot: resolveRepoRootCached,
+          resolveBranch: resolveRepoBranchCached,
           isPaneViewedRecently,
           resolvePanePipeTagValue,
           cachePanePipeTagValue,

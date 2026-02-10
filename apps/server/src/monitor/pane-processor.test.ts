@@ -202,6 +202,7 @@ describe("processPane", () => {
         applyRestored: vi.fn(() => ({ state: "WAITING_INPUT" }) as SessionDetail),
         getCustomTitle: vi.fn(() => "Custom"),
         resolveRepoRoot: vi.fn(async () => "/tmp/project"),
+        resolveBranch: vi.fn(async () => "feature/worktree"),
       },
       {
         resolvePaneAgent: vi.fn(async () => ({ agent: "codex" as const, ignore: false })),
@@ -214,6 +215,7 @@ describe("processPane", () => {
     expect(detail?.state).toBe("WAITING_INPUT");
     expect(detail?.stateReason).toBe("restored");
     expect(detail?.customTitle).toBe("Custom");
+    expect(detail?.branch).toBe("feature/worktree");
     expect(updatePaneOutputState).toHaveBeenCalledWith(
       expect.objectContaining({
         isAgentPane: true,

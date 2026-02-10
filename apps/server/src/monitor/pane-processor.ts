@@ -32,6 +32,7 @@ type ProcessPaneArgs = {
   applyRestored: (paneId: string) => SessionDetail | null;
   getCustomTitle: (paneId: string) => string | null;
   resolveRepoRoot: (currentPath: string | null) => Promise<string | null>;
+  resolveBranch?: (currentPath: string | null) => Promise<string | null>;
   isPaneViewedRecently?: (paneId: string) => boolean;
   resolvePanePipeTagValue?: (pane: PaneMeta) => Promise<string | null>;
   cachePanePipeTagValue?: (paneId: string, pipeTagValue: string | null) => void;
@@ -150,6 +151,7 @@ export const processPane = async (
     applyRestored,
     getCustomTitle,
     resolveRepoRoot,
+    resolveBranch,
     isPaneViewedRecently,
     resolvePanePipeTagValue,
     cachePanePipeTagValue,
@@ -222,7 +224,10 @@ export const processPane = async (
   const finalState = resolveFinalPaneState(restoredSession, estimatedState);
 
   const customTitle = getCustomTitle(pane.paneId);
-  const repoRoot = await resolveRepoRoot(pane.currentPath);
+  const [repoRoot, branch] = await Promise.all([
+    resolveRepoRoot(pane.currentPath),
+    resolveBranch?.(pane.currentPath) ?? Promise.resolve(null),
+  ]);
   const inputAt = paneState.lastInputAt;
 
   return buildSessionDetail({
@@ -238,5 +243,6 @@ export const processPane = async (
     pipeConflict,
     customTitle,
     repoRoot,
+    branch,
   });
 };

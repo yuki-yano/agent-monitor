@@ -7,7 +7,7 @@ import type {
   SessionStateValue,
   SessionSummary,
 } from "@vde-monitor/shared";
-import { Clock, Pin, SquareTerminal } from "lucide-react";
+import { Clock, GitBranch, Pin, SquareTerminal } from "lucide-react";
 import { memo, type MouseEvent, useCallback, useMemo, useState } from "react";
 
 import {
@@ -38,6 +38,7 @@ import { type PreviewFrame, useSidebarPreview } from "../hooks/useSidebarPreview
 import {
   agentLabelFor,
   agentToneFor,
+  formatBranchLabel,
   formatRelativeTime,
   formatStateLabel,
   getLastInputTone,
@@ -265,14 +266,20 @@ const SessionSidebarItem = memo(
                 {agentLabelFor(item.agent)}
               </Badge>
             )}
-            <LastInputPill
-              tone={lastInputTone}
-              label={<Clock className="h-3 w-3" />}
-              srLabel="Last input"
-              value={formatRelativeTime(item.lastInputAt, nowMs)}
-              size="xs"
-              showDot={false}
-            />
+            <div className="ml-auto flex items-center gap-2">
+              <LastInputPill
+                tone={lastInputTone}
+                label={<Clock className="h-3 w-3" />}
+                srLabel="Last input"
+                value={formatRelativeTime(item.lastInputAt, nowMs)}
+                size="xs"
+                showDot={false}
+              />
+              <TagPill tone="meta" className="inline-flex max-w-[180px] items-center gap-1">
+                <GitBranch className="h-2.5 w-2.5 shrink-0" />
+                <span className="truncate font-mono">{formatBranchLabel(item.branch)}</span>
+              </TagPill>
+            </div>
           </div>
         </Link>
         {onTouchSession || onFocusPane ? (

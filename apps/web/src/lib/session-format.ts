@@ -64,6 +64,12 @@ export const formatPath = (value: string | null) => {
   return value;
 };
 
+export const formatBranchLabel = (value: string | null | undefined) => {
+  if (!value) return "No branch";
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : "No branch";
+};
+
 export const formatRelativeTime = (value: string | null, nowMs: number) => {
   if (!value) return "-";
   const ts = Date.parse(value);

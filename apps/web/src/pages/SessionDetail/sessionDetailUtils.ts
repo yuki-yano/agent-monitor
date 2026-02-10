@@ -11,6 +11,7 @@ export type { LastInputTone } from "@/lib/session-format";
 export {
   agentLabelFor,
   agentToneFor,
+  formatBranchLabel,
   formatPath,
   formatRelativeTime,
   formatStateLabel,

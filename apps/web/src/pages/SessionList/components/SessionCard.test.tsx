@@ -83,6 +83,18 @@ describe("SessionCard", () => {
     expect(screen.getByText("Conflict")).toBeTruthy();
   });
 
+  it("renders branch pill to the left of pane pill", () => {
+    const session = buildSession({ branch: "feature/worktree-branch" });
+    renderWithRouter(<SessionCard session={session} nowMs={Date.now()} />);
+
+    const panePill = screen.getByText("Pane pane-1");
+    const footer = panePill.parentElement;
+    const text = footer?.textContent ?? "";
+
+    expect(text).toContain("feature/worktree-branch");
+    expect(text.indexOf("feature/worktree-branch")).toBeLessThan(text.indexOf("Pane pane-1"));
+  });
+
   it("keeps card width constrained for long titles", () => {
     const longTitle = "long-title-".repeat(20);
     const session = buildSession({ customTitle: null, title: longTitle });

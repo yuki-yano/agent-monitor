@@ -82,6 +82,7 @@ export type SessionSummary = {
   paneTty: string | null;
   title: string | null;
   customTitle: string | null;
+  branch?: string | null;
   repoRoot: string | null;
   agent: "codex" | "claude" | "unknown";
   state: SessionStateValue;

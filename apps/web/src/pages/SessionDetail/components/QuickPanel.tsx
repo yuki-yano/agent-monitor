@@ -1,21 +1,15 @@
-import { ArrowRight, Clock, List, X } from "lucide-react";
+import { ArrowRight, Clock, GitBranch, List, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 
-import { Badge, Card, IconButton, LastInputPill, SurfaceButton, TagPill } from "@/components/ui";
-import { formatRepoDirLabel, statusIconMeta } from "@/lib/quick-panel-utils";
+import { Card, IconButton, LastInputPill, SurfaceButton, TagPill } from "@/components/ui";
+import { agentIconMeta, formatRepoDirLabel, statusIconMeta } from "@/lib/quick-panel-utils";
 import type { SessionGroup } from "@/lib/session-group";
 import {
   buildSessionWindowGroups,
   type SessionWindowGroup,
 } from "@/pages/SessionList/session-window-group";
 
-import {
-  agentLabelFor,
-  agentToneFor,
-  formatRelativeTime,
-  getLastInputTone,
-  isKnownAgent,
-} from "../sessionDetailUtils";
+import { formatBranchLabel, formatRelativeTime, getLastInputTone } from "../sessionDetailUtils";
 
 type QuickPanelState = {
   open: boolean;
@@ -197,7 +191,9 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
                                 nowMs,
                               );
                               const statusMeta = statusIconMeta(item.state);
+                              const agentMeta = agentIconMeta(item.agent);
                               const StatusIcon = statusMeta.icon;
+                              const AgentIcon = agentMeta.icon;
                               const isCurrent = currentPaneId === item.paneId;
                               return (
                                 <div key={item.paneId} className="relative pr-10">
@@ -224,12 +220,22 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
                                         {displayTitle}
                                       </span>
                                     </div>
-                                    <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-2">
-                                      {isKnownAgent(item.agent) && (
-                                        <Badge tone={agentToneFor(item.agent)} size="sm">
-                                          {agentLabelFor(item.agent)}
-                                        </Badge>
-                                      )}
+                                    <div className="flex w-full flex-wrap items-center gap-2">
+                                      <span
+                                        className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${agentMeta.wrap}`}
+                                        aria-label={agentMeta.label}
+                                      >
+                                        <AgentIcon className={`h-3 w-3 ${agentMeta.className}`} />
+                                      </span>
+                                      <TagPill
+                                        tone="meta"
+                                        className="inline-flex max-w-[160px] items-center gap-1"
+                                      >
+                                        <GitBranch className="h-2.5 w-2.5 shrink-0" />
+                                        <span className="truncate font-mono">
+                                          {formatBranchLabel(item.branch)}
+                                        </span>
+                                      </TagPill>
                                       <LastInputPill
                                         tone={lastInputTone}
                                         label={<Clock className="h-3 w-3" />}

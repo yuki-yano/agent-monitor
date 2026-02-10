@@ -45,6 +45,7 @@ type BuildSessionDetailArgs = {
   pipeConflict: boolean;
   customTitle: string | null;
   repoRoot: string | null;
+  branch?: string | null;
 };
 
 export const buildSessionDetail = ({
@@ -60,6 +61,7 @@ export const buildSessionDetail = ({
   pipeConflict,
   customTitle,
   repoRoot,
+  branch,
 }: BuildSessionDetailArgs): SessionDetail => ({
   paneId: pane.paneId,
   sessionName: pane.sessionName,
@@ -78,6 +80,7 @@ export const buildSessionDetail = ({
     pane.windowIndex,
   ),
   customTitle,
+  branch: branch ?? null,
   repoRoot,
   agent,
   state,

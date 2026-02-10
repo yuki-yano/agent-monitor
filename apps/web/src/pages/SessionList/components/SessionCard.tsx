@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { SessionSummary } from "@vde-monitor/shared";
-import { Clock, Pin } from "lucide-react";
+import { Clock, GitBranch, Pin } from "lucide-react";
 import type { MouseEvent } from "react";
 
 import { Badge, Card, IconButton, LastInputPill, TagPill } from "@/components/ui";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import {
   agentLabelFor,
   agentToneFor,
+  formatBranchLabel,
   formatPath,
   formatRelativeTime,
   formatStateLabel,
@@ -144,6 +145,10 @@ export const SessionCard = ({ session, nowMs, onTouchPin }: SessionCardProps) =>
         </div>
 
         <div className="relative mt-3 flex flex-wrap items-center gap-1.5 pt-2.5">
+          <TagPill tone="meta" className="inline-flex max-w-[160px] items-center gap-1">
+            <GitBranch className="h-2.5 w-2.5 shrink-0" />
+            <span className="truncate font-mono">{formatBranchLabel(session.branch)}</span>
+          </TagPill>
           <TagPill tone="meta">Pane {session.paneId}</TagPill>
           {onTouchPin ? (
             <IconButton

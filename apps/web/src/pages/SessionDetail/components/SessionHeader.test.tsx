@@ -65,7 +65,10 @@ describe("SessionHeader", () => {
   });
 
   it("renders session title and metadata", () => {
-    const session = createSessionDetail({ customTitle: "Custom Title" });
+    const session = createSessionDetail({
+      customTitle: "Custom Title",
+      branch: "feature/vw-pill",
+    });
     const state = buildState({
       session,
       titleDraft: "Custom Title",
@@ -78,6 +81,7 @@ describe("SessionHeader", () => {
     expect(screen.getByText("Session session-1")).toBeTruthy();
     expect(screen.getByText("Window 1")).toBeTruthy();
     expect(screen.getByText("Pane pane-1")).toBeTruthy();
+    expect(screen.getByText("feature/vw-pill")).toBeTruthy();
     expect(screen.getByText("RUNNING")).toBeTruthy();
   });
 

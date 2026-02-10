@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { SessionSummary } from "@vde-monitor/shared";
-import { ArrowLeft, Clock, Github, Pin, X } from "lucide-react";
+import { ArrowLeft, Clock, GitBranch, Github, Pin, X } from "lucide-react";
 import type { KeyboardEvent } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -14,6 +14,7 @@ import {
   agentToneFor,
   backLinkClass,
   buildDefaultSessionTitle,
+  formatBranchLabel,
   formatPath,
   formatRelativeTime,
   formatStateLabel,
@@ -295,6 +296,14 @@ export const SessionHeader = ({ state, actions }: SessionHeaderProps) => {
               size="xs"
               showDot={false}
             />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <TagPill tone="neutral" className="inline-flex max-w-full items-center gap-1.5">
+              <GitBranch className="h-3 w-3 shrink-0" />
+              <span className="max-w-[min(320px,60vw)] truncate font-mono text-[11px]">
+                {formatBranchLabel(session.branch)}
+              </span>
+            </TagPill>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <TagPill tone="meta">Session {session.sessionName}</TagPill>

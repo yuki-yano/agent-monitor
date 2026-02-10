@@ -87,6 +87,7 @@ export const sessionSummarySchema = z.object({
   paneTty: z.string().nullable(),
   title: z.string().nullable(),
   customTitle: z.string().nullable(),
+  branch: z.string().nullable().optional(),
   repoRoot: z.string().nullable(),
   agent: z.enum(["codex", "claude", "unknown"]),
   state: sessionStateSchema,

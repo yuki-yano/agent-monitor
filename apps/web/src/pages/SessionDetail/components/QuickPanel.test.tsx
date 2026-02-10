@@ -87,6 +87,30 @@ describe("QuickPanel", () => {
     expect(onOpenSessionLink).toHaveBeenCalledWith("pane-1");
   });
 
+  it("shows agent as icon only and displays branch on the right", () => {
+    const session = createSessionDetail({
+      agent: "codex",
+      branch: "feature/quick-panel",
+    });
+    const state = buildState({
+      open: true,
+      sessionGroups: [
+        {
+          repoRoot: session.repoRoot,
+          sessions: [session],
+          lastInputAt: session.lastInputAt,
+        },
+      ],
+      allSessions: [session],
+    });
+    const actions = buildActions();
+    render(<QuickPanel state={state} actions={actions} />);
+
+    expect(screen.getByText("feature/quick-panel")).toBeTruthy();
+    expect(screen.getByLabelText("CODEX")).toBeTruthy();
+    expect(screen.queryByText("CODEX")).toBeNull();
+  });
+
   it("keeps close button above row action buttons", () => {
     const session = createSessionDetail();
     const state = buildState({

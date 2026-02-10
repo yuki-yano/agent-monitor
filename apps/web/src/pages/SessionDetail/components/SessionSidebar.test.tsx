@@ -71,6 +71,7 @@ describe("SessionSidebar", () => {
       paneId: "pane-1",
       title: "Codex Session",
       agent: "codex",
+      branch: "feature/codex",
       windowIndex: 1,
       sessionName: "alpha",
     });
@@ -78,6 +79,7 @@ describe("SessionSidebar", () => {
       paneId: "pane-2",
       title: "Claude Session",
       agent: "claude",
+      branch: "feature/claude",
       windowIndex: 2,
       sessionName: "alpha",
     });
@@ -107,6 +109,8 @@ describe("SessionSidebar", () => {
     expect(screen.queryByText("Shell Session")).toBeNull();
     expect(screen.getByText("Window 1")).toBeTruthy();
     expect(screen.getByText("Window 2")).toBeTruthy();
+    expect(screen.getByText("feature/codex")).toBeTruthy();
+    expect(screen.getByText("feature/claude")).toBeTruthy();
     expect(screen.getByText("2 windows")).toBeTruthy();
     expect(screen.getAllByText("1 / 2 panes")).toHaveLength(2);
   });
