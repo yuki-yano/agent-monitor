@@ -15,9 +15,14 @@ import { createMonitorLoop } from "./monitor/loop";
 import { createPaneLogManager } from "./monitor/pane-log-manager";
 import { processPane } from "./monitor/pane-processor";
 import { createPaneStateStore } from "./monitor/pane-state";
+import { resolvePrCreatedCached } from "./monitor/pr-created";
 import { cleanupRegistry } from "./monitor/registry-cleanup";
 import { resolveRepoBranchCached } from "./monitor/repo-branch";
 import { resolveRepoRootCached } from "./monitor/repo-root";
+import {
+  resolveVwWorktreeSnapshotCached,
+  resolveWorktreeStatusFromSnapshot,
+} from "./monitor/vw-worktree";
 import type { MultiplexerRuntime } from "./multiplexer/types";
 import { createSessionRegistry } from "./session-registry";
 import { restoreSessions, restoreTimeline, saveState } from "./state-store";
@@ -177,11 +182,52 @@ export const createSessionMonitor = (runtime: MultiplexerRuntime, config: AgentM
     pruneStaleViewedPanes();
     const panes = await inspector.listPanes();
     const activePaneIds = new Set<string>();
+    const repoRootByCurrentPath = new Map<string, Promise<string | null>>();
+    const vwSnapshotByCwd = new Map<
+      string,
+      Promise<Awaited<ReturnType<typeof resolveVwWorktreeSnapshotCached>>>
+    >();
+
+    const normalizeCacheKey = (value: string | null) => {
+      if (!value) {
+        return null;
+      }
+      const normalized = value.replace(/[\\/]+$/, "");
+      return normalized.length > 0 ? normalized : value;
+    };
+
+    const resolvePaneRepoRoot = (currentPath: string | null) => {
+      const key = normalizeCacheKey(currentPath);
+      if (!key) {
+        return Promise.resolve(null);
+      }
+      const existing = repoRootByCurrentPath.get(key);
+      if (existing) {
+        return existing;
+      }
+      const request = resolveRepoRootCached(currentPath);
+      repoRootByCurrentPath.set(key, request);
+      return request;
+    };
+
+    const resolveSnapshotByCwd = (cwd: string) => {
+      const key = normalizeCacheKey(cwd) ?? cwd;
+      const existing = vwSnapshotByCwd.get(key);
+      if (existing) {
+        return existing;
+      }
+      const request = resolveVwWorktreeSnapshotCached(cwd);
+      vwSnapshotByCwd.set(key, request);
+      return request;
+    };
 
     const paneResults = await mapWithConcurrencyLimit(
       panes,
       PANE_PROCESS_CONCURRENCY,
       async (pane) => {
+        const paneRepoRoot = await resolvePaneRepoRoot(pane.currentPath);
+        const snapshotCwd = paneRepoRoot ?? pane.currentPath ?? process.cwd();
+        const vwSnapshot = await resolveSnapshotByCwd(snapshotCwd);
         const detail = await processPane({
           pane,
           config,
@@ -190,8 +236,11 @@ export const createSessionMonitor = (runtime: MultiplexerRuntime, config: AgentM
           capturePaneFingerprint,
           applyRestored,
           getCustomTitle: (paneId) => customTitles.get(paneId) ?? null,
-          resolveRepoRoot: resolveRepoRootCached,
+          resolveRepoRoot: async () => paneRepoRoot,
+          resolveWorktreeStatus: (currentPath) =>
+            resolveWorktreeStatusFromSnapshot(vwSnapshot, currentPath),
           resolveBranch: resolveRepoBranchCached,
+          resolvePrCreated: resolvePrCreatedCached,
           isPaneViewedRecently,
           resolvePanePipeTagValue,
           cachePanePipeTagValue,

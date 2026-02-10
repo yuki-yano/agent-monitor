@@ -12,6 +12,7 @@ import { updatePaneOutputState } from "./pane-output";
 import type { PaneRuntimeState } from "./pane-state";
 import { buildSessionDetail } from "./session-detail";
 import { estimateSessionState } from "./session-state";
+import type { ResolvedWorktreeStatus } from "./vw-worktree";
 
 type PaneStateStore = {
   get: (paneId: string) => PaneRuntimeState;
@@ -32,7 +33,11 @@ type ProcessPaneArgs = {
   applyRestored: (paneId: string) => SessionDetail | null;
   getCustomTitle: (paneId: string) => string | null;
   resolveRepoRoot: (currentPath: string | null) => Promise<string | null>;
+  resolveWorktreeStatus?: (
+    currentPath: string | null,
+  ) => ResolvedWorktreeStatus | Promise<ResolvedWorktreeStatus | null> | null;
   resolveBranch?: (currentPath: string | null) => Promise<string | null>;
+  resolvePrCreated?: (repoRoot: string | null, branch: string | null) => Promise<boolean | null>;
   isPaneViewedRecently?: (paneId: string) => boolean;
   resolvePanePipeTagValue?: (pane: PaneMeta) => Promise<string | null>;
   cachePanePipeTagValue?: (paneId: string, pipeTagValue: string | null) => void;
@@ -44,6 +49,29 @@ type EstimatedPaneState = {
 };
 
 const FINGERPRINT_CAPTURE_INTERVAL_MS = 5000;
+const vwWorktreeSegmentPattern = /(^|[\\/])\.worktree([\\/]|$)/;
+
+const normalizePathForCompare = (value: string | null | undefined) => {
+  if (!value) return null;
+  const normalized = value.replace(/[\\/]+$/, "");
+  return normalized.length > 0 ? normalized : null;
+};
+
+const isSamePath = (left: string | null | undefined, right: string | null | undefined) => {
+  const normalizedLeft = normalizePathForCompare(left);
+  const normalizedRight = normalizePathForCompare(right);
+  if (!normalizedLeft || !normalizedRight) {
+    return false;
+  }
+  return normalizedLeft === normalizedRight;
+};
+
+const isVwManagedWorktreePath = (value: string | null | undefined) => {
+  if (!value) {
+    return false;
+  }
+  return vwWorktreeSegmentPattern.test(value.trim());
+};
 
 const resolvePaneKind = (agent: SessionDetail["agent"], pane: PaneMeta) => {
   const isShellCommandPane =
@@ -151,7 +179,9 @@ export const processPane = async (
     applyRestored,
     getCustomTitle,
     resolveRepoRoot,
+    resolveWorktreeStatus,
     resolveBranch,
+    resolvePrCreated,
     isPaneViewedRecently,
     resolvePanePipeTagValue,
     cachePanePipeTagValue,
@@ -224,10 +254,20 @@ export const processPane = async (
   const finalState = resolveFinalPaneState(restoredSession, estimatedState);
 
   const customTitle = getCustomTitle(pane.paneId);
-  const [repoRoot, branch] = await Promise.all([
+  const [candidateWorktreeStatus, resolvedRepoRoot] = await Promise.all([
+    resolveWorktreeStatus ? resolveWorktreeStatus(pane.currentPath) : Promise.resolve(null),
     resolveRepoRoot(pane.currentPath),
-    resolveBranch?.(pane.currentPath) ?? Promise.resolve(null),
   ]);
+  const worktreeStatus =
+    candidateWorktreeStatus &&
+    (resolvedRepoRoot == null || isSamePath(candidateWorktreeStatus.worktreePath, resolvedRepoRoot))
+      ? candidateWorktreeStatus
+      : null;
+  const repoRoot = worktreeStatus?.repoRoot ?? resolvedRepoRoot;
+  const branch = worktreeStatus?.branch ?? (await resolveBranch?.(pane.currentPath)) ?? null;
+  const shouldResolvePrCreated = isVwManagedWorktreePath(worktreeStatus?.worktreePath);
+  const worktreePrCreated =
+    resolvePrCreated && shouldResolvePrCreated ? await resolvePrCreated(repoRoot, branch) : null;
   const inputAt = paneState.lastInputAt;
 
   return buildSessionDetail({
@@ -244,5 +284,12 @@ export const processPane = async (
     customTitle,
     repoRoot,
     branch,
+    worktreePath: worktreeStatus?.worktreePath ?? null,
+    worktreeDirty: worktreeStatus?.worktreeDirty ?? null,
+    worktreeLocked: worktreeStatus?.worktreeLocked ?? null,
+    worktreeLockOwner: worktreeStatus?.worktreeLockOwner ?? null,
+    worktreeLockReason: worktreeStatus?.worktreeLockReason ?? null,
+    worktreeMerged: worktreeStatus?.worktreeMerged ?? null,
+    worktreePrCreated,
   });
 };

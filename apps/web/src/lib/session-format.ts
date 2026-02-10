@@ -70,6 +70,36 @@ export const formatBranchLabel = (value: string | null | undefined) => {
   return trimmed.length > 0 ? trimmed : "No branch";
 };
 
+export const formatWorktreeFlag = (value: boolean | null | undefined) => {
+  if (value == null) return "?";
+  return value ? "Y" : "N";
+};
+
+export type WorktreeFlagKind = "dirty" | "locked" | "pr" | "merged";
+
+const WORKTREE_FLAG_CLASS_MAP: Record<WorktreeFlagKind, string> = {
+  dirty: "border-latte-red/45 bg-latte-red/10 text-latte-red font-mono",
+  locked: "border-latte-yellow/45 bg-latte-yellow/10 text-latte-yellow font-mono",
+  pr: "border-latte-green/45 bg-latte-green/10 text-latte-green font-mono",
+  merged: "border-latte-blue/45 bg-latte-blue/10 text-latte-blue font-mono",
+};
+
+export const worktreeFlagClass = (kind: WorktreeFlagKind, value: boolean | null | undefined) => {
+  if (value !== true) {
+    return "font-mono";
+  }
+  return WORKTREE_FLAG_CLASS_MAP[kind] ?? "font-mono";
+};
+
+const vwWorktreeSegmentPattern = /(^|[\\/])\.worktree([\\/]|$)/;
+
+export const isVwManagedWorktreePath = (value: string | null | undefined) => {
+  if (!value) {
+    return false;
+  }
+  return vwWorktreeSegmentPattern.test(value.trim());
+};
+
 export const formatRelativeTime = (value: string | null, nowMs: number) => {
   if (!value) return "-";
   const ts = Date.parse(value);
