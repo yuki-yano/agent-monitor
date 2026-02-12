@@ -1,10 +1,7 @@
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 
-import { useMediaQuery } from "@/lib/use-media-query";
 import { useNowMs } from "@/lib/use-now-ms";
-import { useSidebarWidth } from "@/lib/use-sidebar-width";
-import { useSplitRatio } from "@/lib/use-split-ratio";
 
 import { screenTextAtom } from "./atoms/screenAtoms";
 import {
@@ -21,6 +18,7 @@ import {
 import { useSessionCommits } from "./hooks/useSessionCommits";
 import { useSessionControls } from "./hooks/useSessionControls";
 import { useSessionDetailActions } from "./hooks/useSessionDetailActions";
+import { useSessionDetailLayoutState } from "./hooks/useSessionDetailLayoutState";
 import { useSessionDiffs } from "./hooks/useSessionDiffs";
 import { useSessionFiles } from "./hooks/useSessionFiles";
 import { useSessionLogs } from "./hooks/useSessionLogs";
@@ -300,8 +298,15 @@ export const useSessionDetailVM = (paneId: string) => {
     () => (session?.agent === "codex" ? extractCodexContextLeft(screenText) : null),
     [screenText, session?.agent],
   );
-  const is2xlUp = useMediaQuery("(min-width: 1536px)");
-  const isMobile = useMediaQuery("(max-width: 767px)");
+  const {
+    is2xlUp,
+    isMobile,
+    sidebarWidth,
+    handleSidebarPointerDown,
+    detailSplitRatio,
+    detailSplitRef,
+    handleDetailSplitPointerDown,
+  } = useSessionDetailLayoutState();
 
   const {
     timeline,
@@ -317,18 +322,6 @@ export const useSessionDetailVM = (paneId: string) => {
     connected,
     requestStateTimeline,
     mobileDefaultCollapsed: true,
-  });
-
-  const { sidebarWidth, handlePointerDown: handleSidebarPointerDown } = useSidebarWidth();
-  const {
-    ratio: detailSplitRatio,
-    containerRef: detailSplitRef,
-    handlePointerDown: handleDetailSplitPointerDown,
-  } = useSplitRatio({
-    storageKey: "vde.detail.split",
-    defaultRatio: 0.5,
-    minRatio: 0.35,
-    maxRatio: 0.65,
   });
 
   const handleRefreshScreen = () => {
