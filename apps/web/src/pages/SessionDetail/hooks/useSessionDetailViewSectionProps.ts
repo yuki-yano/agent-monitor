@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import type { SessionDetailViewProps } from "../SessionDetailView";
 import {
   buildCommitSectionProps,
+  buildControlsPanelProps,
   buildDiffSectionProps,
   buildFileContentModalProps,
   buildFileNavigatorSectionProps,
@@ -10,6 +11,8 @@ import {
   buildLogModalProps,
   buildQuickPanelProps,
   buildScreenPanelProps,
+  buildSessionHeaderProps,
+  buildSessionSidebarProps,
   buildStateTimelineSectionProps,
 } from "./section-props-builders";
 
@@ -504,28 +507,21 @@ export const useSessionDetailViewSectionProps = ({
   );
 
   const sessionHeaderProps = useMemo(() => {
-    if (!session) {
-      return null;
-    }
-    return {
-      state: {
-        session,
-        connectionIssue,
-        nowMs,
-        titleDraft,
-        titleEditing,
-        titleSaving,
-        titleError,
-      },
-      actions: {
-        onTitleDraftChange: updateTitleDraft,
-        onTitleSave: saveTitle,
-        onTitleReset: resetTitle,
-        onOpenTitleEditor: openTitleEditor,
-        onCloseTitleEditor: closeTitleEditor,
-        onTouchSession: handleTouchSession,
-      },
-    };
+    return buildSessionHeaderProps({
+      session,
+      connectionIssue,
+      nowMs,
+      titleDraft,
+      titleEditing,
+      titleSaving,
+      titleError,
+      updateTitleDraft,
+      saveTitle,
+      resetTitle,
+      openTitleEditor,
+      closeTitleEditor,
+      handleTouchSession,
+    });
   }, [
     session,
     connectionIssue,
@@ -543,26 +539,22 @@ export const useSessionDetailViewSectionProps = ({
   ]);
 
   const sessionSidebarProps = useMemo(
-    () => ({
-      state: {
+    () =>
+      buildSessionSidebarProps({
         sessionGroups,
         getRepoSortAnchorAt,
         nowMs,
         connected,
-        connectionIssue: sidebarConnectionIssue,
+        sidebarConnectionIssue,
         requestStateTimeline,
         requestScreen,
         highlightCorrections,
         resolvedTheme,
-        currentPaneId: paneId,
-        className: "border-latte-surface1/80 h-full w-full rounded-none rounded-r-3xl border-r",
-      },
-      actions: {
-        onFocusPane: handleFocusPane,
-        onTouchSession: handleTouchPane,
-        onTouchRepoPin: handleTouchRepoPin,
-      },
-    }),
+        paneId,
+        handleFocusPane,
+        handleTouchPane,
+        handleTouchRepoPin,
+      }),
     [
       sessionGroups,
       getRepoSortAnchorAt,
@@ -581,8 +573,8 @@ export const useSessionDetailViewSectionProps = ({
   );
 
   const controlsPanelProps = useMemo(
-    () => ({
-      state: {
+    () =>
+      buildControlsPanelProps({
         interactive,
         textInputRef,
         autoEnter,
@@ -592,24 +584,21 @@ export const useSessionDetailViewSectionProps = ({
         isSendingText,
         shiftHeld,
         ctrlHeld,
-      },
-      actions: {
-        onSendText: handleSendText,
-        onPickImage: handleUploadImage,
-        onToggleAutoEnter: toggleAutoEnter,
-        onToggleControls: toggleControls,
-        onToggleRawMode: toggleRawMode,
-        onToggleAllowDangerKeys: toggleAllowDangerKeys,
-        onToggleShift: toggleShift,
-        onToggleCtrl: toggleCtrl,
-        onSendKey: handleSendKey,
-        onRawBeforeInput: handleRawBeforeInput,
-        onRawInput: handleRawInput,
-        onRawKeyDown: handleRawKeyDown,
-        onRawCompositionStart: handleRawCompositionStart,
-        onRawCompositionEnd: handleRawCompositionEnd,
-      },
-    }),
+        handleSendText,
+        handleUploadImage,
+        toggleAutoEnter,
+        toggleControls,
+        toggleRawMode,
+        toggleAllowDangerKeys,
+        toggleShift,
+        toggleCtrl,
+        handleSendKey,
+        handleRawBeforeInput,
+        handleRawInput,
+        handleRawKeyDown,
+        handleRawCompositionStart,
+        handleRawCompositionEnd,
+      }),
     [
       interactive,
       textInputRef,

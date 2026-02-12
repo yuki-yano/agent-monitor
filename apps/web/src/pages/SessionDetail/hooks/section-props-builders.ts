@@ -4,13 +4,15 @@ import type {
   CommitLog,
   DiffFile,
   DiffSummary,
+  HighlightCorrectionConfig,
   RepoFileContent,
   RepoFileSearchPage,
+  ScreenResponse,
   SessionStateTimeline,
   SessionStateTimelineRange,
   SessionSummary,
 } from "@vde-monitor/shared";
-import type { RefObject } from "react";
+import type { CompositionEvent, FormEvent, KeyboardEvent, RefObject } from "react";
 import type { VirtuosoHandle } from "react-virtuoso";
 
 import type { ScreenMode } from "@/lib/screen-loading";
@@ -174,6 +176,70 @@ type BuildLogFileCandidateModalPropsArgs = {
   logFileCandidateItems: LogFileCandidateItem[];
   onCloseLogFileCandidateModal: () => void;
   onSelectLogFileCandidate: (path: string) => void;
+};
+
+type BuildSessionHeaderPropsArgs = {
+  session: SessionSummary | null;
+  connectionIssue: string | null;
+  nowMs: number;
+  titleDraft: string;
+  titleEditing: boolean;
+  titleSaving: boolean;
+  titleError: string | null;
+  updateTitleDraft: (value: string) => void;
+  saveTitle: () => void;
+  resetTitle: () => void;
+  openTitleEditor: () => void;
+  closeTitleEditor: () => void;
+  handleTouchSession: () => void;
+};
+
+type BuildSessionSidebarPropsArgs = {
+  sessionGroups: SessionGroup[];
+  getRepoSortAnchorAt: (repoRoot: string | null) => number | null;
+  nowMs: number;
+  connected: boolean;
+  sidebarConnectionIssue: string | null;
+  requestStateTimeline: (
+    paneId: string,
+    options?: { range?: SessionStateTimelineRange; limit?: number },
+  ) => Promise<SessionStateTimeline>;
+  requestScreen: (
+    paneId: string,
+    options: { lines?: number; mode?: "text" | "image"; cursor?: string },
+  ) => Promise<ScreenResponse>;
+  highlightCorrections: HighlightCorrectionConfig;
+  resolvedTheme: Theme;
+  paneId: string;
+  handleFocusPane: (paneId: string) => void;
+  handleTouchPane: (paneId: string) => void;
+  handleTouchRepoPin: (repoRoot: string | null) => void;
+};
+
+type BuildControlsPanelPropsArgs = {
+  interactive: boolean;
+  textInputRef: { current: HTMLTextAreaElement | null };
+  autoEnter: boolean;
+  controlsOpen: boolean;
+  rawMode: boolean;
+  allowDangerKeys: boolean;
+  isSendingText: boolean;
+  shiftHeld: boolean;
+  ctrlHeld: boolean;
+  handleSendText: () => Promise<void>;
+  handleUploadImage: (file: File) => Promise<void>;
+  toggleAutoEnter: () => void;
+  toggleControls: () => void;
+  toggleRawMode: () => void;
+  toggleAllowDangerKeys: () => void;
+  toggleShift: () => void;
+  toggleCtrl: () => void;
+  handleSendKey: (key: string) => Promise<void>;
+  handleRawBeforeInput: (event: FormEvent<HTMLTextAreaElement>) => void;
+  handleRawInput: (event: FormEvent<HTMLTextAreaElement>) => void;
+  handleRawKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  handleRawCompositionStart: (event: CompositionEvent<HTMLTextAreaElement>) => void;
+  handleRawCompositionEnd: (event: CompositionEvent<HTMLTextAreaElement>) => void;
 };
 
 export const buildDiffSectionProps = ({
@@ -486,5 +552,133 @@ export const buildLogFileCandidateModalProps = ({
   actions: {
     onClose: onCloseLogFileCandidateModal,
     onSelect: onSelectLogFileCandidate,
+  },
+});
+
+export const buildSessionHeaderProps = ({
+  session,
+  connectionIssue,
+  nowMs,
+  titleDraft,
+  titleEditing,
+  titleSaving,
+  titleError,
+  updateTitleDraft,
+  saveTitle,
+  resetTitle,
+  openTitleEditor,
+  closeTitleEditor,
+  handleTouchSession,
+}: BuildSessionHeaderPropsArgs) => {
+  if (!session) {
+    return null;
+  }
+  return {
+    state: {
+      session,
+      connectionIssue,
+      nowMs,
+      titleDraft,
+      titleEditing,
+      titleSaving,
+      titleError,
+    },
+    actions: {
+      onTitleDraftChange: updateTitleDraft,
+      onTitleSave: saveTitle,
+      onTitleReset: resetTitle,
+      onOpenTitleEditor: openTitleEditor,
+      onCloseTitleEditor: closeTitleEditor,
+      onTouchSession: handleTouchSession,
+    },
+  };
+};
+
+export const buildSessionSidebarProps = ({
+  sessionGroups,
+  getRepoSortAnchorAt,
+  nowMs,
+  connected,
+  sidebarConnectionIssue,
+  requestStateTimeline,
+  requestScreen,
+  highlightCorrections,
+  resolvedTheme,
+  paneId,
+  handleFocusPane,
+  handleTouchPane,
+  handleTouchRepoPin,
+}: BuildSessionSidebarPropsArgs) => ({
+  state: {
+    sessionGroups,
+    getRepoSortAnchorAt,
+    nowMs,
+    connected,
+    connectionIssue: sidebarConnectionIssue,
+    requestStateTimeline,
+    requestScreen,
+    highlightCorrections,
+    resolvedTheme,
+    currentPaneId: paneId,
+    className: "border-latte-surface1/80 h-full w-full rounded-none rounded-r-3xl border-r",
+  },
+  actions: {
+    onFocusPane: handleFocusPane,
+    onTouchSession: handleTouchPane,
+    onTouchRepoPin: handleTouchRepoPin,
+  },
+});
+
+export const buildControlsPanelProps = ({
+  interactive,
+  textInputRef,
+  autoEnter,
+  controlsOpen,
+  rawMode,
+  allowDangerKeys,
+  isSendingText,
+  shiftHeld,
+  ctrlHeld,
+  handleSendText,
+  handleUploadImage,
+  toggleAutoEnter,
+  toggleControls,
+  toggleRawMode,
+  toggleAllowDangerKeys,
+  toggleShift,
+  toggleCtrl,
+  handleSendKey,
+  handleRawBeforeInput,
+  handleRawInput,
+  handleRawKeyDown,
+  handleRawCompositionStart,
+  handleRawCompositionEnd,
+}: BuildControlsPanelPropsArgs) => ({
+  state: {
+    interactive,
+    textInputRef,
+    autoEnter,
+    controlsOpen,
+    rawMode,
+    allowDangerKeys,
+    isSendingText,
+    shiftHeld,
+    ctrlHeld,
+  },
+  actions: {
+    onSendText: handleSendText,
+    onPickImage: handleUploadImage,
+    onToggleAutoEnter: toggleAutoEnter,
+    onToggleControls: toggleControls,
+    onToggleRawMode: toggleRawMode,
+    onToggleAllowDangerKeys: toggleAllowDangerKeys,
+    onToggleShift: toggleShift,
+    onToggleCtrl: toggleCtrl,
+    onSendKey: handleSendKey,
+    onRawBeforeInput: handleRawBeforeInput,
+    onRawInput: handleRawInput,
+    onRawKeyDown: handleRawKeyDown,
+    onRawCompositionStart: handleRawCompositionStart,
+    onRawCompositionEnd: handleRawCompositionEnd,
   },
 });

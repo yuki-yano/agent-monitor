@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   buildCommitSectionProps,
+  buildControlsPanelProps,
   buildDiffSectionProps,
   buildFileContentModalProps,
   buildFileNavigatorSectionProps,
@@ -9,6 +10,8 @@ import {
   buildLogModalProps,
   buildQuickPanelProps,
   buildScreenPanelProps,
+  buildSessionHeaderProps,
+  buildSessionSidebarProps,
   buildStateTimelineSectionProps,
 } from "./section-props-builders";
 
@@ -323,5 +326,141 @@ describe("section props builders", () => {
     });
     expect(logFileCandidateModalProps.state.reference).toBe("index.ts");
     expect(logFileCandidateModalProps.actions.onSelect).toBe(onSelectLogFileCandidate);
+  });
+
+  it("builds session header/sidebar/controls props", () => {
+    const updateTitleDraft = vi.fn();
+    const saveTitle = vi.fn();
+    const resetTitle = vi.fn();
+    const openTitleEditor = vi.fn();
+    const closeTitleEditor = vi.fn();
+    const handleTouchSession = vi.fn();
+    const handleFocusPane = vi.fn();
+    const handleTouchPane = vi.fn();
+    const handleTouchRepoPin = vi.fn();
+    const handleSendText = vi.fn(async () => undefined);
+    const handleUploadImage = vi.fn(async () => undefined);
+    const toggleAutoEnter = vi.fn();
+    const toggleControls = vi.fn();
+    const toggleRawMode = vi.fn();
+    const toggleAllowDangerKeys = vi.fn();
+    const toggleShift = vi.fn();
+    const toggleCtrl = vi.fn();
+    const handleSendKey = vi.fn(async () => undefined);
+    const handleRawBeforeInput = vi.fn();
+    const handleRawInput = vi.fn();
+    const handleRawKeyDown = vi.fn();
+    const handleRawCompositionStart = vi.fn();
+    const handleRawCompositionEnd = vi.fn();
+    const requestStateTimeline = vi.fn();
+    const requestScreen = vi.fn();
+    const getRepoSortAnchorAt = vi.fn(() => null);
+
+    const session = {
+      paneId: "%1",
+      sessionName: "s",
+      windowIndex: 0,
+      paneIndex: 0,
+      windowActivity: null,
+      paneActive: true,
+      currentCommand: null,
+      currentPath: null,
+      paneTty: null,
+      title: null,
+      customTitle: null,
+      repoRoot: "/repo",
+      agent: "codex" as const,
+      state: "RUNNING" as const,
+      stateReason: "running",
+      lastMessage: null,
+      lastOutputAt: null,
+      lastEventAt: null,
+      lastInputAt: null,
+      paneDead: false,
+      alternateOn: false,
+      pipeAttached: false,
+      pipeConflict: false,
+    };
+
+    const header = buildSessionHeaderProps({
+      session,
+      connectionIssue: null,
+      nowMs: 1,
+      titleDraft: "draft",
+      titleEditing: false,
+      titleSaving: false,
+      titleError: null,
+      updateTitleDraft,
+      saveTitle,
+      resetTitle,
+      openTitleEditor,
+      closeTitleEditor,
+      handleTouchSession,
+    });
+    expect(header?.state.session).toBe(session);
+    expect(header?.actions.onTitleSave).toBe(saveTitle);
+    expect(
+      buildSessionHeaderProps({
+        session: null,
+        connectionIssue: null,
+        nowMs: 1,
+        titleDraft: "draft",
+        titleEditing: false,
+        titleSaving: false,
+        titleError: null,
+        updateTitleDraft,
+        saveTitle,
+        resetTitle,
+        openTitleEditor,
+        closeTitleEditor,
+        handleTouchSession,
+      }),
+    ).toBeNull();
+
+    const sidebar = buildSessionSidebarProps({
+      sessionGroups: [{ repoRoot: "/repo", sessions: [session], lastInputAt: null }],
+      getRepoSortAnchorAt,
+      nowMs: 1,
+      connected: true,
+      sidebarConnectionIssue: null,
+      requestStateTimeline,
+      requestScreen,
+      highlightCorrections: { codex: false, claude: false },
+      resolvedTheme: "latte",
+      paneId: "%1",
+      handleFocusPane,
+      handleTouchPane,
+      handleTouchRepoPin,
+    });
+    expect(sidebar.state.currentPaneId).toBe("%1");
+    expect(sidebar.actions.onFocusPane).toBe(handleFocusPane);
+
+    const controls = buildControlsPanelProps({
+      interactive: true,
+      textInputRef: { current: null },
+      autoEnter: true,
+      controlsOpen: false,
+      rawMode: false,
+      allowDangerKeys: false,
+      isSendingText: false,
+      shiftHeld: false,
+      ctrlHeld: false,
+      handleSendText,
+      handleUploadImage,
+      toggleAutoEnter,
+      toggleControls,
+      toggleRawMode,
+      toggleAllowDangerKeys,
+      toggleShift,
+      toggleCtrl,
+      handleSendKey,
+      handleRawBeforeInput,
+      handleRawInput,
+      handleRawKeyDown,
+      handleRawCompositionStart,
+      handleRawCompositionEnd,
+    });
+    expect(controls.state.interactive).toBe(true);
+    expect(controls.actions.onRawInput).toBe(handleRawInput);
   });
 });
