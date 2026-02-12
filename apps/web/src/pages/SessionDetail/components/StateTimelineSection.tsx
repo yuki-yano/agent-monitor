@@ -167,7 +167,7 @@ export const StateTimelineSection = ({ state, actions }: StateTimelineSectionPro
   const waitingMs = resolveWaitingMs(timelineDisplay.totalsMs);
 
   return (
-    <Card className="flex min-w-0 flex-col gap-3 p-4">
+    <Card className="flex min-w-0 flex-col gap-2.5 p-3 sm:gap-3 sm:p-4">
       <SectionHeader
         title="State Timeline"
         action={
@@ -242,7 +242,7 @@ export const StateTimelineSection = ({ state, actions }: StateTimelineSectionPro
         )}
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1.5 sm:gap-2">
         {displayedTimelineItems.length ? (
           displayedTimelineItems.map((item) => (
             <PanelSection key={item.id} className="border-latte-surface2/60 rounded-2xl border">

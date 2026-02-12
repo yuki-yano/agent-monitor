@@ -55,10 +55,10 @@ export const SessionGroupSection = ({
   });
 
   return (
-    <GlowCard contentClassName="gap-2 sm:gap-3">
+    <GlowCard contentClassName="gap-1.5 sm:gap-3">
       <GlassPanel
-        className="px-3 py-3 sm:px-4 sm:py-4"
-        contentClassName="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        className="px-2.5 py-2 sm:px-4 sm:py-4"
+        contentClassName="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between"
       >
         <div className="flex min-w-0 items-start gap-3">
           <div className="border-latte-surface2/70 from-latte-crust/70 via-latte-surface0/70 to-latte-mantle/80 relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border bg-gradient-to-br">
@@ -122,14 +122,14 @@ export const SessionGroupSection = ({
           </div>
         </div>
       </GlassPanel>
-      <div className="pt-2 sm:pt-3">
-        <div className="flex flex-col gap-3 sm:gap-4">
+      <div className="pt-1.5 sm:pt-3">
+        <div className="flex flex-col gap-2.5 sm:gap-4">
           {sessionSections.map((sessionSection, sessionIndex) => (
             <div
               key={sessionSection.sessionName}
-              className={cn(sessionIndex > 0 ? "pt-3 sm:pt-4" : null)}
+              className={cn(sessionIndex > 0 ? "pt-2.5 sm:pt-4" : null)}
             >
-              <div className="space-y-3 sm:space-y-4">
+              <div className="space-y-2.5 sm:space-y-4">
                 {sessionSection.windowGroups.map((windowGroup) => (
                   <SessionWindowSection
                     key={`${windowGroup.sessionName}:${windowGroup.windowIndex}`}

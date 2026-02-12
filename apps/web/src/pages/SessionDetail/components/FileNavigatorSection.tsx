@@ -102,7 +102,7 @@ export const FileNavigatorSection = ({ state, actions }: FileNavigatorSectionPro
 
   return (
     <Card className="p-0">
-      <div className="px-4 pb-3 pt-4">
+      <div className="px-3 pb-2.5 pt-3 sm:px-4 sm:pb-3 sm:pt-4">
         <SectionHeader
           title="File Navigator"
           description={description}
@@ -114,7 +114,7 @@ export const FileNavigatorSection = ({ state, actions }: FileNavigatorSectionPro
         />
       </div>
 
-      <div className="px-4 pb-3">
+      <div className="px-3 pb-2.5 sm:px-4 sm:pb-3">
         <div className="relative">
           <Input
             value={state.searchQuery}
@@ -139,7 +139,7 @@ export const FileNavigatorSection = ({ state, actions }: FileNavigatorSectionPro
       </div>
 
       {state.unavailable ? (
-        <div className="px-4 pb-4">
+        <div className="px-3 pb-3 sm:px-4 sm:pb-4">
           <Callout tone="warning" size="xs">
             File navigator is unavailable for this session.
           </Callout>
@@ -147,25 +147,25 @@ export const FileNavigatorSection = ({ state, actions }: FileNavigatorSectionPro
       ) : (
         <>
           {state.treeError ? (
-            <div className="px-4 pb-3">
+            <div className="px-3 pb-2.5 sm:px-4 sm:pb-3">
               <Callout tone="error" size="xs">
                 {state.treeError}
               </Callout>
             </div>
           ) : null}
           {state.searchError ? (
-            <div className="px-4 pb-3">
+            <div className="px-3 pb-2.5 sm:px-4 sm:pb-3">
               <Callout tone="error" size="xs">
                 {state.searchError}
               </Callout>
             </div>
           ) : null}
 
-          <div className="px-3 pb-3">
+          <div className="px-2.5 pb-2.5 sm:px-3 sm:pb-3">
             <InsetPanel className="overflow-hidden">
               <div className="custom-scrollbar max-h-[340px] overflow-auto overscroll-contain">
                 {state.treeLoading && state.treeNodes.length === 0 ? (
-                  <div className="flex items-center gap-2 px-3 py-3 text-xs">
+                  <div className="flex items-center gap-2 px-2.5 py-2 text-xs sm:px-3 sm:py-3">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span className="text-latte-subtext0">Loading files...</span>
                   </div>
@@ -185,7 +185,7 @@ export const FileNavigatorSection = ({ state, actions }: FileNavigatorSectionPro
                       node.selected ? "bg-latte-lavender/15" : "",
                       node.activeMatch ? "ring-latte-lavender/40 ring-1" : "",
                     )}
-                    style={{ paddingLeft: `${node.depth * 14 + 10}px` }}
+                    style={{ paddingLeft: `${node.depth * 14 + 8}px` }}
                   >
                     <div className="flex min-w-0 items-center gap-2">
                       <FileTreeIcon node={node} />
@@ -211,7 +211,7 @@ export const FileNavigatorSection = ({ state, actions }: FileNavigatorSectionPro
                     icon={<FileSearch className="text-latte-subtext0 h-6 w-6" />}
                     message="No matching files found."
                     iconWrapperClassName="bg-latte-surface1/60"
-                    className="py-6"
+                    className="py-4 sm:py-6"
                   />
                 ) : null}
 
@@ -220,12 +220,12 @@ export const FileNavigatorSection = ({ state, actions }: FileNavigatorSectionPro
                     icon={<FileSearch className="text-latte-subtext0 h-6 w-6" />}
                     message="No visible files."
                     iconWrapperClassName="bg-latte-surface1/60"
-                    className="py-6"
+                    className="py-4 sm:py-6"
                   />
                 ) : null}
 
                 {isSearchActive && state.searchHasMore ? (
-                  <div className="px-2 pb-2 pt-2">
+                  <div className="px-1.5 pb-1.5 pt-1.5 sm:px-2 sm:pb-2 sm:pt-2">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -237,7 +237,7 @@ export const FileNavigatorSection = ({ state, actions }: FileNavigatorSectionPro
                   </div>
                 ) : null}
                 {!isSearchActive && state.rootTreeHasMore ? (
-                  <div className="px-2 pb-2 pt-2">
+                  <div className="px-1.5 pb-1.5 pt-1.5 sm:px-2 sm:pb-2 sm:pt-2">
                     <Button
                       variant="ghost"
                       size="sm"

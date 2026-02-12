@@ -351,7 +351,7 @@ const DiffFileList = memo(
     onToggle,
     onExpandDiff,
   }: DiffFileListProps) => (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5 sm:gap-2">
       {files.map((file) => (
         <DiffFileItem
           key={`${file.path}-${file.status}`}

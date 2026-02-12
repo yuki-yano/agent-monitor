@@ -3,7 +3,7 @@ import type { HTMLAttributes } from "react";
 
 import { cn } from "@/lib/cn";
 
-const calloutVariants = cva("rounded-2xl border px-4 py-2", {
+const calloutVariants = cva("rounded-2xl border px-3 py-1.5 sm:px-4 sm:py-2", {
   variants: {
     tone: {
       warning: "border-latte-peach/40 bg-latte-peach/10 text-latte-peach",

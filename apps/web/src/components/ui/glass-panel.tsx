@@ -10,7 +10,7 @@ const GlassPanel = ({ className, contentClassName, children, ...props }: GlassPa
   return (
     <div
       className={cn(
-        "border-latte-surface2/70 bg-latte-mantle/90 relative overflow-hidden rounded-2xl border px-5 py-4 backdrop-blur",
+        "border-latte-surface2/70 bg-latte-mantle/90 relative overflow-hidden rounded-2xl border px-2.5 py-2 backdrop-blur sm:px-5 sm:py-4",
         className,
       )}
       {...props}

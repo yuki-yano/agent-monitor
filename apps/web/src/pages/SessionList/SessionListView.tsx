@@ -171,10 +171,10 @@ export const SessionListView = ({
       </div>
 
       <div
-        className="animate-fade-in-up w-full px-4 pb-10 pt-6 md:pl-[calc(var(--sidebar-width)+32px)] md:pr-6"
+        className="animate-fade-in-up w-full px-2.5 pb-7 pt-3.5 sm:px-4 sm:pb-10 sm:pt-6 md:pl-[calc(var(--sidebar-width)+32px)] md:pr-6"
         style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
       >
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4 sm:gap-6">
           <div className="flex items-center justify-between gap-3">
             <div />
             <ThemeToggle />
@@ -188,14 +188,14 @@ export const SessionListView = ({
             onRefresh={onRefresh}
           />
 
-          <div className="flex flex-col gap-6">
-            <div className="flex min-w-0 flex-1 flex-col gap-6">
+          <div className="flex flex-col gap-4 sm:gap-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
               {sessions.length === 0 && (
                 <EmptyCard
                   icon={<MonitorX className="text-latte-overlay1 h-10 w-10" />}
                   title="No Active Sessions"
                   description="Start a tmux session with Codex or Claude Code to see it here. Sessions will appear automatically when detected."
-                  className="py-16"
+                  className="py-12 sm:py-16"
                   iconWrapperClassName="bg-latte-surface1/50 h-20 w-20"
                   titleClassName="text-xl"
                   descriptionClassName="max-w-sm"
@@ -212,7 +212,7 @@ export const SessionListView = ({
                   icon={<Search className="text-latte-overlay1 h-8 w-8" />}
                   title="No Matching Sessions"
                   description="No sessions match the selected scope. Try selecting a different scope."
-                  className="py-12"
+                  className="py-10 sm:py-12"
                   iconWrapperClassName="bg-latte-surface1/50 h-16 w-16"
                   titleClassName="text-lg"
                   action={

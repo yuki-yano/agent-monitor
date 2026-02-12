@@ -167,7 +167,7 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
       blockquote: ({ children, ...props }) => (
         <blockquote
           {...props}
-          className="border-latte-peach/65 bg-latte-lavender/10 shadow-inner-highlight my-4 rounded-r-xl border-l-4 px-4 py-3 text-[0.9rem] leading-7"
+          className="border-latte-peach/65 bg-latte-lavender/10 shadow-inner-highlight my-4 rounded-r-xl border-l-4 px-3 py-2.5 text-[0.9rem] leading-7 sm:px-4 sm:py-3"
         >
           {children}
         </blockquote>
@@ -188,12 +188,18 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
         </thead>
       ),
       th: ({ children, ...props }) => (
-        <th {...props} className="border-latte-surface2/65 border-b px-3 py-2 font-semibold">
+        <th
+          {...props}
+          className="border-latte-surface2/65 border-b px-2.5 py-1.5 font-semibold sm:px-3 sm:py-2"
+        >
           {children}
         </th>
       ),
       td: ({ children, ...props }) => (
-        <td {...props} className="border-latte-surface2/55 border-t px-3 py-2 align-top leading-6">
+        <td
+          {...props}
+          className="border-latte-surface2/55 border-t px-2.5 py-1.5 align-top leading-6 sm:px-3 sm:py-2"
+        >
           {children}
         </td>
       ),
@@ -233,15 +239,15 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-1.5 sm:p-3 md:p-6">
       <button
         type="button"
         aria-label="Close file content modal backdrop"
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
         onClick={onClose}
       />
-      <Card className="border-latte-lavender/25 bg-latte-mantle/95 shadow-modal relative z-10 flex h-[min(92dvh,920px)] min-h-0 w-[min(1160px,calc(100vw-1.5rem))] flex-col gap-2 overflow-hidden rounded-3xl border-2 p-4 ring-1 ring-inset ring-white/10 md:p-5">
-        <div className="flex min-w-0 items-start gap-2 rounded-2xl px-3 py-2.5 md:px-3.5">
+      <Card className="border-latte-lavender/25 bg-latte-mantle/95 shadow-modal relative z-10 flex h-[min(92dvh,920px)] min-h-0 w-[min(1160px,calc(100vw-0.75rem))] flex-col gap-2 overflow-hidden rounded-3xl border-2 p-2.5 ring-1 ring-inset ring-white/10 sm:w-[min(1160px,calc(100vw-1.5rem))] sm:p-4 md:p-5">
+        <div className="flex min-w-0 items-start gap-2 rounded-2xl px-2 py-2 sm:px-3 sm:py-2.5 md:px-3.5">
           <div className="min-w-0 flex-1">
             {activePath.length > 0 ? (
               <FilePathLabel
@@ -321,14 +327,14 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
 
         <div className="border-latte-surface2/55 bg-latte-crust/65 relative min-h-0 flex-1 overflow-hidden rounded-2xl border p-0">
           {loading ? (
-            <div className="flex h-full items-center justify-center gap-2 px-4">
+            <div className="flex h-full items-center justify-center gap-2 px-3 sm:px-4">
               <Spinner size="sm" />
               <span className="text-latte-subtext0 text-xs">Loading file...</span>
             </div>
           ) : null}
 
           {!loading && error ? (
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <Callout tone="error" size="xs">
                 {error}
               </Callout>
@@ -336,7 +342,7 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
           ) : null}
 
           {!loading && !error && file?.isBinary ? (
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <Callout tone="warning" size="xs">
                 Binary file preview is not available.
               </Callout>
@@ -349,7 +355,7 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
           markdownEnabled &&
           markdownViewMode === "preview" ? (
             <div className="custom-scrollbar h-full overflow-auto overscroll-contain">
-              <article className="vde-markdown text-latte-text space-y-4 p-4 md:p-5">
+              <article className="vde-markdown text-latte-text space-y-4 p-3 sm:p-4 md:p-5">
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                   {effectiveCode}
                 </ReactMarkdown>

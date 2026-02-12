@@ -13,7 +13,7 @@ const GlowCard = ({ className, contentClassName, children, ...props }: GlowCardP
   return (
     <Card
       className={cn(
-        "shadow-glass border-latte-surface1/60 bg-latte-base/70 relative overflow-hidden rounded-3xl border p-5 backdrop-blur",
+        "shadow-glass border-latte-surface1/60 bg-latte-base/70 relative overflow-hidden rounded-3xl border p-3 backdrop-blur sm:p-5",
         className,
       )}
       {...props}

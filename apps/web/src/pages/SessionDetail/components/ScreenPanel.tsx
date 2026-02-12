@@ -157,10 +157,10 @@ const RawModeIndicator = ({
     return null;
   }
   return (
-    <div className="border-latte-lavender/60 bg-latte-lavender/10 text-latte-lavender shadow-accent-inset inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em]">
+    <div className="border-latte-lavender/60 bg-latte-lavender/10 text-latte-lavender shadow-accent-inset inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.3em] sm:px-3 sm:py-1">
       Raw
       {allowDangerKeys && (
-        <span className="bg-latte-red/20 text-latte-red rounded-full px-2 py-0.5 text-[9px] tracking-[0.24em]">
+        <span className="bg-latte-red/20 text-latte-red rounded-full px-1.5 py-0.5 text-[9px] tracking-[0.24em] sm:px-2">
           Unsafe
         </span>
       )}
@@ -200,10 +200,10 @@ const ScreenContent = ({
   const showImage = mode === "image" && Boolean(imageBase64);
 
   return (
-    <div className="border-latte-surface2/80 bg-latte-crust/95 shadow-inner-soft relative min-h-[320px] w-full min-w-0 max-w-full flex-1 rounded-2xl border-2">
+    <div className="border-latte-surface2/80 bg-latte-crust/95 shadow-inner-soft relative min-h-[260px] w-full min-w-0 max-w-full flex-1 rounded-2xl border-2 sm:min-h-[320px]">
       {isScreenLoading && <LoadingOverlay label="Loading screen..." />}
       {showImage ? (
-        <div className="flex w-full items-center justify-center p-3">
+        <div className="flex w-full items-center justify-center p-1.5 sm:p-3">
           <img
             src={`data:image/png;base64,${imageBase64}`}
             alt="screen"
@@ -254,7 +254,7 @@ const VirtuosoList = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     <div
       ref={ref}
       {...props}
-      className={`text-latte-text w-max min-w-full px-2 py-2 font-mono text-xs ${className ?? ""}`}
+      className={`text-latte-text w-max min-w-full px-1 py-1 font-mono text-xs sm:px-2 sm:py-2 ${className ?? ""}`}
     />
   ),
 );
@@ -473,8 +473,8 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
   );
 
   return (
-    <Card className="flex min-w-0 flex-col gap-3 p-4">
-      <Toolbar className="gap-3">
+    <Card className="flex min-w-0 flex-col gap-2 p-2 sm:gap-3 sm:p-4">
+      <Toolbar className="gap-2 sm:gap-3">
         <div className="flex items-center gap-2">{screenModeTabs(mode, onModeChange)}</div>
         <div className="flex items-center gap-2">
           <RawModeIndicator rawMode={rawMode} allowDangerKeys={allowDangerKeys} />

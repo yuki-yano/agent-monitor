@@ -121,13 +121,13 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
   }, []);
 
   return (
-    <div className="fixed bottom-4 left-6 z-40 flex flex-col items-start gap-3">
+    <div className="fixed bottom-2.5 left-2.5 z-40 flex flex-col items-start gap-2.5 sm:bottom-4 sm:left-6 sm:gap-3">
       {open && (
-        <Card className="font-body animate-panel-enter border-latte-lavender/30 bg-latte-mantle/85 shadow-accent-panel relative flex max-h-[75dvh] w-[calc(100vw-3.5rem)] max-w-[480px] flex-col overflow-hidden rounded-3xl border-2 p-4 ring-1 ring-inset ring-white/10 backdrop-blur-xl">
+        <Card className="font-body animate-panel-enter border-latte-lavender/30 bg-latte-mantle/85 shadow-accent-panel relative flex max-h-[75dvh] w-[calc(100vw-1.25rem)] max-w-[480px] flex-col overflow-hidden rounded-3xl border-2 p-3 ring-1 ring-inset ring-white/10 backdrop-blur-xl sm:w-[calc(100vw-3.5rem)] sm:p-4">
           <IconButton
             type="button"
             onClick={onClose}
-            className="absolute right-2.5 top-2.5 z-30"
+            className="absolute right-2 top-2 z-30 sm:right-2.5 sm:top-2.5"
             variant="lavender"
             size="sm"
             aria-label="Close quick panel"
@@ -136,11 +136,11 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
           </IconButton>
           <div
             ref={scrollRef}
-            className="custom-scrollbar -mr-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pt-10"
+            className="custom-scrollbar -mr-2.5 min-h-0 flex-1 overflow-y-auto overscroll-contain pt-9 sm:-mr-4 sm:pt-10"
           >
-            <div className="space-y-5 pr-5">
+            <div className="space-y-4 pr-3 sm:space-y-5 sm:pr-5">
               {agentGroups.length === 0 && (
-                <div className="border-latte-lavender/20 bg-latte-crust/50 text-latte-subtext0 rounded-2xl border px-3 py-4 text-center text-xs">
+                <div className="border-latte-lavender/20 bg-latte-crust/50 text-latte-subtext0 rounded-2xl border px-2.5 py-3 text-center text-xs sm:px-3 sm:py-4">
                   No agent sessions available.
                 </div>
               )}
@@ -157,7 +157,7 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
                 );
                 return (
                   <div key={group.repoRoot ?? "no-repo"} className="space-y-3">
-                    <div className="border-latte-surface2/70 bg-latte-base/70 flex items-center justify-between gap-2 rounded-2xl border px-3 py-2">
+                    <div className="border-latte-surface2/70 bg-latte-base/70 flex items-center justify-between gap-2 rounded-2xl border px-2.5 py-1.5 sm:px-3 sm:py-2">
                       <div className="flex items-center gap-2">
                         <span className="bg-latte-lavender/70 h-2 w-2 rounded-full shadow-[0_0_8px_rgb(var(--ctp-lavender)/0.5)]" />
                         <span className="text-latte-lavender/80 text-[11px] font-semibold uppercase tracking-wider">
@@ -168,7 +168,7 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
                         {group.windowGroups.length} windows
                       </TagPill>
                     </div>
-                    <div className="space-y-3 pl-2.5">
+                    <div className="space-y-3 pl-2 sm:pl-2.5">
                       {group.windowGroups.map((windowGroup, index) => (
                         <div key={`${windowGroup.sessionName}:${windowGroup.windowIndex}`}>
                           {index > 0 && <div className="border-latte-surface2/70 mb-3 border-t" />}
@@ -189,7 +189,7 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
                               panes
                             </TagPill>
                           </div>
-                          <div className="mt-2 space-y-2">
+                          <div className="mt-1.5 space-y-2 sm:mt-2">
                             {windowGroup.sessions.map((item) => {
                               const displayTitle =
                                 item.customTitle ?? item.title ?? item.sessionName;

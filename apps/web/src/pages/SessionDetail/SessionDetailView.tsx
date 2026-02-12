@@ -77,7 +77,7 @@ export const SessionDetailView = ({
 
   if (!session || !sessionHeaderProps) {
     return (
-      <div className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
+      <div className="mx-auto flex max-w-2xl flex-col gap-4 px-2.5 py-4 sm:px-4 sm:py-6">
         <Card>
           <p className="text-latte-subtext0 text-sm">Session not found.</p>
           <Link to="/" search={backToListSearch} className={`${backLinkClass} mt-4`}>
@@ -106,17 +106,19 @@ export const SessionDetailView = ({
       </div>
 
       <div
-        className="animate-fade-in-up w-full px-4 py-6 md:pl-[calc(var(--sidebar-width)+32px)] md:pr-6"
+        className="animate-fade-in-up w-full px-2 py-3 sm:px-4 sm:py-6 md:pl-[calc(var(--sidebar-width)+32px)] md:pr-6"
         style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
       >
-        <div className="flex min-w-0 flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-2.5 sm:gap-4">
           <SessionHeader {...sessionHeaderProps} />
           <StateTimelineSection {...stateTimelineSectionProps} />
 
           <div
             ref={detailSplitRef}
             className={
-              is2xlUp ? "flex min-w-0 flex-row items-stretch gap-3" : "flex min-w-0 flex-col gap-4"
+              is2xlUp
+                ? "flex min-w-0 flex-row items-stretch gap-3"
+                : "flex min-w-0 flex-col gap-2.5 sm:gap-4"
             }
           >
             <div
@@ -147,7 +149,7 @@ export const SessionDetailView = ({
                 </span>
               </span>
             </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <div className="flex min-w-0 flex-1 flex-col gap-2.5 sm:gap-4">
               <DiffSection {...diffSectionProps} />
 
               <FileNavigatorSection {...fileNavigatorSectionProps} />

@@ -99,7 +99,7 @@ export const SessionCard = ({
       <Card
         interactive
         className={cn(
-          "relative flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden p-4 transition-all",
+          "relative flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden p-3 transition-all sm:p-4",
           stateStyle.card,
         )}
       >
@@ -138,7 +138,7 @@ export const SessionCard = ({
           </span>
         </div>
 
-        <div className="relative mt-2.5 flex min-w-0 flex-1 flex-col">
+        <div className="relative mt-2 flex min-w-0 flex-1 flex-col sm:mt-2.5">
           <h3 className="font-display text-latte-text block w-full max-w-full truncate text-[15px] font-semibold leading-snug">
             {sessionTitle}
           </h3>
@@ -155,7 +155,7 @@ export const SessionCard = ({
           )}
         </div>
 
-        <div className="relative mt-3 flex flex-wrap items-center gap-1.5 pt-2.5">
+        <div className="relative mt-2.5 flex flex-wrap items-center gap-1.5 pt-2 sm:mt-3 sm:pt-2.5">
           <TagPill tone="meta" className="inline-flex max-w-[160px] items-center gap-1">
             <GitBranch className="h-2.5 w-2.5 shrink-0" />
             <span className="truncate font-mono">{formatBranchLabel(session.branch)}</span>

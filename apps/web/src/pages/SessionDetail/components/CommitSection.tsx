@@ -335,7 +335,7 @@ const CommitFileRow = memo(
           </div>
         </div>
         {fileOpen && (
-          <div className="border-latte-surface2/70 bg-latte-base/60 rounded-xl border px-3 py-2">
+          <div className="border-latte-surface2/70 bg-latte-base/60 rounded-xl border px-2.5 py-1.5 sm:px-3 sm:py-2">
             <CommitFileDetailContent
               loadingFile={loadingFile}
               fileDetail={fileDetail}
@@ -360,7 +360,7 @@ const CommitFileRows = memo(
     renderedPatches,
     onToggleCommitFile,
   }: CommitFileRowsProps) => (
-    <div className="flex flex-col gap-2 text-xs">
+    <div className="flex flex-col gap-1.5 text-xs sm:gap-2">
       {files.map((file) => {
         const fileKey = `${commitHash}:${file.path}`;
         return (
@@ -450,7 +450,7 @@ const CommitItem = memo(
     return (
       <InsetPanel>
         <div
-          className="flex w-full cursor-pointer flex-wrap items-start gap-3 px-3 py-2"
+          className="flex w-full cursor-pointer flex-wrap items-start gap-2.5 px-2.5 py-1.5 sm:gap-3 sm:px-3 sm:py-2"
           onClick={() => onToggleCommit(commit.hash)}
         >
           <ChipButton
@@ -521,7 +521,7 @@ const CommitList = memo(
     onToggleCommitFile,
     onCopyHash,
   }: CommitListProps) => (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5 sm:gap-2">
       {commits.map((commit) => (
         <CommitItem
           key={commit.hash}

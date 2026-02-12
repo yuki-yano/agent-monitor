@@ -78,9 +78,10 @@ const DANGER_TOGGLE_CLASS_DEFAULT =
 const MODIFIER_DOT_CLASS_ACTIVE = "bg-latte-lavender";
 const MODIFIER_DOT_CLASS_DEFAULT = "bg-latte-surface2";
 
-const COMPOSER_PILL_CLASS = "h-8 px-1.5 text-[10px] tracking-[0.18em]";
-const MODIFIER_TOGGLE_CLASS = "h-8 px-2.5 py-0.5 text-[10px] tracking-[0.16em]";
-const KEY_BUTTON_CLASS = "h-8 min-w-[44px] px-2 text-[10px] tracking-[0.12em]";
+const COMPOSER_PILL_CLASS = "h-7 px-1.5 text-[10px] tracking-[0.18em] sm:h-8";
+const MODIFIER_TOGGLE_CLASS = "h-7 px-2 py-0.5 text-[10px] tracking-[0.16em] sm:h-8 sm:px-2.5";
+const KEY_BUTTON_CLASS =
+  "h-7 min-w-[40px] px-1.5 text-[10px] tracking-[0.12em] sm:h-8 sm:min-w-[44px] sm:px-2";
 const ALLOWED_IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 const resolveRawModeInputClass = (rawMode: boolean, allowDangerKeys: boolean) => {
@@ -249,13 +250,13 @@ const ComposerActionsRow = ({
     actions;
 
   return (
-    <div className="border-latte-surface2/70 bg-latte-mantle/50 flex items-center justify-between border-t px-2 py-1.5">
+    <div className="bg-latte-mantle/50 flex items-center justify-between px-1.5 py-1 sm:px-2 sm:py-1.5">
       <div className="flex items-center gap-2">
         <Button
           type="button"
           onClick={onPickImage}
           aria-label="Attach image"
-          className="text-latte-subtext1 hover:text-latte-text h-8 gap-1 px-2 py-0.5"
+          className="text-latte-subtext1 hover:text-latte-text h-7 gap-1 px-1.5 py-0.5 sm:h-8 sm:px-2"
           disabled={!interactive}
           variant="ghost"
           size="sm"
@@ -303,7 +304,7 @@ const ComposerActionsRow = ({
         <Button
           onClick={onSendText}
           aria-label="Send"
-          className="h-8 gap-1 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]"
+          className="h-7 gap-1 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] sm:h-8 sm:px-2.5"
           disabled={rawMode || !interactive || isSendingText}
         >
           <Send className="h-4 w-4" />
@@ -340,15 +341,15 @@ const KeysSection = ({
   const { onToggleControls, onToggleShift, onToggleCtrl, onSendKey } = actions;
 
   return (
-    <div className="border-latte-surface2/50 space-y-1.5 border-t pt-2">
-      <div className="flex items-center justify-between px-0.5">
+    <div className="space-y-1 pt-1">
+      <div className="flex items-center justify-between">
         <Button
           variant="ghost"
           size="sm"
           onClick={onToggleControls}
           aria-expanded={controlsOpen}
           aria-controls="session-controls"
-          className="text-latte-subtext0 flex h-8 items-center gap-1.5 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.18em]"
+          className="text-latte-subtext0 flex h-7 items-center gap-1.5 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] sm:h-8 sm:px-2.5"
         >
           {controlsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           Keys
@@ -358,8 +359,8 @@ const KeysSection = ({
         </span>
       </div>
       {controlsOpen ? (
-        <div id="session-controls" className="space-y-2.5 px-0.5 pb-0.5 pt-1.5">
-          <div className="flex flex-wrap items-center gap-2.5">
+        <div id="session-controls" className="space-y-2 px-0 pb-0 pt-1">
+          <div className="flex flex-wrap items-center gap-2">
             <ModifierKeyToggle type="button" onClick={onToggleShift} active={shiftHeld}>
               <span className={`h-2 w-2 rounded-full transition-colors ${shiftDotClass}`} />
               Shift
@@ -370,7 +371,7 @@ const KeysSection = ({
             </ModifierKeyToggle>
           </div>
           <div className="space-y-2">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {[
                 { label: "Esc", key: "Escape" },
                 { label: "Tab", key: "Tab" },
@@ -382,7 +383,7 @@ const KeysSection = ({
             </div>
           </div>
           <div className="space-y-2">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               {[
                 {
                   label: (
@@ -553,12 +554,12 @@ export const ControlsPanel = ({ state, actions }: ControlsPanelProps) => {
   }, [syncPromptHeight, textInputRef]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="min-w-0">
         <div
           className={`min-w-0 overflow-hidden rounded-2xl border transition ${rawModeInputClass}`}
         >
-          <div ref={inputWrapperRef} className="min-h-[64px] overflow-hidden">
+          <div ref={inputWrapperRef} className="min-h-[56px] overflow-hidden sm:min-h-[64px]">
             <textarea
               placeholder={placeholder}
               ref={textInputRef}
@@ -575,7 +576,7 @@ export const ControlsPanel = ({ state, actions }: ControlsPanelProps) => {
                 transformOrigin: "top left",
                 width: `${PROMPT_SCALE_INVERSE * 100}%`,
               }}
-              className="text-latte-text min-h-[60px] w-full resize-none rounded-2xl bg-transparent px-3 py-1.5 text-base outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              className="text-latte-text min-h-[52px] w-full resize-none rounded-2xl bg-transparent px-2.5 py-1 text-base outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[60px] sm:px-3 sm:py-1.5"
             />
           </div>
           <ComposerActionsRow

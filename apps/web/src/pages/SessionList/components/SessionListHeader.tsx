@@ -20,11 +20,11 @@ export const SessionListHeader = ({
   onRefresh,
 }: SessionListHeaderProps) => {
   return (
-    <header className="shadow-glass border-latte-surface1/60 bg-latte-base/80 animate-fade-in stagger-1 flex flex-col gap-4 rounded-3xl border p-6 opacity-0 backdrop-blur">
+    <header className="shadow-glass border-latte-surface1/60 bg-latte-base/80 animate-fade-in stagger-1 flex flex-col gap-3 rounded-3xl border p-3 opacity-0 backdrop-blur sm:gap-4 sm:p-6">
       <Toolbar className="gap-3">
         <div>
           <p className="text-latte-subtext0 text-xs uppercase tracking-[0.5em]">vde-monitor</p>
-          <h1 className="font-display text-latte-text text-4xl font-semibold tracking-tight">
+          <h1 className="font-display text-latte-text text-3xl font-semibold tracking-tight sm:text-4xl">
             Live Sessions
           </h1>
         </div>

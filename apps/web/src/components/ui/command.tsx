@@ -23,11 +23,11 @@ const CommandInput = forwardRef<
   ElementRef<typeof CommandPrimitive.Input>,
   ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
-  <div className="border-latte-surface2/70 border-b px-2 py-2">
+  <div className="border-latte-surface2/70 border-b px-1.5 py-1.5 sm:px-2 sm:py-2">
     <CommandPrimitive.Input
       ref={ref}
       className={cn(
-        "placeholder:text-latte-overlay0 text-latte-text w-full bg-transparent px-2 py-1.5 text-sm outline-none",
+        "placeholder:text-latte-overlay0 text-latte-text w-full bg-transparent px-1.5 py-1 text-sm outline-none sm:px-2 sm:py-1.5",
         className,
       )}
       {...props}
@@ -57,7 +57,7 @@ const CommandEmpty = forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive.Empty
     ref={ref}
-    className={cn("text-latte-subtext0 px-3 py-6 text-center text-sm", className)}
+    className={cn("text-latte-subtext0 px-2.5 py-4 text-center text-sm sm:px-3 sm:py-6", className)}
     {...props}
   />
 ));
@@ -67,7 +67,7 @@ const CommandGroup = forwardRef<
   ElementRef<typeof CommandPrimitive.Group>,
   ComponentPropsWithoutRef<typeof CommandPrimitive.Group>
 >(({ className, ...props }, ref) => (
-  <CommandPrimitive.Group ref={ref} className={cn("p-1", className)} {...props} />
+  <CommandPrimitive.Group ref={ref} className={cn("p-0.5 sm:p-1", className)} {...props} />
 ));
 CommandGroup.displayName = CommandPrimitive.Group.displayName;
 
@@ -78,7 +78,7 @@ const CommandItem = forwardRef<
   <CommandPrimitive.Item
     ref={ref}
     className={cn(
-      "aria-selected:bg-latte-lavender/18 aria-selected:text-latte-lavender relative flex cursor-default select-none items-center rounded-xl px-3 py-2 text-sm outline-none",
+      "aria-selected:bg-latte-lavender/18 aria-selected:text-latte-lavender relative flex cursor-default select-none items-center rounded-xl px-2.5 py-1.5 text-sm outline-none sm:px-3 sm:py-2",
       className,
     )}
     {...props}

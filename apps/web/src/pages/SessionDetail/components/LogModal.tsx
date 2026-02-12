@@ -42,7 +42,7 @@ const QuickLogList = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     <div
       ref={ref}
       {...props}
-      className={`text-latte-text w-max min-w-max px-3 py-2 font-mono text-[12px] leading-[16px] ${className ?? ""}`}
+      className={`text-latte-text w-max min-w-max px-2 py-1.5 font-mono text-[12px] leading-[16px] sm:px-3 sm:py-2 ${className ?? ""}`}
     />
   ),
 );
@@ -150,19 +150,19 @@ export const LogModal = ({ state, actions }: LogModalProps) => {
   if (!open || !session) return null;
 
   return (
-    <div className="fixed bottom-[76px] left-6 top-4 z-50 min-h-0 w-[min(900px,calc(100vw-3rem))]">
-      <Card className="font-body animate-panel-enter border-latte-lavender/30 bg-latte-mantle/85 shadow-accent-panel relative flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border-2 p-4 ring-1 ring-inset ring-white/10 backdrop-blur-xl">
+    <div className="fixed bottom-[72px] left-2.5 top-2.5 z-50 min-h-0 w-[min(900px,calc(100vw-1.25rem))] sm:bottom-[76px] sm:left-6 sm:top-4 sm:w-[min(900px,calc(100vw-3rem))]">
+      <Card className="font-body animate-panel-enter border-latte-lavender/30 bg-latte-mantle/85 shadow-accent-panel relative flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border-2 p-3 ring-1 ring-inset ring-white/10 backdrop-blur-xl sm:p-4">
         <IconButton
           type="button"
           onClick={onClose}
-          className="absolute right-3 top-3"
+          className="absolute right-2 top-2 sm:right-3 sm:top-3"
           variant="lavender"
           size="sm"
           aria-label="Close log"
         >
           <X className="h-4 w-4" />
         </IconButton>
-        <Toolbar className="gap-3 pr-12">
+        <Toolbar className="gap-3 pr-10 sm:pr-12">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <p className="text-latte-text truncate text-base font-semibold">
               {session.customTitle ?? session.title ?? session.sessionName}
@@ -195,7 +195,7 @@ export const LogModal = ({ state, actions }: LogModalProps) => {
           </Callout>
         )}
         <div
-          className="border-latte-surface2/50 bg-latte-crust/60 shadow-inner-soft relative mt-3 flex min-h-0 w-full flex-1 rounded-2xl border"
+          className="border-latte-surface2/50 bg-latte-crust/60 shadow-inner-soft relative mt-2.5 flex min-h-0 w-full flex-1 rounded-2xl border sm:mt-3"
           onCopy={handleCopy}
         >
           {loading && <LoadingOverlay label="Loading log..." size="sm" />}

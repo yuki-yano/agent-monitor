@@ -57,11 +57,11 @@ export const LogFileCandidateModal = ({ state, actions }: LogFileCandidateModalP
       }}
     >
       <DialogContent className="p-0">
-        <div className="relative p-4 pb-2 md:p-5 md:pb-2">
+        <div className="relative p-3 pb-1.5 sm:p-4 sm:pb-2 md:p-5 md:pb-2">
           <IconButton
             type="button"
             onClick={onClose}
-            className="absolute right-3 top-3"
+            className="absolute right-2 top-2 sm:right-3 sm:top-3"
             variant="lavender"
             size="sm"
             aria-label="Close file candidate modal"
@@ -74,7 +74,7 @@ export const LogFileCandidateModal = ({ state, actions }: LogFileCandidateModalP
           </DialogHeader>
         </div>
 
-        <div className="px-3 pb-3 md:px-4 md:pb-4">
+        <div className="px-2.5 pb-2.5 sm:px-3 sm:pb-3 md:px-4 md:pb-4">
           <Command>
             <CommandInput placeholder="Search files..." autoFocus />
             <CommandList>
