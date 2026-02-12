@@ -1,10 +1,18 @@
 import { Link } from "@tanstack/react-router";
 import type { SessionSummary } from "@vde-monitor/shared";
-import { ArrowLeft, Clock, GitBranch, Github, Pin, X } from "lucide-react";
-import type { KeyboardEvent } from "react";
+import { ArrowLeft, ChevronDown, ChevronUp, Clock, GitBranch, Github, Pin, X } from "lucide-react";
+import { type KeyboardEvent, useId, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Badge, Callout, IconButton, LastInputPill, TagPill, TextButton } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Callout,
+  IconButton,
+  LastInputPill,
+  TagPill,
+  TextButton,
+} from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { buildGitHubRepoUrl } from "@/lib/github-repo-url";
 import { readStoredSessionListFilter } from "@/pages/SessionList/sessionListFilters";
@@ -235,6 +243,8 @@ const SessionTitleArea = ({
 };
 
 export const SessionHeader = ({ state, actions }: SessionHeaderProps) => {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const detailsSectionId = useId();
   const { session, connectionIssue, nowMs, titleDraft, titleEditing, titleSaving, titleError } =
     state;
   const {
@@ -300,82 +310,104 @@ export const SessionHeader = ({ state, actions }: SessionHeaderProps) => {
               size="xs"
               showDot={false}
             />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <TagPill tone="neutral" className="inline-flex max-w-full items-center gap-1.5">
-              <GitBranch className="h-3 w-3 shrink-0" />
-              <span className="max-w-[min(320px,60vw)] truncate font-mono text-[11px]">
-                {formatBranchLabel(session.branch)}
-              </span>
-            </TagPill>
-            {showWorktreeFlags ? (
-              <>
-                <TagPill
-                  tone="meta"
-                  className={worktreeFlagClass("dirty", session.worktreeDirty ?? null)}
-                >
-                  Dirty:{formatWorktreeFlag(session.worktreeDirty)}
-                </TagPill>
-                <TagPill
-                  tone="meta"
-                  className={worktreeFlagClass("locked", session.worktreeLocked ?? null)}
-                  title={
-                    session.worktreeLockOwner || session.worktreeLockReason
-                      ? `owner:${session.worktreeLockOwner ?? "-"} reason:${session.worktreeLockReason ?? "-"}`
-                      : undefined
-                  }
-                >
-                  Lock:{formatWorktreeFlag(session.worktreeLocked)}
-                </TagPill>
-                <TagPill
-                  tone="meta"
-                  className={worktreeFlagClass("pr", session.worktreePrCreated ?? null)}
-                >
-                  PR:{formatWorktreeFlag(session.worktreePrCreated)}
-                </TagPill>
-                <TagPill
-                  tone="meta"
-                  className={worktreeFlagClass("merged", session.worktreeMerged ?? null)}
-                >
-                  Merged:{formatWorktreeFlag(session.worktreeMerged)}
-                </TagPill>
-              </>
-            ) : null}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <TagPill tone="meta">Session {session.sessionName}</TagPill>
-            <TagPill tone="meta">Window {session.windowIndex}</TagPill>
-            <TagPill tone="meta">Pane {session.paneId}</TagPill>
-            {repoGitHubUrl ? (
-              <IconButton
-                type="button"
-                size="xs"
-                onClick={() => {
-                  window.open(repoGitHubUrl, "_blank", "noopener,noreferrer");
-                }}
-                className="ml-auto"
-                aria-label="Open repository on GitHub"
-                title="Open repository on GitHub"
-              >
-                <Github className="h-3.5 w-3.5" />
-              </IconButton>
-            ) : null}
-            <IconButton
+            <Button
               type="button"
-              size="xs"
-              onClick={onTouchSession}
-              className={repoGitHubUrl ? undefined : "ml-auto"}
-              aria-label="Pin session to top"
-              title="Pin session to top"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setDetailsOpen((previous) => !previous);
+              }}
+              aria-expanded={detailsOpen}
+              aria-controls={detailsOpen ? detailsSectionId : undefined}
+              aria-label={detailsOpen ? "Hide header details" : "Show header details"}
+              className="text-latte-subtext0 ml-auto flex h-7 items-center gap-1.5 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] sm:h-8 sm:px-2.5"
             >
-              <Pin className="h-3.5 w-3.5" />
-            </IconButton>
+              {detailsOpen ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
           </div>
+          {detailsOpen ? (
+            <div id={detailsSectionId} className="flex flex-col gap-1.5 sm:gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <TagPill tone="neutral" className="inline-flex max-w-full items-center gap-1.5">
+                  <GitBranch className="h-3 w-3 shrink-0" />
+                  <span className="max-w-[min(320px,60vw)] truncate font-mono text-[11px]">
+                    {formatBranchLabel(session.branch)}
+                  </span>
+                </TagPill>
+                {showWorktreeFlags ? (
+                  <>
+                    <TagPill
+                      tone="meta"
+                      className={worktreeFlagClass("dirty", session.worktreeDirty ?? null)}
+                    >
+                      Dirty:{formatWorktreeFlag(session.worktreeDirty)}
+                    </TagPill>
+                    <TagPill
+                      tone="meta"
+                      className={worktreeFlagClass("locked", session.worktreeLocked ?? null)}
+                      title={
+                        session.worktreeLockOwner || session.worktreeLockReason
+                          ? `owner:${session.worktreeLockOwner ?? "-"} reason:${session.worktreeLockReason ?? "-"}`
+                          : undefined
+                      }
+                    >
+                      Lock:{formatWorktreeFlag(session.worktreeLocked)}
+                    </TagPill>
+                    <TagPill
+                      tone="meta"
+                      className={worktreeFlagClass("pr", session.worktreePrCreated ?? null)}
+                    >
+                      PR:{formatWorktreeFlag(session.worktreePrCreated)}
+                    </TagPill>
+                    <TagPill
+                      tone="meta"
+                      className={worktreeFlagClass("merged", session.worktreeMerged ?? null)}
+                    >
+                      Merged:{formatWorktreeFlag(session.worktreeMerged)}
+                    </TagPill>
+                  </>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <TagPill tone="meta">Session {session.sessionName}</TagPill>
+                <TagPill tone="meta">Window {session.windowIndex}</TagPill>
+                <TagPill tone="meta">Pane {session.paneId}</TagPill>
+                {repoGitHubUrl ? (
+                  <IconButton
+                    type="button"
+                    size="xs"
+                    onClick={() => {
+                      window.open(repoGitHubUrl, "_blank", "noopener,noreferrer");
+                    }}
+                    className="ml-auto"
+                    aria-label="Open repository on GitHub"
+                    title="Open repository on GitHub"
+                  >
+                    <Github className="h-3.5 w-3.5" />
+                  </IconButton>
+                ) : null}
+                <IconButton
+                  type="button"
+                  size="xs"
+                  onClick={onTouchSession}
+                  className={repoGitHubUrl ? undefined : "ml-auto"}
+                  aria-label="Pin session to top"
+                  title="Pin session to top"
+                >
+                  <Pin className="h-3.5 w-3.5" />
+                </IconButton>
+              </div>
+              <SessionHeaderAlerts
+                pipeConflict={session.pipeConflict}
+                connectionIssue={connectionIssue}
+              />
+            </div>
+          ) : null}
         </div>
-        <SessionHeaderAlerts
-          pipeConflict={session.pipeConflict}
-          connectionIssue={connectionIssue}
-        />
       </header>
     </>
   );

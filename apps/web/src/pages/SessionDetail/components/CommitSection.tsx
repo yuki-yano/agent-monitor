@@ -27,6 +27,7 @@ import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 
 import {
   diffStatusClass,
+  formatBranchLabel,
   formatDiffCount,
   formatDiffStatusLabel,
   formatPath,
@@ -45,6 +46,7 @@ import { DiffPatch } from "./DiffPatch";
 
 type CommitSectionState = {
   commitLog: CommitLog | null;
+  commitBranch: string | null;
   commitError: string | null;
   commitLoading: boolean;
   commitLoadingMore: boolean;
@@ -564,6 +566,7 @@ CommitLoadMoreButton.displayName = "CommitLoadMoreButton";
 export const CommitSection = memo(({ state, actions }: CommitSectionProps) => {
   const {
     commitLog,
+    commitBranch,
     commitError,
     commitLoading,
     commitLoadingMore,
@@ -582,6 +585,17 @@ export const CommitSection = memo(({ state, actions }: CommitSectionProps) => {
     [commitFileDetails, commitFileOpen],
   );
   const commitCountDescription = formatCommitCountDescription(commitLog);
+  const commitHeaderDescription = (
+    <span className="inline-flex items-center gap-1.5">
+      <span>{commitCountDescription}</span>
+      {commitBranch ? (
+        <span className="text-latte-subtext0/80 inline-flex items-center gap-1 font-mono text-[11px]">
+          <span aria-hidden="true">·</span>
+          <span>{formatBranchLabel(commitBranch)}</span>
+        </span>
+      ) : null}
+    </span>
+  );
   const commits = getCommits(commitLog);
   const showEmptyState = isCommitListEmpty(commitLog);
   const canLoadMore = shouldShowLoadMore(commitLog, commitHasMore);
@@ -590,7 +604,7 @@ export const CommitSection = memo(({ state, actions }: CommitSectionProps) => {
     <Card className="flex flex-col gap-2">
       <SectionHeader
         title="Commit Log"
-        description={commitCountDescription}
+        description={commitHeaderDescription}
         action={
           <Button
             variant="ghost"

@@ -3,8 +3,6 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
-  ChevronDown,
-  ChevronUp,
   CornerDownLeft,
   ImagePlus,
   Send,
@@ -56,6 +54,8 @@ type ControlsPanelActions = {
 type ControlsPanelProps = {
   state: ControlsPanelState;
   actions: ControlsPanelActions;
+  showComposerSection?: boolean;
+  showKeysSection?: boolean;
 };
 
 const PROMPT_SCALE = 0.875;
@@ -250,7 +250,7 @@ const ComposerActionsRow = ({
     actions;
 
   return (
-    <div className="bg-latte-mantle/50 flex items-center justify-between px-1.5 py-1 sm:px-2 sm:py-1.5">
+    <div className="border-latte-surface2/65 bg-latte-mantle/50 flex items-center justify-between border-t px-1.5 py-1 sm:px-2 sm:py-1.5">
       <div className="flex items-center gap-2">
         <Button
           type="button"
@@ -267,7 +267,7 @@ const ComposerActionsRow = ({
           PNG / JPEG / WEBP
         </span>
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
         {rawMode ? (
           <ComposerPill
             type="button"
@@ -316,7 +316,6 @@ const ComposerActionsRow = ({
 };
 
 type KeysSectionState = {
-  controlsOpen: boolean;
   shiftHeld: boolean;
   ctrlHeld: boolean;
   shiftDotClass: string;
@@ -324,7 +323,6 @@ type KeysSectionState = {
 };
 
 type KeysSectionActions = {
-  onToggleControls: () => void;
   onToggleShift: () => void;
   onToggleCtrl: () => void;
   onSendKey: (key: string) => void;
@@ -337,117 +335,103 @@ const KeysSection = ({
   state: KeysSectionState;
   actions: KeysSectionActions;
 }) => {
-  const { controlsOpen, shiftHeld, ctrlHeld, shiftDotClass, ctrlDotClass } = state;
-  const { onToggleControls, onToggleShift, onToggleCtrl, onSendKey } = actions;
+  const { shiftHeld, ctrlHeld, shiftDotClass, ctrlDotClass } = state;
+  const { onToggleShift, onToggleCtrl, onSendKey } = actions;
 
   return (
-    <div className="space-y-1 pt-1">
-      <div className="flex items-center justify-between">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onToggleControls}
-          aria-expanded={controlsOpen}
-          aria-controls="session-controls"
-          className="text-latte-subtext0 flex h-7 items-center gap-1.5 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] sm:h-8 sm:px-2.5"
-        >
-          {controlsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          Keys
-        </Button>
-        <span className="text-latte-subtext0 text-[10px] uppercase tracking-[0.16em]">
-          Quick keys
-        </span>
-      </div>
-      {controlsOpen ? (
-        <div id="session-controls" className="space-y-2 px-0 pb-0 pt-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <ModifierKeyToggle type="button" onClick={onToggleShift} active={shiftHeld}>
-              <span className={`h-2 w-2 rounded-full transition-colors ${shiftDotClass}`} />
-              Shift
-            </ModifierKeyToggle>
-            <ModifierKeyToggle type="button" onClick={onToggleCtrl} active={ctrlHeld}>
-              <span className={`h-2 w-2 rounded-full transition-colors ${ctrlDotClass}`} />
-              Ctrl
-            </ModifierKeyToggle>
-          </div>
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              {[
-                { label: "Esc", key: "Escape" },
-                { label: "Tab", key: "Tab" },
-                { label: "Backspace", key: "BSpace" },
-                { label: "Enter", key: "Enter" },
-              ].map((item) => (
-                <KeyButton key={item.key} label={item.label} onClick={() => onSendKey(item.key)} />
-              ))}
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center gap-1">
-              {[
-                {
-                  label: (
-                    <>
-                      <ArrowLeft className="h-4 w-4" />
-                      <span className="sr-only">Left</span>
-                    </>
-                  ),
-                  key: "Left",
-                  ariaLabel: "Left",
-                },
-                {
-                  label: (
-                    <>
-                      <ArrowUp className="h-4 w-4" />
-                      <span className="sr-only">Up</span>
-                    </>
-                  ),
-                  key: "Up",
-                  ariaLabel: "Up",
-                },
-                {
-                  label: (
-                    <>
-                      <ArrowDown className="h-4 w-4" />
-                      <span className="sr-only">Down</span>
-                    </>
-                  ),
-                  key: "Down",
-                  ariaLabel: "Down",
-                },
-                {
-                  label: (
-                    <>
-                      <ArrowRight className="h-4 w-4" />
-                      <span className="sr-only">Right</span>
-                    </>
-                  ),
-                  key: "Right",
-                  ariaLabel: "Right",
-                },
-              ].map((item) => (
-                <KeyButton
-                  key={item.key}
-                  label={item.label}
-                  ariaLabel={item.ariaLabel}
-                  onClick={() => onSendKey(item.key)}
-                />
-              ))}
-            </div>
+    <div className="space-y-2 pt-1">
+      <div id="session-controls" className="space-y-2 px-0 pb-0 pt-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <ModifierKeyToggle type="button" onClick={onToggleShift} active={shiftHeld}>
+            <span className={`h-2 w-2 rounded-full transition-colors ${shiftDotClass}`} />
+            Shift
+          </ModifierKeyToggle>
+          <ModifierKeyToggle type="button" onClick={onToggleCtrl} active={ctrlHeld}>
+            <span className={`h-2 w-2 rounded-full transition-colors ${ctrlDotClass}`} />
+            Ctrl
+          </ModifierKeyToggle>
+        </div>
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            {[
+              { label: "Esc", key: "Escape" },
+              { label: "Tab", key: "Tab" },
+              { label: "Backspace", key: "BSpace" },
+              { label: "Enter", key: "Enter" },
+            ].map((item) => (
+              <KeyButton key={item.key} label={item.label} onClick={() => onSendKey(item.key)} />
+            ))}
           </div>
         </div>
-      ) : null}
+        <div className="space-y-2">
+          <div className="flex items-center gap-1">
+            {[
+              {
+                label: (
+                  <>
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="sr-only">Left</span>
+                  </>
+                ),
+                key: "Left",
+                ariaLabel: "Left",
+              },
+              {
+                label: (
+                  <>
+                    <ArrowUp className="h-4 w-4" />
+                    <span className="sr-only">Up</span>
+                  </>
+                ),
+                key: "Up",
+                ariaLabel: "Up",
+              },
+              {
+                label: (
+                  <>
+                    <ArrowDown className="h-4 w-4" />
+                    <span className="sr-only">Down</span>
+                  </>
+                ),
+                key: "Down",
+                ariaLabel: "Down",
+              },
+              {
+                label: (
+                  <>
+                    <ArrowRight className="h-4 w-4" />
+                    <span className="sr-only">Right</span>
+                  </>
+                ),
+                key: "Right",
+                ariaLabel: "Right",
+              },
+            ].map((item) => (
+              <KeyButton
+                key={item.key}
+                label={item.label}
+                ariaLabel={item.ariaLabel}
+                onClick={() => onSendKey(item.key)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-export const ControlsPanel = ({ state, actions }: ControlsPanelProps) => {
+export const ControlsPanel = ({
+  state,
+  actions,
+  showComposerSection = true,
+  showKeysSection = true,
+}: ControlsPanelProps) => {
   const {
     interactive,
     isSendingText,
     textInputRef,
     autoEnter,
-    controlsOpen,
     rawMode,
     allowDangerKeys,
     shiftHeld,
@@ -457,7 +441,6 @@ export const ControlsPanel = ({ state, actions }: ControlsPanelProps) => {
     onSendText,
     onPickImage,
     onToggleAutoEnter,
-    onToggleControls,
     onToggleRawMode,
     onToggleAllowDangerKeys,
     onToggleShift,
@@ -555,74 +538,76 @@ export const ControlsPanel = ({ state, actions }: ControlsPanelProps) => {
 
   return (
     <div className="space-y-2">
-      <div className="min-w-0">
-        <div
-          className={`min-w-0 overflow-hidden rounded-2xl border transition ${rawModeInputClass}`}
-        >
-          <div ref={inputWrapperRef} className="min-h-[56px] overflow-hidden sm:min-h-[64px]">
-            <textarea
-              placeholder={placeholder}
-              ref={textInputRef}
-              rows={2}
-              disabled={!interactive}
-              onBeforeInput={onRawBeforeInput}
-              onCompositionStart={onRawCompositionStart}
-              onCompositionEnd={onRawCompositionEnd}
-              onInput={handleTextareaInput}
-              onKeyDown={handleTextareaKeyDown}
-              onPaste={handleTextareaPaste}
-              style={{
-                transform: `scale(${PROMPT_SCALE})`,
-                transformOrigin: "top left",
-                width: `${PROMPT_SCALE_INVERSE * 100}%`,
+      {showComposerSection ? (
+        <div className="min-w-0">
+          <div
+            className={`min-w-0 overflow-hidden rounded-2xl border transition ${rawModeInputClass}`}
+          >
+            <div ref={inputWrapperRef} className="min-h-[56px] overflow-hidden sm:min-h-[64px]">
+              <textarea
+                placeholder={placeholder}
+                ref={textInputRef}
+                rows={2}
+                disabled={!interactive}
+                onBeforeInput={onRawBeforeInput}
+                onCompositionStart={onRawCompositionStart}
+                onCompositionEnd={onRawCompositionEnd}
+                onInput={handleTextareaInput}
+                onKeyDown={handleTextareaKeyDown}
+                onPaste={handleTextareaPaste}
+                style={{
+                  transform: `scale(${PROMPT_SCALE})`,
+                  transformOrigin: "top left",
+                  width: `${PROMPT_SCALE_INVERSE * 100}%`,
+                }}
+                className="text-latte-text min-h-[52px] w-full resize-none rounded-2xl bg-transparent px-2.5 py-1 text-base outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[60px] sm:px-3 sm:py-1.5"
+              />
+            </div>
+            <ComposerActionsRow
+              state={{
+                interactive,
+                rawMode,
+                autoEnter,
+                allowDangerKeys,
+                isSendingText,
+                rawModeToggleClass,
+                dangerToggleClass,
               }}
-              className="text-latte-text min-h-[52px] w-full resize-none rounded-2xl bg-transparent px-2.5 py-1 text-base outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[60px] sm:px-3 sm:py-1.5"
+              actions={{
+                onPickImage: handlePickImage,
+                onToggleAllowDangerKeys: onToggleAllowDangerKeys,
+                onToggleRawMode: onToggleRawMode,
+                onToggleAutoEnter: onToggleAutoEnter,
+                onSendText: handleSendText,
+              }}
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              aria-label="Attach image file"
+              className="hidden"
+              disabled={!interactive}
+              onChange={handleImageFileChange}
             />
           </div>
-          <ComposerActionsRow
-            state={{
-              interactive,
-              rawMode,
-              autoEnter,
-              allowDangerKeys,
-              isSendingText,
-              rawModeToggleClass,
-              dangerToggleClass,
-            }}
-            actions={{
-              onPickImage: handlePickImage,
-              onToggleAllowDangerKeys: onToggleAllowDangerKeys,
-              onToggleRawMode: onToggleRawMode,
-              onToggleAutoEnter: onToggleAutoEnter,
-              onSendText: handleSendText,
-            }}
-          />
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            aria-label="Attach image file"
-            className="hidden"
-            disabled={!interactive}
-            onChange={handleImageFileChange}
-          />
         </div>
-      </div>
-      <KeysSection
-        state={{
-          controlsOpen,
-          shiftHeld,
-          ctrlHeld,
-          shiftDotClass,
-          ctrlDotClass,
-        }}
-        actions={{
-          onToggleControls,
-          onToggleShift,
-          onToggleCtrl,
-          onSendKey,
-        }}
-      />
+      ) : null}
+      {showKeysSection ? (
+        <KeysSection
+          state={{
+            shiftHeld,
+            ctrlHeld,
+            shiftDotClass,
+            ctrlDotClass,
+          }}
+          actions={{
+            onToggleShift,
+            onToggleCtrl,
+            onSendKey,
+          }}
+        />
+      ) : null}
     </div>
   );
 };

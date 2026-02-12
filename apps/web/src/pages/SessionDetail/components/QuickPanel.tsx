@@ -121,7 +121,7 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
   }, []);
 
   return (
-    <div className="fixed bottom-2.5 left-2.5 z-40 flex flex-col items-start gap-2.5 sm:bottom-4 sm:left-6 sm:gap-3">
+    <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+0.9rem)] left-2.5 z-40 flex flex-col items-start gap-2.5 sm:bottom-[calc(env(safe-area-inset-bottom)+1rem)] sm:left-6 sm:gap-3">
       {open && (
         <Card className="font-body animate-panel-enter border-latte-lavender/30 bg-latte-mantle/85 shadow-accent-panel relative flex max-h-[75dvh] w-[calc(100vw-1.25rem)] max-w-[480px] flex-col overflow-hidden rounded-3xl border-2 p-3 ring-1 ring-inset ring-white/10 backdrop-blur-xl sm:w-[calc(100vw-3.5rem)] sm:p-4">
           <IconButton

@@ -8,6 +8,7 @@ import {
 } from "./section-props-builders";
 
 export const useSessionDetailViewDataSectionProps = ({
+  meta,
   timeline,
   diffs,
   commits,
@@ -52,6 +53,7 @@ export const useSessionDetailViewDataSectionProps = ({
     toggleCommitFile,
     copyHash,
   } = commits;
+  const commitBranch = meta.session?.branch ?? null;
 
   const diffSectionProps = useMemo(
     () =>
@@ -107,6 +109,7 @@ export const useSessionDetailViewDataSectionProps = ({
     () =>
       buildCommitSectionProps({
         commitLog,
+        commitBranch,
         commitError,
         commitLoading,
         commitLoadingMore,
@@ -126,6 +129,7 @@ export const useSessionDetailViewDataSectionProps = ({
       }),
     [
       commitLog,
+      commitBranch,
       commitError,
       commitLoading,
       commitLoadingMore,

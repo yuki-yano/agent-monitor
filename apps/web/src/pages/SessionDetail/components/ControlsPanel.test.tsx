@@ -49,21 +49,16 @@ describe("ControlsPanel", () => {
     return event;
   };
 
-  it("invokes send and toggle handlers", () => {
+  it("invokes send handler", () => {
     const onSendText = vi.fn();
-    const onToggleControls = vi.fn();
     const state = buildState();
     const actions = buildActions({
       onSendText,
-      onToggleControls,
     });
     render(<ControlsPanel state={state} actions={actions} />);
 
     fireEvent.click(screen.getByLabelText("Send"));
     expect(onSendText).toHaveBeenCalled();
-
-    fireEvent.click(screen.getByText("Keys"));
-    expect(onToggleControls).toHaveBeenCalled();
   });
 
   it("sends prompt on ctrl/meta enter", () => {

@@ -11,6 +11,7 @@ describe("CommitSection", () => {
 
   const buildState = (overrides: Partial<CommitSectionState> = {}): CommitSectionState => ({
     commitLog: null,
+    commitBranch: null,
     commitError: null,
     commitLoading: false,
     commitLoadingMore: false,
@@ -82,6 +83,15 @@ describe("CommitSection", () => {
 
     fireEvent.click(screen.getByText("Load more"));
     expect(onLoadMore).toHaveBeenCalled();
+  });
+
+  it("shows branch name next to commit count", () => {
+    const commitLog = createCommitLog();
+    const state = buildState({ commitLog, commitBranch: "feature/commit-tab" });
+    const actions = buildActions();
+    render(<CommitSection state={state} actions={actions} />);
+
+    expect(screen.getByText("feature/commit-tab")).toBeTruthy();
   });
 
   it("renders repository reason callout", () => {

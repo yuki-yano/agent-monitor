@@ -46,6 +46,7 @@ type BuildStateTimelineSectionPropsArgs = {
 
 type BuildCommitSectionPropsArgs = {
   commitLog: CommitLog | null;
+  commitBranch?: string | null;
   commitError: string | null;
   commitLoading: boolean;
   commitLoadingMore: boolean;
@@ -294,6 +295,7 @@ export const buildStateTimelineSectionProps = ({
 
 export const buildCommitSectionProps = ({
   commitLog,
+  commitBranch = null,
   commitError,
   commitLoading,
   commitLoadingMore,
@@ -313,6 +315,7 @@ export const buildCommitSectionProps = ({
 }: BuildCommitSectionPropsArgs) => ({
   state: {
     commitLog,
+    commitBranch,
     commitError,
     commitLoading,
     commitLoadingMore,

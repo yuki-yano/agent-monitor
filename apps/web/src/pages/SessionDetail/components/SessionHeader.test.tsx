@@ -78,11 +78,15 @@ describe("SessionHeader", () => {
 
     const titleButton = screen.getByRole("button", { name: "Edit session title" });
     expect(titleButton.textContent).toContain("Custom Title");
+    expect(screen.getByText("RUNNING")).toBeTruthy();
+    expect(screen.queryByText("feature/vw-pill")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show header details" }));
+
+    expect(screen.getByText("feature/vw-pill")).toBeTruthy();
     expect(screen.getByText("Session session-1")).toBeTruthy();
     expect(screen.getByText("Window 1")).toBeTruthy();
     expect(screen.getByText("Pane pane-1")).toBeTruthy();
-    expect(screen.getByText("feature/vw-pill")).toBeTruthy();
-    expect(screen.getByText("RUNNING")).toBeTruthy();
   });
 
   it("hides worktree flags when path is outside vw worktree", () => {
@@ -96,6 +100,8 @@ describe("SessionHeader", () => {
     const state = buildState({ session });
     const actions = buildActions();
     renderWithRouter(<SessionHeader state={state} actions={actions} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Show header details" }));
 
     expect(screen.queryByText("Dirty:Y")).toBeNull();
     expect(screen.queryByText("Lock:Y")).toBeNull();
@@ -114,6 +120,8 @@ describe("SessionHeader", () => {
     const state = buildState({ session });
     const actions = buildActions();
     renderWithRouter(<SessionHeader state={state} actions={actions} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Show header details" }));
 
     expect(screen.getByText("Dirty:Y")).toBeTruthy();
     expect(screen.getByText("Lock:N")).toBeTruthy();
@@ -156,6 +164,7 @@ describe("SessionHeader", () => {
     const actions = buildActions({ onTouchSession });
     renderWithRouter(<SessionHeader state={state} actions={actions} />);
 
+    fireEvent.click(screen.getByRole("button", { name: "Show header details" }));
     fireEvent.click(screen.getByLabelText("Pin session to top"));
     expect(onTouchSession).toHaveBeenCalled();
   });
@@ -167,6 +176,7 @@ describe("SessionHeader", () => {
     const actions = buildActions();
     renderWithRouter(<SessionHeader state={state} actions={actions} />);
 
+    fireEvent.click(screen.getByRole("button", { name: "Show header details" }));
     fireEvent.click(screen.getByLabelText("Open repository on GitHub"));
 
     expect(openSpy).toHaveBeenCalledWith(
@@ -183,6 +193,7 @@ describe("SessionHeader", () => {
     const actions = buildActions();
     renderWithRouter(<SessionHeader state={state} actions={actions} />);
 
+    fireEvent.click(screen.getByRole("button", { name: "Show header details" }));
     expect(screen.queryByLabelText("Open repository on GitHub")).toBeNull();
   });
 
@@ -197,9 +208,24 @@ describe("SessionHeader", () => {
     const actions = buildActions();
     renderWithRouter(<SessionHeader state={state} actions={actions} />);
 
+    fireEvent.click(screen.getByRole("button", { name: "Show header details" }));
     expect(screen.getByText("Another pipe-pane is attached. Screen is capture-only.")).toBeTruthy();
     expect(screen.getByText("Connection lost")).toBeTruthy();
     expect(screen.getByText("Title error")).toBeTruthy();
+  });
+
+  it("toggles header details", () => {
+    const state = buildState({ session: createSessionDetail({ branch: "feature/toggle" }) });
+    const actions = buildActions();
+    renderWithRouter(<SessionHeader state={state} actions={actions} />);
+
+    expect(screen.queryByText("feature/toggle")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show header details" }));
+    expect(screen.getByText("feature/toggle")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Hide header details" }));
+    expect(screen.queryByText("feature/toggle")).toBeNull();
   });
 
   it("shows EDITOR badge for unknown state with vim command", () => {

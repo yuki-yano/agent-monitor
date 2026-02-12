@@ -6,10 +6,10 @@ import {
   createRouter,
   RouterContextProvider,
 } from "@tanstack/react-router";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { MutableRefObject, ReactNode } from "react";
 import type { VirtuosoHandle } from "react-virtuoso";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildSessionGroups } from "@/lib/session-group";
 import { ThemeProvider } from "@/state/theme-context";
@@ -20,6 +20,9 @@ import { createSessionDetail } from "./test-helpers";
 vi.mock("./components/SessionSidebar", () => ({
   SessionSidebar: () => <div data-testid="session-sidebar" />,
 }));
+
+const DETAIL_SECTION_TAB_STORAGE_KEY = "vde-monitor-session-detail-section-tab";
+const CLOSE_DETAIL_TAB_VALUE = "__close__";
 
 const renderWithRouter = (ui: ReactNode) => {
   const rootRoute = createRootRoute({
@@ -265,6 +268,10 @@ const createViewProps = (overrides: SessionDetailViewOverrides = {}): SessionDet
 };
 
 describe("SessionDetailView", () => {
+  beforeEach(() => {
+    window.localStorage.removeItem(DETAIL_SECTION_TAB_STORAGE_KEY);
+  });
+
   it("renders not found state when session is missing", () => {
     const props = createViewProps({ meta: { session: null } });
     renderWithRouter(<SessionDetailView {...props} />);
@@ -281,9 +288,90 @@ describe("SessionDetailView", () => {
 
     expect(screen.getByRole("button", { name: "Edit session title" })).toBeTruthy();
     expect(screen.getByRole("separator", { name: "Resize sidebar" })).toBeTruthy();
-    expect(screen.getByRole("separator", { name: "Resize panels" })).toBeTruthy();
-    expect(screen.getByText("File Navigator")).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Text" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Timeline panel" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Changes panel" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Files panel" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Commits panel" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Keys panel" })).toBeTruthy();
+    expect(screen.getByText("State Timeline")).toBeTruthy();
     expect(screen.getByLabelText("Toggle session quick panel")).toBeTruthy();
+  });
+
+  it("switches section by icon tabs and stores selected tab", () => {
+    const props = createViewProps({
+      meta: { session: createSessionDetail() },
+    });
+    renderWithRouter(<SessionDetailView {...props} />);
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Changes panel" }), { button: 0 });
+    expect(screen.getByRole("tab", { name: "Changes panel" }).getAttribute("data-state")).toBe(
+      "active",
+    );
+    expect(window.localStorage.getItem(DETAIL_SECTION_TAB_STORAGE_KEY)).toBe("changes");
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Files panel" }), { button: 0 });
+    expect(screen.getByRole("tab", { name: "Files panel" }).getAttribute("data-state")).toBe(
+      "active",
+    );
+    expect(window.localStorage.getItem(DETAIL_SECTION_TAB_STORAGE_KEY)).toBe("file");
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Commits panel" }), { button: 0 });
+    expect(screen.getByRole("tab", { name: "Commits panel" }).getAttribute("data-state")).toBe(
+      "active",
+    );
+    expect(window.localStorage.getItem(DETAIL_SECTION_TAB_STORAGE_KEY)).toBe("commits");
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Keys panel" }), { button: 0 });
+    expect(screen.getByRole("tab", { name: "Keys panel" }).getAttribute("data-state")).toBe(
+      "active",
+    );
+    expect(window.localStorage.getItem(DETAIL_SECTION_TAB_STORAGE_KEY)).toBe("keys");
+  });
+
+  it("restores last selected tab from localStorage", () => {
+    window.localStorage.setItem(DETAIL_SECTION_TAB_STORAGE_KEY, "file");
+    const props = createViewProps({
+      meta: { session: createSessionDetail() },
+    });
+    renderWithRouter(<SessionDetailView {...props} />);
+
+    expect(screen.getByText("File Navigator")).toBeTruthy();
+    expect(screen.queryByText("State Timeline")).toBeNull();
+  });
+
+  it("hides section panels when close tab is selected", () => {
+    window.localStorage.setItem(DETAIL_SECTION_TAB_STORAGE_KEY, "timeline");
+    const props = createViewProps({
+      meta: { session: createSessionDetail() },
+    });
+    renderWithRouter(<SessionDetailView {...props} />);
+
+    expect(screen.getByText("State Timeline")).toBeTruthy();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Close detail sections" }), {
+      button: 0,
+    });
+
+    expect(screen.queryByText("State Timeline")).toBeNull();
+    expect(screen.queryByText("File Navigator")).toBeNull();
+    expect(screen.queryByText("Commit Log")).toBeNull();
+    expect(window.localStorage.getItem(DETAIL_SECTION_TAB_STORAGE_KEY)).toBe(
+      CLOSE_DETAIL_TAB_VALUE,
+    );
+  });
+
+  it("restores close tab state from localStorage", () => {
+    window.localStorage.setItem(DETAIL_SECTION_TAB_STORAGE_KEY, CLOSE_DETAIL_TAB_VALUE);
+    const props = createViewProps({
+      meta: { session: createSessionDetail() },
+    });
+    renderWithRouter(<SessionDetailView {...props} />);
+
+    expect(screen.queryByText("State Timeline")).toBeNull();
+    expect(screen.queryByText("File Navigator")).toBeNull();
+    expect(screen.queryByText("Commit Log")).toBeNull();
+    expect(
+      screen.getByRole("tab", { name: "Close detail sections" }).getAttribute("data-state"),
+    ).toBe("active");
   });
 });
