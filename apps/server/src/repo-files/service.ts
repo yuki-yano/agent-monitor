@@ -1,6 +1,3 @@
-import type { Dirent } from "node:fs";
-import fs from "node:fs/promises";
-
 import type {
   FileNavigatorConfig,
   RepoFileContent,
@@ -10,14 +7,11 @@ import type {
 } from "@vde-monitor/shared";
 
 import { resolveFileContent } from "./file-content-resolver";
-import { normalizeRepoRelativePath, resolveRepoAbsolutePath } from "./path-guard";
+import { normalizeRepoRelativePath } from "./path-guard";
 import { createSearchIndexResolver } from "./search-index-resolver";
 import {
   createServiceError,
   ensureRepoRootAvailable,
-  isNotFoundError,
-  isReadablePermissionError,
-  isRepoFileServiceError,
   normalizeFileContentPath,
   normalizeSearchQuery,
   type RepoFileServiceError,
@@ -28,7 +22,8 @@ import { createRunLsFiles } from "./service-git-ls-files";
 import { paginateItems } from "./service-pagination";
 import { buildWordSearchMatch, tokenizeQuery } from "./service-search-matcher";
 import { withServiceTimeout } from "./service-timeout";
-import { createServiceVisibilityResolver, toDirectoryRelativePath } from "./service-visibility";
+import { buildVisibleTreeNodes, readTreeDirectoryEntries } from "./service-tree-list";
+import { createServiceVisibilityResolver } from "./service-visibility";
 
 const VISIBILITY_CACHE_TTL_MS = 5_000;
 const GIT_LS_FILES_TIMEOUT_MS = 1_500;
@@ -96,62 +91,15 @@ export const createRepoFileService = ({
     await ensureRepoRootAvailable(repoRoot);
     try {
       const basePath = normalizeRepoRelativePath(rawPath);
-      const absoluteBasePath = resolveRepoAbsolutePath(repoRoot, basePath);
       const policy = await resolveVisibilityPolicy(repoRoot);
-      let entries: Dirent[];
-      try {
-        const stats = await fs.stat(absoluteBasePath);
-        if (!stats.isDirectory()) {
-          throw createServiceError("INVALID_PAYLOAD", 400, "path must point to a directory");
-        }
-        entries = await fs.readdir(absoluteBasePath, { withFileTypes: true });
-      } catch (error) {
-        if (isRepoFileServiceError(error)) {
-          throw error;
-        }
-        if (isReadablePermissionError(error)) {
-          throw createServiceError("PERMISSION_DENIED", 403, "permission denied");
-        }
-        if (isNotFoundError(error)) {
-          throw createServiceError("NOT_FOUND", 404, "path not found");
-        }
-        throw error;
-      }
-
-      const visibleNodes: RepoFileTreeNode[] = [];
-      const sortedEntries = [...entries].sort((left, right) => left.name.localeCompare(right.name));
-
-      for (const entry of sortedEntries) {
-        if (entry.isSymbolicLink()) {
-          continue;
-        }
-        const relativePath = toDirectoryRelativePath(basePath, entry.name);
-        if (entry.isDirectory()) {
-          const include = policy.shouldIncludePath({ relativePath, isDirectory: true });
-          if (!include) {
-            continue;
-          }
-          const hasChildren = await resolveHasVisibleChildren({ repoRoot, relativePath, policy });
-          visibleNodes.push({
-            path: relativePath,
-            name: entry.name,
-            kind: "directory",
-            hasChildren,
-          });
-          continue;
-        }
-        if (!entry.isFile()) {
-          continue;
-        }
-        if (!policy.shouldIncludePath({ relativePath, isDirectory: false })) {
-          continue;
-        }
-        visibleNodes.push({
-          path: relativePath,
-          name: entry.name,
-          kind: "file",
-        });
-      }
+      const entries = await readTreeDirectoryEntries({ repoRoot, basePath });
+      const visibleNodes = await buildVisibleTreeNodes({
+        entries,
+        basePath,
+        repoRoot,
+        policy,
+        resolveHasVisibleChildren,
+      });
 
       const nodesWithIgnored = await withIgnoredFlags(repoRoot, visibleNodes);
 
