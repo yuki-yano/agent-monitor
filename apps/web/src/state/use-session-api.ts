@@ -43,8 +43,6 @@ type PaneHashParam = ReturnType<typeof buildPaneHashParam>;
 
 export type { RefreshSessionsResult } from "./session-api-utils";
 
-const COMMAND_REQUEST_TIMEOUT_MS = 10000;
-
 export const useSessionApi = ({
   token,
   apiBaseUrl,
@@ -270,12 +268,13 @@ export const useSessionApi = ({
       paneId: string,
       request: (signal?: AbortSignal) => Promise<Response>,
       fallbackMessage: string,
+      requestTimeoutMs?: number,
     ): Promise<CommandResponse> =>
       executeRequestCommand({
         paneId,
         request,
         fallbackMessage,
-        requestTimeoutMs: COMMAND_REQUEST_TIMEOUT_MS,
+        requestTimeoutMs,
         ensureToken,
         onConnectionIssue,
         handleSessionMissing,
@@ -298,9 +297,17 @@ export const useSessionApi = ({
       paneId: string,
       fallbackMessage: string,
       request: (param: PaneParam, signal?: AbortSignal) => Promise<Response>,
+      options?: {
+        requestTimeoutMs?: number;
+      },
     ): Promise<CommandResponse> => {
       const param = buildPaneParam(paneId);
-      return requestCommand(paneId, (signal) => request(param, signal), fallbackMessage);
+      return requestCommand(
+        paneId,
+        (signal) => request(param, signal),
+        fallbackMessage,
+        options?.requestTimeoutMs,
+      );
     },
     [requestCommand],
   );

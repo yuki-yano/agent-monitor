@@ -99,4 +99,32 @@ describe("createSendTextIdempotencyExecutor", () => {
 
     expect(executeSendText).toHaveBeenCalledTimes(2);
   });
+
+  it("re-executes when previous response with same requestId failed", async () => {
+    const executeSendText = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false as const,
+        error: { code: "RATE_LIMIT", message: "rate limited" },
+      })
+      .mockResolvedValueOnce({ ok: true as const });
+    const executor = createSendTextIdempotencyExecutor({});
+
+    const first = await executor.execute({
+      paneId: "pane-1",
+      text: "ls",
+      requestId: "req-1",
+      executeSendText,
+    });
+    const second = await executor.execute({
+      paneId: "pane-1",
+      text: "ls",
+      requestId: "req-1",
+      executeSendText,
+    });
+
+    expect(first.ok).toBe(false);
+    expect(second).toEqual({ ok: true });
+    expect(executeSendText).toHaveBeenCalledTimes(2);
+  });
 });

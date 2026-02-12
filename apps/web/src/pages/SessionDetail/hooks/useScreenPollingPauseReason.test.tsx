@@ -24,7 +24,7 @@ describe("useScreenPollingPauseReason", () => {
 
     Object.defineProperty(document, "hidden", { value: false, configurable: true });
     act(() => {
-      window.dispatchEvent(new Event("visibilitychange"));
+      document.dispatchEvent(new Event("visibilitychange"));
     });
 
     expect(result.current).toBeNull();

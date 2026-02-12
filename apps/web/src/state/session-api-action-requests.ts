@@ -23,6 +23,9 @@ type RunPaneCommand = (
   paneId: string,
   fallbackMessage: string,
   request: (param: PaneParam, signal?: AbortSignal) => Promise<Response>,
+  options?: {
+    requestTimeoutMs?: number;
+  },
 ) => Promise<CommandResponse>;
 
 type RunPaneMutation = (
@@ -48,20 +51,26 @@ export const createSessionActionRequests = ({
   onConnectionIssue,
   handleSessionMissing,
 }: CreateSessionActionRequestsParams) => {
+  const SEND_TEXT_REQUEST_TIMEOUT_MS = 10000;
+
   const sendText = async (
     paneId: string,
     text: string,
     enter = true,
     requestId?: string,
   ): Promise<CommandResponse> => {
-    return runPaneCommand(paneId, API_ERROR_MESSAGES.sendText, (param, signal) =>
-      apiClient.sessions[":paneId"].send.text.$post(
-        {
-          param,
-          json: buildSendTextJson(text, enter, requestId),
-        },
-        { init: { signal } },
-      ),
+    return runPaneCommand(
+      paneId,
+      API_ERROR_MESSAGES.sendText,
+      (param, signal) =>
+        apiClient.sessions[":paneId"].send.text.$post(
+          {
+            param,
+            json: buildSendTextJson(text, enter, requestId),
+          },
+          { init: { signal } },
+        ),
+      { requestTimeoutMs: SEND_TEXT_REQUEST_TIMEOUT_MS },
     );
   };
 

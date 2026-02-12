@@ -491,7 +491,7 @@ describe("useSessionApi", () => {
     expect(onConnectionIssue).toHaveBeenCalledWith(API_ERROR_MESSAGES.invalidResponse);
   });
 
-  it("focuses pane and clears connection issue on success", async () => {
+  it("focuses pane without command timeout and clears connection issue on success", async () => {
     const requestJsonMock = vi.mocked(requestJson);
     const onConnectionIssue = vi.fn();
     requestJsonMock.mockResolvedValueOnce({
@@ -512,6 +512,34 @@ describe("useSessionApi", () => {
     );
 
     await expect(result.current.focusPane("pane-1")).resolves.toEqual({ ok: true });
+    expect(requestJsonMock).toHaveBeenCalledWith(expect.any(Function), {
+      timeoutMs: undefined,
+      timeoutMessage: API_ERROR_MESSAGES.requestTimeout,
+    });
+    expect(onConnectionIssue).toHaveBeenCalledWith(null);
+  });
+
+  it("sends text with command timeout", async () => {
+    const requestJsonMock = vi.mocked(requestJson);
+    const onConnectionIssue = vi.fn();
+    requestJsonMock.mockResolvedValueOnce({
+      res: new Response(null, { status: 200 }),
+      data: { command: { ok: true } },
+    });
+
+    const { result } = renderHook(() =>
+      useSessionApi({
+        token: "token",
+        onSessions: vi.fn(),
+        onConnectionIssue,
+        onSessionUpdated: vi.fn(),
+        onSessionRemoved: vi.fn(),
+        onHighlightCorrections: vi.fn(),
+        onFileNavigatorConfig: vi.fn(),
+      }),
+    );
+
+    await expect(result.current.sendText("pane-1", "echo hello")).resolves.toEqual({ ok: true });
     expect(requestJsonMock).toHaveBeenCalledWith(expect.any(Function), {
       timeoutMs: 10000,
       timeoutMessage: API_ERROR_MESSAGES.requestTimeout,

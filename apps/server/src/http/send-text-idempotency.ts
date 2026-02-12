@@ -11,6 +11,8 @@ type SendTextCacheEntry = {
   text: string;
   enter: boolean;
   expiresAtMs: number;
+  settled: boolean;
+  wasSuccessful: boolean;
   promise: Promise<CommandResponse>;
 };
 
@@ -73,33 +75,41 @@ export const createSendTextIdempotencyExecutor = ({
           error: buildError("INVALID_PAYLOAD", "requestId payload mismatch"),
         };
       }
-      return cached.promise;
-    }
-    if (cached) {
+      if (!cached.settled || cached.wasSuccessful) {
+        return cached.promise;
+      }
+      sendTextCache.delete(cacheKey);
+    } else if (cached) {
       sendTextCache.delete(cacheKey);
     }
 
-    const promise = executeSendText({
+    const entry: SendTextCacheEntry = {
       paneId,
       text,
       enter: normalizedEnter,
-    }).catch((error) => {
-      sendTextCache.delete(cacheKey);
-      throw error;
-    });
-    setMapEntryWithLimit(
-      sendTextCache,
-      cacheKey,
-      {
+      expiresAtMs: currentNowMs + ttlMs,
+      settled: false,
+      wasSuccessful: false,
+      promise: executeSendText({
         paneId,
         text,
         enter: normalizedEnter,
-        expiresAtMs: currentNowMs + ttlMs,
-        promise,
-      },
-      maxEntries,
-    );
-    return promise;
+      })
+        .then((result) => {
+          entry.settled = true;
+          entry.wasSuccessful = result.ok;
+          if (!result.ok) {
+            sendTextCache.delete(cacheKey);
+          }
+          return result;
+        })
+        .catch((error) => {
+          sendTextCache.delete(cacheKey);
+          throw error;
+        }),
+    };
+    setMapEntryWithLimit(sendTextCache, cacheKey, entry, maxEntries);
+    return entry.promise;
   };
 
   return { execute };

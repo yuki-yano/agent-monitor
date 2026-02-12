@@ -45,17 +45,18 @@ export const useScreenPollingPauseReason = ({
     if (typeof window === "undefined") {
       return;
     }
+    const targetDocument = typeof document !== "undefined" ? document : null;
     const updatePauseReason = () => {
       setPollingPauseReason(resolvePollingPauseReason({ connected, connectionIssue }));
     };
     window.addEventListener("online", updatePauseReason);
     window.addEventListener("offline", updatePauseReason);
-    window.addEventListener("visibilitychange", updatePauseReason);
+    targetDocument?.addEventListener("visibilitychange", updatePauseReason);
     window.addEventListener("focus", updatePauseReason);
     return () => {
       window.removeEventListener("online", updatePauseReason);
       window.removeEventListener("offline", updatePauseReason);
-      window.removeEventListener("visibilitychange", updatePauseReason);
+      targetDocument?.removeEventListener("visibilitychange", updatePauseReason);
       window.removeEventListener("focus", updatePauseReason);
     };
   }, [connected, connectionIssue]);
