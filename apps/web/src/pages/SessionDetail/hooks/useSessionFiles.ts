@@ -955,14 +955,15 @@ export const useSessionFiles = ({
     resetLogFileCandidateState();
   }, [resetLogFileCandidateState]);
 
-  useEffect(() => {
-    return () => {
-      const copyTimeoutId = fileModalCopyTimeoutRef.current;
-      if (copyTimeoutId != null) {
-        window.clearTimeout(copyTimeoutId);
-      }
-    };
+  const clearFileModalCopyTimeout = useCallback(() => {
+    const copyTimeoutId = fileModalCopyTimeoutRef.current;
+    if (copyTimeoutId != null) {
+      window.clearTimeout(copyTimeoutId);
+      fileModalCopyTimeoutRef.current = null;
+    }
   }, []);
+
+  useEffect(() => clearFileModalCopyTimeout, [clearFileModalCopyTimeout]);
 
   const searchActivePath = searchResult?.items[searchActiveIndex]?.path ?? null;
   const searchTreeNodes = useMemo(
