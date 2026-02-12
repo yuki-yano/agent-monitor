@@ -16,14 +16,13 @@ import {
   sessionsAtom,
 } from "./atoms/sessionDetailAtoms";
 import { useSessionCommits } from "./hooks/useSessionCommits";
-import { useSessionControls } from "./hooks/useSessionControls";
 import { useSessionDetailActions } from "./hooks/useSessionDetailActions";
 import { useSessionDetailLayoutState } from "./hooks/useSessionDetailLayoutState";
+import { useSessionDetailScreenControls } from "./hooks/useSessionDetailScreenControls";
 import { useSessionDiffs } from "./hooks/useSessionDiffs";
 import { useSessionFiles } from "./hooks/useSessionFiles";
 import { useSessionLogs } from "./hooks/useSessionLogs";
 import { useSessionRepoPins } from "./hooks/useSessionRepoPins";
-import { useSessionScreen } from "./hooks/useSessionScreen";
 import { useSessionTimeline } from "./hooks/useSessionTimeline";
 import { useSessionTitleEditor } from "./hooks/useSessionTitleEditor";
 import { extractCodexContextLeft } from "./sessionDetailUtils";
@@ -68,62 +67,58 @@ export const useSessionDetailVM = (paneId: string) => {
     });
 
   const {
-    mode,
-    screenLines,
-    imageBase64,
-    fallbackReason,
-    error,
-    setScreenError,
-    isScreenLoading,
-    pollingPauseReason,
-    isAtBottom,
-    handleAtBottomChange,
-    handleUserScrollStateChange,
-    forceFollow,
-    refreshScreen,
-    scrollToBottom,
-    handleModeChange,
-    virtuosoRef,
-    scrollerRef,
-  } = useSessionScreen({
+    screen: {
+      mode,
+      screenLines,
+      imageBase64,
+      fallbackReason,
+      error,
+      setScreenError,
+      isScreenLoading,
+      pollingPauseReason,
+      isAtBottom,
+      handleAtBottomChange,
+      handleUserScrollStateChange,
+      forceFollow,
+      scrollToBottom,
+      handleModeChange,
+      virtuosoRef,
+      scrollerRef,
+    },
+    controls: {
+      textInputRef,
+      autoEnter,
+      shiftHeld,
+      ctrlHeld,
+      controlsOpen,
+      rawMode,
+      allowDangerKeys,
+      isSendingText,
+      handleSendKey,
+      handleSendText,
+      handleUploadImage,
+      handleRawBeforeInput,
+      handleRawInput,
+      handleRawKeyDown,
+      handleRawCompositionStart,
+      handleRawCompositionEnd,
+      toggleAutoEnter,
+      toggleControls,
+      toggleShift,
+      toggleCtrl,
+      toggleRawMode,
+      toggleAllowDangerKeys,
+    },
+    handleRefreshScreen,
+  } = useSessionDetailScreenControls({
     paneId,
     connected,
     connectionIssue,
     requestScreen,
-  });
-
-  const {
-    textInputRef,
-    autoEnter,
-    shiftHeld,
-    ctrlHeld,
-    controlsOpen,
-    rawMode,
-    allowDangerKeys,
-    isSendingText,
-    handleSendKey,
-    handleSendText,
-    handleUploadImage,
-    handleRawBeforeInput,
-    handleRawInput,
-    handleRawKeyDown,
-    handleRawCompositionStart,
-    handleRawCompositionEnd,
-    toggleAutoEnter,
-    toggleControls,
-    toggleShift,
-    toggleCtrl,
-    toggleRawMode,
-    toggleAllowDangerKeys,
-  } = useSessionControls({
-    paneId,
-    mode,
     sendText,
     sendKeys,
     sendRaw,
     uploadImageAttachment,
-    setScreenError,
-    scrollToBottom,
   });
 
   const {
@@ -323,10 +318,6 @@ export const useSessionDetailVM = (paneId: string) => {
     requestStateTimeline,
     mobileDefaultCollapsed: true,
   });
-
-  const handleRefreshScreen = () => {
-    void refreshScreen();
-  };
 
   return {
     meta: {
