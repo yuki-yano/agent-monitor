@@ -10,6 +10,7 @@ import {
   buildLogReferenceLinkableCacheKey,
   resolveLogReferenceLinkableWithCache,
 } from "./useSessionFiles-log-linkable-cache";
+import { useSessionFilesLogResolveSearch } from "./useSessionFiles-log-resolve-search";
 import {
   initializeLogResolveRequest,
   isCurrentLogResolveRequest,
@@ -381,105 +382,14 @@ export const useSessionFiles = ({
     });
   }, []);
 
-  const findExactNameMatches = useCallback(
-    async ({
-      paneId: targetPaneId,
-      filename,
-      maxMatches,
-      limitPerPage,
-      requestId,
-    }: {
-      paneId: string;
-      filename: string;
-      maxMatches: number;
-      limitPerPage: number;
-      requestId?: number;
-    }): Promise<LogFileCandidateItem[] | null> => {
-      const matches: LogFileCandidateItem[] = [];
-      const knownPaths = new Set<string>();
-      let cursor: string | undefined = undefined;
-
-      while (matches.length < maxMatches) {
-        if (requestId != null && activeLogResolveRequestIdRef.current !== requestId) {
-          return null;
-        }
-        const page = await requestRepoFileSearch(targetPaneId, filename, {
-          cursor,
-          limit: limitPerPage,
-        });
-        if (requestId != null && activeLogResolveRequestIdRef.current !== requestId) {
-          return null;
-        }
-        page.items.forEach((item) => {
-          if (item.kind !== "file" || item.name !== filename || knownPaths.has(item.path)) {
-            return;
-          }
-          knownPaths.add(item.path);
-          matches.push({
-            path: item.path,
-            name: item.name,
-            isIgnored: item.isIgnored,
-          });
-        });
-        if (!page.nextCursor) {
-          break;
-        }
-        cursor = page.nextCursor;
-      }
-
-      return matches.slice(0, maxMatches);
-    },
-    [requestRepoFileSearch],
-  );
-
-  const hasExactPathMatch = useCallback(
-    async ({
-      paneId: targetPaneId,
-      path,
-      limitPerPage,
-      requestId,
-    }: {
-      paneId: string;
-      path: string;
-      limitPerPage: number;
-      requestId?: number;
-    }): Promise<boolean | null> => {
-      let cursor: string | undefined = undefined;
-      let pageCount = 0;
-      const visitedCursors = new Set<string>();
-
-      while (pageCount < LOG_FILE_RESOLVE_MAX_SEARCH_PAGES) {
-        if (requestId != null && activeLogResolveRequestIdRef.current !== requestId) {
-          return null;
-        }
-        const page = await requestRepoFileSearch(targetPaneId, path, {
-          cursor,
-          limit: limitPerPage,
-        });
-        pageCount += 1;
-        if (requestId != null && activeLogResolveRequestIdRef.current !== requestId) {
-          return null;
-        }
-
-        const hasMatch = page.items.some((item) => item.kind === "file" && item.path === path);
-        if (hasMatch) {
-          return true;
-        }
-
-        if (!page.nextCursor) {
-          return false;
-        }
-        if (visitedCursors.has(page.nextCursor)) {
-          return false;
-        }
-        visitedCursors.add(page.nextCursor);
-        cursor = page.nextCursor;
-      }
-
-      return false;
-    },
-    [requestRepoFileSearch],
-  );
+  const { hasExactPathMatch, findExactNameMatches, tryOpenExistingPath } =
+    useSessionFilesLogResolveSearch({
+      requestRepoFileSearch,
+      activeLogResolveRequestIdRef,
+      logFileResolveMaxSearchPages: LOG_FILE_RESOLVE_MAX_SEARCH_PAGES,
+      logFileResolvePageLimit: LOG_FILE_RESOLVE_PAGE_LIMIT,
+      openFileModalByPath,
+    });
 
   const isLogFileReferenceLinkable = useCallback(
     async ({
@@ -620,44 +530,6 @@ export const useSessionFiles = ({
       return uniqueTokens.filter((token) => linkableRawTokenSet.has(token));
     },
     [isLogFileReferenceLinkable],
-  );
-
-  const tryOpenExistingPath = useCallback(
-    async ({
-      paneId: targetPaneId,
-      path,
-      requestId,
-      highlightLine,
-    }: {
-      paneId: string;
-      path: string;
-      requestId: number;
-      highlightLine?: number | null;
-    }) => {
-      try {
-        const exists = await hasExactPathMatch({
-          paneId: targetPaneId,
-          path,
-          requestId,
-          limitPerPage: LOG_FILE_RESOLVE_PAGE_LIMIT,
-        });
-        if (!exists) {
-          return false;
-        }
-      } catch {
-        return false;
-      }
-      if (activeLogResolveRequestIdRef.current !== requestId) {
-        return false;
-      }
-      openFileModalByPath(path, {
-        paneId: targetPaneId,
-        origin: "log",
-        highlightLine,
-      });
-      return true;
-    },
-    [hasExactPathMatch, openFileModalByPath],
   );
 
   const onResolveLogFileReference = useCallback(
