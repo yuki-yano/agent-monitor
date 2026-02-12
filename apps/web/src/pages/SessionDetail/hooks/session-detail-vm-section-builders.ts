@@ -1,8 +1,14 @@
 import type {
+  HighlightCorrectionConfig,
+  ScreenResponse,
   SessionStateTimeline,
   SessionStateTimelineRange,
   SessionSummary,
 } from "@vde-monitor/shared";
+import type { PointerEvent, RefObject } from "react";
+
+import type { SessionGroup } from "@/lib/session-group";
+import type { Theme } from "@/lib/theme";
 
 type BuildTimelineSectionArgs = {
   timeline: SessionStateTimeline | null;
@@ -14,6 +20,40 @@ type BuildTimelineSectionArgs = {
   setTimelineRange: (range: SessionStateTimelineRange) => void;
   toggleTimelineExpanded: () => void;
   refreshTimeline: () => void;
+};
+
+type BuildMetaSectionArgs = {
+  paneId: string;
+  session: SessionSummary | null;
+  nowMs: number;
+  connected: boolean;
+  connectionIssue: string | null;
+};
+
+type BuildSidebarSectionArgs = {
+  sessionGroups: SessionGroup[];
+  getRepoSortAnchorAt: (repoRoot: string | null) => number | null;
+  connected: boolean;
+  connectionIssue: string | null;
+  requestStateTimeline: (
+    paneId: string,
+    options?: { range?: SessionStateTimelineRange; limit?: number },
+  ) => Promise<SessionStateTimeline>;
+  requestScreen: (
+    paneId: string,
+    options: { lines?: number; mode?: "text" | "image"; cursor?: string },
+  ) => Promise<ScreenResponse>;
+  highlightCorrections: HighlightCorrectionConfig;
+  resolvedTheme: Theme;
+};
+
+type BuildLayoutSectionArgs = {
+  is2xlUp: boolean;
+  sidebarWidth: number;
+  handleSidebarPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
+  detailSplitRatio: number;
+  detailSplitRef: RefObject<HTMLDivElement | null>;
+  handleDetailSplitPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
 };
 
 type BuildLogsSectionArgs = {
@@ -70,6 +110,56 @@ export const buildTimelineSection = ({
   setTimelineRange,
   toggleTimelineExpanded,
   refreshTimeline,
+});
+
+export const buildMetaSection = ({
+  paneId,
+  session,
+  nowMs,
+  connected,
+  connectionIssue,
+}: BuildMetaSectionArgs) => ({
+  paneId,
+  session,
+  nowMs,
+  connected,
+  connectionIssue,
+});
+
+export const buildSidebarSection = ({
+  sessionGroups,
+  getRepoSortAnchorAt,
+  connected,
+  connectionIssue,
+  requestStateTimeline,
+  requestScreen,
+  highlightCorrections,
+  resolvedTheme,
+}: BuildSidebarSectionArgs) => ({
+  sessionGroups,
+  getRepoSortAnchorAt,
+  connected,
+  connectionIssue,
+  requestStateTimeline,
+  requestScreen,
+  highlightCorrections,
+  resolvedTheme,
+});
+
+export const buildLayoutSection = ({
+  is2xlUp,
+  sidebarWidth,
+  handleSidebarPointerDown,
+  detailSplitRatio,
+  detailSplitRef,
+  handleDetailSplitPointerDown,
+}: BuildLayoutSectionArgs) => ({
+  is2xlUp,
+  sidebarWidth,
+  handleSidebarPointerDown,
+  detailSplitRatio,
+  detailSplitRef,
+  handleDetailSplitPointerDown,
 });
 
 export const buildLogsSection = ({

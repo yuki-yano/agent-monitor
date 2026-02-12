@@ -17,7 +17,10 @@ import {
 } from "./atoms/sessionDetailAtoms";
 import {
   buildActionsSection,
+  buildLayoutSection,
   buildLogsSection,
+  buildMetaSection,
+  buildSidebarSection,
   buildTimelineSection,
   buildTitleSection,
 } from "./hooks/session-detail-vm-section-builders";
@@ -302,14 +305,14 @@ export const useSessionDetailVM = (paneId: string) => {
   } = useSessionDetailLayoutState();
 
   return {
-    meta: {
+    meta: buildMetaSection({
       paneId,
       session,
       nowMs,
       connected,
       connectionIssue,
-    },
-    sidebar: {
+    }),
+    sidebar: buildSidebarSection({
       sessionGroups,
       getRepoSortAnchorAt,
       connected,
@@ -318,15 +321,15 @@ export const useSessionDetailVM = (paneId: string) => {
       requestScreen,
       highlightCorrections,
       resolvedTheme,
-    },
-    layout: {
+    }),
+    layout: buildLayoutSection({
       is2xlUp,
       sidebarWidth,
       handleSidebarPointerDown,
       detailSplitRatio,
       detailSplitRef,
       handleDetailSplitPointerDown,
-    },
+    }),
     timeline: buildTimelineSection({
       timeline,
       timelineRange,
