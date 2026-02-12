@@ -1,9 +1,8 @@
 import type { RepoFileContent, RepoFileSearchPage, RepoFileTreePage } from "@vde-monitor/shared";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 
-import { buildSearchExpandPlan } from "../file-tree-search-expand";
 import { useSessionFilesContextResetEffect } from "./useSessionFiles-context-reset-effect";
 import { useSessionFilesFileModalActions } from "./useSessionFiles-file-modal-actions";
 import { useSessionFilesLogLinkableActions } from "./useSessionFiles-log-linkable-actions";
@@ -16,6 +15,7 @@ import {
 import { useSessionFilesRequestActions } from "./useSessionFiles-request-actions";
 import { useSessionFilesSearchActions } from "./useSessionFiles-search-actions";
 import { useSessionFilesSearchEffects } from "./useSessionFiles-search-effects";
+import { useSessionFilesSearchExpandState } from "./useSessionFiles-search-expand-state";
 import { useSessionFilesTreeActions } from "./useSessionFiles-tree-actions";
 import { useSessionFilesTreeLoader } from "./useSessionFiles-tree-loader";
 import { useSessionFilesTreeRenderNodes } from "./useSessionFiles-tree-render-nodes";
@@ -208,26 +208,15 @@ export const useSessionFiles = ({
     setExpandedDirSet,
   });
 
-  const searchExpandPlan = useMemo(
-    () =>
-      buildSearchExpandPlan({
-        matchedPaths: searchResult?.items.map((item) => item.path) ?? [],
-        activeIndex: searchActiveIndex,
-        autoExpandMatchLimit,
-        truncated: searchResult?.truncated ?? false,
-        totalMatchedCount: searchResult?.totalMatchedCount ?? 0,
-      }),
-    [autoExpandMatchLimit, searchActiveIndex, searchResult],
-  );
-
-  const effectiveSearchExpandedDirSet = useMemo(() => {
-    const merged = new Set(searchExpandPlan.expandedDirSet);
-    searchExpandedDirSet.forEach((path) => merged.add(path));
-    searchCollapsedDirSet.forEach((path) => merged.delete(path));
-    return merged;
-  }, [searchCollapsedDirSet, searchExpandPlan.expandedDirSet, searchExpandedDirSet]);
-
-  const isSearchActive = searchQuery.trim().length > 0;
+  const { searchExpandPlan, effectiveSearchExpandedDirSet, isSearchActive } =
+    useSessionFilesSearchExpandState({
+      searchResult,
+      searchActiveIndex,
+      autoExpandMatchLimit,
+      searchExpandedDirSet,
+      searchCollapsedDirSet,
+      searchQuery,
+    });
 
   const { onToggleDirectory, onLoadMoreTreeRoot } = useSessionFilesTreeActions({
     isSearchActive,
