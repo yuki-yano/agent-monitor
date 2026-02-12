@@ -1,9 +1,9 @@
 import type { AgentMonitorConfig, PaneMeta, SessionDetail } from "@vde-monitor/shared";
 
 import { resolvePaneContext } from "./pane-context-resolver";
+import { buildPaneDetail } from "./pane-detail-builder";
 import type { PaneLogManager } from "./pane-log-manager";
 import { observePane, type PaneObservationDeps, type PaneStateStore } from "./pane-observation";
-import { buildSessionDetail } from "./session-detail";
 import type { ResolvedWorktreeStatus } from "./vw-worktree";
 
 type PaneProcessorDeps = PaneObservationDeps;
@@ -63,7 +63,6 @@ export const processPane = async (
   if (!observation) {
     return null;
   }
-  const { agent, paneState, outputAt, pipeAttached, pipeConflict, finalState } = observation;
 
   const customTitle = getCustomTitle(pane.paneId);
   const paneContext = await resolvePaneContext({
@@ -73,20 +72,11 @@ export const processPane = async (
     resolveBranch,
     resolvePrCreated,
   });
-  const inputAt = paneState.lastInputAt;
 
-  return buildSessionDetail({
+  return buildPaneDetail({
     pane,
-    agent,
-    state: finalState.state,
-    stateReason: finalState.reason,
-    lastMessage: paneState.lastMessage,
-    lastOutputAt: outputAt,
-    lastEventAt: paneState.lastEventAt,
-    lastInputAt: inputAt,
-    pipeAttached,
-    pipeConflict,
+    observation,
+    paneContext,
     customTitle,
-    ...paneContext,
   });
 };
