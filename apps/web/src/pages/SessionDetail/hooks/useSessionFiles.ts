@@ -33,10 +33,10 @@ import {
   scheduleSearchRequest,
 } from "./useSessionFiles-search-effect";
 import { useSessionFilesTreeActions } from "./useSessionFiles-tree-actions";
+import { useSessionFilesTreeReveal } from "./useSessionFiles-tree-reveal";
 import {
   buildNormalRenderNodes,
   buildSearchRenderNodes,
-  collectAncestorDirectories,
   mergeTreeEntries,
   resolveTreeLoadMoreTarget,
 } from "./useSessionFiles-tree-utils";
@@ -306,26 +306,6 @@ export const useSessionFiles = ({
     };
   }, [fetchSearchPage, repoRoot, searchQuery]);
 
-  const loadTreeRemainingPages = useCallback(
-    async (targetPath: string) => {
-      if (!repoRoot) {
-        return;
-      }
-      let page: RepoFileTreePage | null | undefined = treePagesRef.current[targetPath];
-      if (!page) {
-        page = await loadTree(targetPath);
-      }
-      while (page?.nextCursor) {
-        const nextPage = await loadTree(targetPath, page.nextCursor);
-        if (!nextPage) {
-          return;
-        }
-        page = nextPage;
-      }
-    },
-    [loadTree, repoRoot],
-  );
-
   useEffect(() => {
     if (!searchResult) {
       return;
@@ -345,26 +325,12 @@ export const useSessionFiles = ({
     });
   }, [searchResult]);
 
-  const revealFilePath = useCallback(
-    (targetPath: string) => {
-      const ancestors = collectAncestorDirectories(targetPath);
-      if (ancestors.length === 0) {
-        return;
-      }
-      setExpandedDirSet((prev) => {
-        const next = new Set(prev);
-        ancestors.forEach((ancestor) => next.add(ancestor));
-        return next;
-      });
-      ancestors.forEach((ancestor) => {
-        const page = treePagesRef.current[ancestor];
-        if (!page || page.nextCursor) {
-          void loadTreeRemainingPages(ancestor);
-        }
-      });
-    },
-    [loadTreeRemainingPages],
-  );
+  const { revealFilePath } = useSessionFilesTreeReveal({
+    repoRoot,
+    treePagesRef,
+    loadTree,
+    setExpandedDirSet,
+  });
 
   const searchExpandPlan = useMemo(
     () =>
