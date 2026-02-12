@@ -1,17 +1,10 @@
 import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 
-import { buildSessionGroups } from "@/lib/session-group";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { useNowMs } from "@/lib/use-now-ms";
 import { useSidebarWidth } from "@/lib/use-sidebar-width";
 import { useSplitRatio } from "@/lib/use-split-ratio";
-import {
-  createRepoPinKey,
-  readStoredSessionListPins,
-  storeSessionListPins,
-  touchSessionListPin,
-} from "@/pages/SessionList/sessionListPins";
 
 import { screenTextAtom } from "./atoms/screenAtoms";
 import {
@@ -31,6 +24,7 @@ import { useSessionDetailActions } from "./hooks/useSessionDetailActions";
 import { useSessionDiffs } from "./hooks/useSessionDiffs";
 import { useSessionFiles } from "./hooks/useSessionFiles";
 import { useSessionLogs } from "./hooks/useSessionLogs";
+import { useSessionRepoPins } from "./hooks/useSessionRepoPins";
 import { useSessionScreen } from "./hooks/useSessionScreen";
 import { useSessionTimeline } from "./hooks/useSessionTimeline";
 import { useSessionTitleEditor } from "./hooks/useSessionTitleEditor";
@@ -70,27 +64,10 @@ export const useSessionDetailVM = (paneId: string) => {
     updateSessionTitle,
   } = sessionApi;
   const nowMs = useNowMs();
-  const [pins, setPins] = useState(() => readStoredSessionListPins());
-  const repoPinValues = pins.repos;
-
-  useEffect(() => {
-    storeSessionListPins(pins);
-  }, [pins]);
-
-  const getRepoSortAnchorAt = useCallback(
-    (repoRoot: string | null) => repoPinValues[createRepoPinKey(repoRoot)] ?? null,
-    [repoPinValues],
-  );
-  const paneRepoRootMap = useMemo(
-    () =>
-      new Map(
-        sessions.map((sessionItem) => [sessionItem.paneId, sessionItem.repoRoot ?? null] as const),
-      ),
-    [sessions],
-  );
-  const touchRepoSortAnchor = useCallback((repoRoot: string | null) => {
-    setPins((prev) => touchSessionListPin(prev, "repos", createRepoPinKey(repoRoot)));
-  }, []);
+  const { getRepoSortAnchorAt, paneRepoRootMap, touchRepoSortAnchor, sessionGroups } =
+    useSessionRepoPins({
+      sessions,
+    });
 
   const {
     mode,
@@ -319,10 +296,6 @@ export const useSessionDetailVM = (paneId: string) => {
     updateSessionTitle,
   });
 
-  const sessionGroups = useMemo(
-    () => buildSessionGroups(sessions, { getRepoSortAnchorAt }),
-    [sessions, getRepoSortAnchorAt],
-  );
   const contextLeftLabel = useMemo(
     () => (session?.agent === "codex" ? extractCodexContextLeft(screenText) : null),
     [screenText, session?.agent],
