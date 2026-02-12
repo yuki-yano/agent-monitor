@@ -12,14 +12,12 @@ import {
   createServiceError,
   ensureRepoRootAvailable,
   normalizeFileContentPath,
-  normalizeSearchQuery,
   type RepoFileServiceError,
   toServiceError,
   validateMaxBytes,
 } from "./service-context";
 import { createRunLsFiles } from "./service-git-ls-files";
-import { buildSortedSearchMatches } from "./service-search-matcher";
-import { buildSearchPage } from "./service-search-page";
+import { executeSearchFiles } from "./service-search";
 import { withServiceTimeout } from "./service-timeout";
 import {
   buildListTreePage,
@@ -121,19 +119,14 @@ export const createRepoFileService = ({
   }: SearchFilesInput) => {
     await ensureRepoRootAvailable(repoRoot);
     try {
-      const normalizedQuery = normalizeSearchQuery(query);
-      const policy = await resolveVisibilityPolicy(repoRoot);
-      const index = await withServiceTimeout(
-        resolveSearchIndex(repoRoot, policy),
-        timeoutMs,
-        "search timed out",
-      );
-      const normalizedMatches = buildSortedSearchMatches(index, normalizedQuery);
-      return buildSearchPage({
-        query: normalizedQuery,
-        matches: normalizedMatches,
+      return executeSearchFiles({
+        repoRoot,
+        query,
         cursor,
         limit,
+        timeoutMs,
+        resolveVisibilityPolicy,
+        resolveSearchIndex,
       });
     } catch (error) {
       throw toServiceError(error);
