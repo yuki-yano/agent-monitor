@@ -5,6 +5,12 @@ import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 
 import { buildSearchExpandPlan } from "../file-tree-search-expand";
 import { extractLogReferenceLocation, normalizeLogReference } from "../log-file-reference";
+import {
+  buildFileContentRequestKey,
+  buildSearchRequestKey,
+  buildTreePageRequestKey,
+  fetchWithRequestMap,
+} from "./useSessionFiles-request-cache";
 import { resetSessionFilesRefs, resetSessionFilesState } from "./useSessionFiles-reset";
 import {
   buildNormalRenderNodes,
@@ -153,22 +159,16 @@ export const useSessionFiles = ({
 
   const fetchTreePage = useCallback(
     async (targetPath: string, cursor?: string) => {
-      const requestKey = `${paneId}:${targetPath}:${cursor ?? ""}`;
-      const inFlight = treePageRequestMapRef.current.get(requestKey);
-      if (inFlight) {
-        return inFlight;
-      }
-      const request = requestRepoFileTree(paneId, {
-        path: targetPath === "." ? undefined : targetPath,
-        cursor,
-        limit: TREE_PAGE_LIMIT,
+      return fetchWithRequestMap({
+        requestMapRef: treePageRequestMapRef,
+        requestKey: buildTreePageRequestKey(paneId, targetPath, cursor),
+        requestFactory: () =>
+          requestRepoFileTree(paneId, {
+            path: targetPath === "." ? undefined : targetPath,
+            cursor,
+            limit: TREE_PAGE_LIMIT,
+          }),
       });
-      treePageRequestMapRef.current.set(requestKey, request);
-      try {
-        return await request;
-      } finally {
-        treePageRequestMapRef.current.delete(requestKey);
-      }
     },
     [paneId, requestRepoFileTree],
   );
@@ -218,38 +218,26 @@ export const useSessionFiles = ({
 
   const fetchSearchPage = useCallback(
     async (query: string, cursor?: string) => {
-      const requestKey = `${paneId}:${query}:${cursor ?? ""}`;
-      const inFlight = searchRequestMapRef.current.get(requestKey);
-      if (inFlight) {
-        return inFlight;
-      }
-      const request = requestRepoFileSearch(paneId, query, { cursor, limit: SEARCH_PAGE_LIMIT });
-      searchRequestMapRef.current.set(requestKey, request);
-      try {
-        return await request;
-      } finally {
-        searchRequestMapRef.current.delete(requestKey);
-      }
+      return fetchWithRequestMap({
+        requestMapRef: searchRequestMapRef,
+        requestKey: buildSearchRequestKey(paneId, query, cursor),
+        requestFactory: () =>
+          requestRepoFileSearch(paneId, query, { cursor, limit: SEARCH_PAGE_LIMIT }),
+      });
     },
     [paneId, requestRepoFileSearch],
   );
 
   const fetchFileContent = useCallback(
     async (targetPaneId: string, targetPath: string) => {
-      const requestKey = `${targetPaneId}:${targetPath}:${FILE_CONTENT_MAX_BYTES}`;
-      const inFlight = fileContentRequestMapRef.current.get(requestKey);
-      if (inFlight) {
-        return inFlight;
-      }
-      const request = requestRepoFileContent(targetPaneId, targetPath, {
-        maxBytes: FILE_CONTENT_MAX_BYTES,
+      return fetchWithRequestMap({
+        requestMapRef: fileContentRequestMapRef,
+        requestKey: buildFileContentRequestKey(targetPaneId, targetPath, FILE_CONTENT_MAX_BYTES),
+        requestFactory: () =>
+          requestRepoFileContent(targetPaneId, targetPath, {
+            maxBytes: FILE_CONTENT_MAX_BYTES,
+          }),
       });
-      fileContentRequestMapRef.current.set(requestKey, request);
-      try {
-        return await request;
-      } finally {
-        fileContentRequestMapRef.current.delete(requestKey);
-      }
     },
     [requestRepoFileContent],
   );
