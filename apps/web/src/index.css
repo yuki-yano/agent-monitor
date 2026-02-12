@@ -48,7 +48,7 @@
     0 0 0 1px rgb(var(--ctp-lavender) / 0.28), 0 10px 24px -12px rgb(var(--ctp-lavender) / 0.34);
   --shadow-accent-lg: 0 0 20px rgb(var(--ctp-lavender) / 0.4);
   --shadow-accent-panel:
-    0 25px 80px -20px rgb(var(--ctp-lavender) / 0.32), 0 0 0 1px rgb(var(--ctp-lavender) / 0.14);
+    0 12px 32px -18px rgb(var(--ctp-shadow) / 0.22), 0 0 0 1px rgb(var(--ctp-lavender) / 0.1);
   --shadow-surface-hover: 0 8px 18px -10px rgb(var(--ctp-lavender) / 0.32);
   --shadow-modal:
     0 26px 85px -30px rgb(var(--ctp-shadow) / 0.55), 0 0 0 1px rgb(var(--ctp-lavender) / 0.12);
@@ -121,7 +121,7 @@
     0 0 0 1px rgb(var(--ctp-lavender) / 0.44), 0 12px 28px -14px rgb(var(--ctp-lavender) / 0.5);
   --shadow-accent-lg: 0 0 20px rgb(var(--ctp-lavender) / 0.58);
   --shadow-accent-panel:
-    0 26px 80px -20px rgb(var(--ctp-lavender) / 0.45), 0 0 0 1px rgb(var(--ctp-lavender) / 0.22);
+    0 14px 36px -20px rgb(var(--ctp-shadow) / 0.46), 0 0 0 1px rgb(var(--ctp-lavender) / 0.14);
   --shadow-surface-hover: 0 10px 22px -10px rgb(var(--ctp-lavender) / 0.48);
   --shadow-modal:
     0 26px 85px -30px rgb(var(--ctp-shadow) / 0.88), 0 0 0 1px rgb(var(--ctp-lavender) / 0.22);
