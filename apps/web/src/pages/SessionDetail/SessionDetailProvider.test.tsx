@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { render, screen, waitFor } from "@testing-library/react";
 import { useAtomValue } from "jotai";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   connectedAtom,
@@ -14,13 +14,17 @@ import { SessionDetailProvider } from "./SessionDetailProvider";
 import { createSessionDetail } from "./test-helpers";
 
 const mockSession = createSessionDetail({ paneId: "pane-1" });
-const mockSessionsContext = {
+const nextMockSession = createSessionDetail({ paneId: "pane-2" });
+const defaultMockSessionsContext = {
   sessions: [mockSession],
   connected: true,
-  connectionStatus: "healthy",
-  connectionIssue: null,
+  connectionStatus: "healthy" as "healthy" | "degraded" | "disconnected",
+  connectionIssue: null as string | null,
   highlightCorrections: { codex: false, claude: true },
   fileNavigatorConfig: { autoExpandMatchLimit: 100 },
+};
+const mockSessionsContext = {
+  ...defaultMockSessionsContext,
   reconnect: vi.fn(),
   refreshSessions: vi.fn(),
   requestDiffSummary: vi.fn(),
@@ -42,6 +46,7 @@ const mockSessionsContext = {
   updateSessionTitle: vi.fn(),
   getSessionDetail: vi.fn(),
 };
+let mockResolvedTheme: "latte" | "mocha" = "mocha";
 
 vi.mock("@/state/session-context", () => ({
   useSessions: () => mockSessionsContext,
@@ -50,7 +55,7 @@ vi.mock("@/state/session-context", () => ({
 vi.mock("@/state/theme-context", () => ({
   useTheme: () => ({
     preference: "system",
-    resolvedTheme: "mocha",
+    resolvedTheme: mockResolvedTheme,
     setPreference: vi.fn(),
   }),
 }));
@@ -74,6 +79,15 @@ const TestConsumer = () => {
 };
 
 describe("SessionDetailProvider", () => {
+  beforeEach(() => {
+    Object.assign(mockSessionsContext, {
+      ...defaultMockSessionsContext,
+      connectionStatus: "healthy",
+      connectionIssue: null,
+    });
+    mockResolvedTheme = "mocha";
+  });
+
   it("hydrates atoms from session context and theme", async () => {
     render(
       <SessionDetailProvider paneId="pane-1">
@@ -87,6 +101,42 @@ describe("SessionDetailProvider", () => {
     expect(screen.getByTestId("connected").textContent).toBe("true");
     expect(screen.getByTestId("session-id").textContent).toBe("pane-1");
     expect(screen.getByTestId("theme").textContent).toBe("mocha");
+    expect(screen.getByTestId("api").textContent).toBe("ready");
+  });
+
+  it("syncs atoms when pane and context values change", async () => {
+    const { rerender } = render(
+      <SessionDetailProvider paneId="pane-1">
+        <TestConsumer />
+      </SessionDetailProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("pane-id").textContent).toBe("pane-1");
+    });
+
+    Object.assign(mockSessionsContext, {
+      sessions: [nextMockSession],
+      connected: false,
+      connectionStatus: "disconnected",
+      connectionIssue: "lost connection",
+      highlightCorrections: { codex: true, claude: false },
+      fileNavigatorConfig: { autoExpandMatchLimit: 42 },
+    });
+    mockResolvedTheme = "latte";
+
+    rerender(
+      <SessionDetailProvider paneId="pane-2">
+        <TestConsumer />
+      </SessionDetailProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("pane-id").textContent).toBe("pane-2");
+    });
+    expect(screen.getByTestId("connected").textContent).toBe("false");
+    expect(screen.getByTestId("session-id").textContent).toBe("pane-2");
+    expect(screen.getByTestId("theme").textContent).toBe("latte");
     expect(screen.getByTestId("api").textContent).toBe("ready");
   });
 });
