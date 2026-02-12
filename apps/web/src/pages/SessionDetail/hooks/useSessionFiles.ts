@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 
 import { buildSearchExpandPlan } from "../file-tree-search-expand";
+import { useSessionFilesContextResetEffect } from "./useSessionFiles-context-reset-effect";
 import { useSessionFilesFileModalActions } from "./useSessionFiles-file-modal-actions";
 import { useSessionFilesLogLinkableActions } from "./useSessionFiles-log-linkable-actions";
 import { useSessionFilesLogResolveActions } from "./useSessionFiles-log-resolve-actions";
@@ -13,7 +14,6 @@ import {
   resetLogFileCandidateState as resetLogFileCandidateStateValue,
 } from "./useSessionFiles-log-resolve-state";
 import { useSessionFilesRequestActions } from "./useSessionFiles-request-actions";
-import { resetSessionFilesRefs, resetSessionFilesState } from "./useSessionFiles-reset";
 import { useSessionFilesSearchActions } from "./useSessionFiles-search-actions";
 import {
   applyEmptySearchState,
@@ -140,56 +140,50 @@ export const useSessionFiles = ({
     fileContentRequestMapRef,
   });
 
-  useEffect(() => {
-    resetSessionFilesRefs({
-      treePageRequestMapRef,
-      searchRequestMapRef,
-      fileContentRequestMapRef,
-      logReferenceLinkableCacheRef,
-      logReferenceLinkableRequestMapRef,
-      activeSearchRequestIdRef,
-      activeFileContentRequestIdRef,
-      activeLogResolveRequestIdRef,
-      contextVersionRef,
-      treePagesRef,
-      fileModalCopyTimeoutRef,
-    });
-    resetSessionFilesState({
-      setSelectedFilePath,
-      setExpandedDirSet,
-      setSearchExpandedDirSet,
-      setSearchCollapsedDirSet,
-      setTreePages,
-      setTreeLoadingByPath,
-      setTreeError,
-      setSearchQuery,
-      setSearchResult,
-      setSearchLoading,
-      setSearchError,
-      setSearchActiveIndex,
-      setFileModalOpen,
-      setFileModalPath,
-      setFileModalLoading,
-      setFileModalError,
-      setFileModalFile,
-      setFileModalMarkdownViewMode,
-      setFileModalShowLineNumbers,
-      setFileModalCopiedPath,
-      setFileModalCopyError,
-      setFileModalHighlightLine,
-      setFileResolveError,
-      setLogFileCandidateModalOpen,
-      setLogFileCandidateReference,
-      setLogFileCandidatePaneId,
-      setLogFileCandidateLine,
-      setLogFileCandidateItems,
-    });
-
-    if (!repoRoot) {
-      return;
-    }
-    void loadTree(".");
-  }, [loadTree, paneId, repoRoot]);
+  useSessionFilesContextResetEffect({
+    paneId,
+    repoRoot,
+    loadTree,
+    treePageRequestMapRef,
+    searchRequestMapRef,
+    fileContentRequestMapRef,
+    logReferenceLinkableCacheRef,
+    logReferenceLinkableRequestMapRef,
+    activeSearchRequestIdRef,
+    activeFileContentRequestIdRef,
+    activeLogResolveRequestIdRef,
+    contextVersionRef,
+    treePagesRef,
+    fileModalCopyTimeoutRef,
+    setSelectedFilePath,
+    setExpandedDirSet,
+    setSearchExpandedDirSet,
+    setSearchCollapsedDirSet,
+    setTreePages,
+    setTreeLoadingByPath,
+    setTreeError,
+    setSearchQuery,
+    setSearchResult,
+    setSearchLoading,
+    setSearchError,
+    setSearchActiveIndex,
+    setFileModalOpen,
+    setFileModalPath,
+    setFileModalLoading,
+    setFileModalError,
+    setFileModalFile,
+    setFileModalMarkdownViewMode,
+    setFileModalShowLineNumbers,
+    setFileModalCopiedPath,
+    setFileModalCopyError,
+    setFileModalHighlightLine,
+    setFileResolveError,
+    setLogFileCandidateModalOpen,
+    setLogFileCandidateReference,
+    setLogFileCandidatePaneId,
+    setLogFileCandidateLine,
+    setLogFileCandidateItems,
+  });
 
   useEffect(() => {
     if (!repoRoot) {

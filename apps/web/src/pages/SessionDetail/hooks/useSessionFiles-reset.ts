@@ -1,7 +1,7 @@
 import type { RepoFileContent, RepoFileSearchPage, RepoFileTreePage } from "@vde-monitor/shared";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 
-type ResetSessionFilesRefsInput = {
+export type ResetSessionFilesRefsInput = {
   treePageRequestMapRef: MutableRefObject<Map<string, Promise<RepoFileTreePage>>>;
   searchRequestMapRef: MutableRefObject<Map<string, Promise<RepoFileSearchPage>>>;
   fileContentRequestMapRef: MutableRefObject<Map<string, Promise<RepoFileContent>>>;
@@ -17,7 +17,7 @@ type ResetSessionFilesRefsInput = {
 
 type SetState<T> = Dispatch<SetStateAction<T>>;
 
-type ResetSessionFilesStateInput = {
+export type ResetSessionFilesStateInput = {
   setSelectedFilePath: SetState<string | null>;
   setExpandedDirSet: SetState<Set<string>>;
   setSearchExpandedDirSet: SetState<Set<string>>;
