@@ -27,12 +27,9 @@ import {
 } from "./useSessionFiles-search-effect";
 import { useSessionFilesTreeActions } from "./useSessionFiles-tree-actions";
 import { useSessionFilesTreeLoader } from "./useSessionFiles-tree-loader";
+import { useSessionFilesTreeRenderNodes } from "./useSessionFiles-tree-render-nodes";
 import { useSessionFilesTreeReveal } from "./useSessionFiles-tree-reveal";
-import {
-  buildNormalRenderNodes,
-  buildSearchRenderNodes,
-  resolveTreeLoadMoreTarget,
-} from "./useSessionFiles-tree-utils";
+import { resolveTreeLoadMoreTarget } from "./useSessionFiles-tree-utils";
 
 const TREE_PAGE_LIMIT = 200;
 const SEARCH_PAGE_LIMIT = 100;
@@ -423,27 +420,15 @@ export const useSessionFiles = ({
 
   useEffect(() => clearFileModalCopyTimeout, [clearFileModalCopyTimeout]);
 
-  const searchActivePath = searchResult?.items[searchActiveIndex]?.path ?? null;
-  const searchTreeNodes = useMemo(
-    () =>
-      buildSearchRenderNodes({
-        searchItems: searchResult?.items ?? [],
-        selectedFilePath,
-        activeMatchPath: searchActivePath,
-        expandedDirSet: effectiveSearchExpandedDirSet,
-      }),
-    [effectiveSearchExpandedDirSet, searchActivePath, searchResult?.items, selectedFilePath],
-  );
-
-  const normalTreeNodes = useMemo(
-    () =>
-      buildNormalRenderNodes({
-        treePages,
-        expandedDirSet,
-        selectedFilePath,
-      }),
-    [expandedDirSet, selectedFilePath, treePages],
-  );
+  const { treeNodes } = useSessionFilesTreeRenderNodes({
+    isSearchActive,
+    searchResult,
+    searchActiveIndex,
+    selectedFilePath,
+    effectiveSearchExpandedDirSet,
+    treePages,
+    expandedDirSet,
+  });
 
   return {
     unavailable: !repoRoot,
@@ -456,7 +441,7 @@ export const useSessionFiles = ({
     searchMode: searchExpandPlan.mode,
     treeLoading: Boolean(treeLoadingByPath["."]),
     treeError,
-    treeNodes: isSearchActive ? searchTreeNodes : normalTreeNodes,
+    treeNodes,
     rootTreeHasMore:
       resolveTreeLoadMoreTarget({
         treePages,
