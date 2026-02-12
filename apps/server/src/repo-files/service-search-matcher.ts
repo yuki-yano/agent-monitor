@@ -55,3 +55,17 @@ export const buildWordSearchMatch = (
     isIgnored: item.isIgnored,
   };
 };
+
+export const buildSortedSearchMatches = (index: SearchIndexItem[], query: string) => {
+  const queryTokens = tokenizeQuery(query);
+  return index
+    .map((item) => buildWordSearchMatch(item, queryTokens))
+    .filter((item): item is SearchWordMatch => item != null)
+    .sort((left, right) => {
+      const scoreDiff = right.score - left.score;
+      if (scoreDiff !== 0) {
+        return scoreDiff;
+      }
+      return left.path.localeCompare(right.path);
+    });
+};

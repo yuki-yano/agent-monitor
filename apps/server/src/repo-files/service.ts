@@ -20,7 +20,7 @@ import {
 } from "./service-context";
 import { createRunLsFiles } from "./service-git-ls-files";
 import { paginateItems } from "./service-pagination";
-import { buildWordSearchMatch, tokenizeQuery } from "./service-search-matcher";
+import { buildSortedSearchMatches } from "./service-search-matcher";
 import { withServiceTimeout } from "./service-timeout";
 import { buildVisibleTreeNodes, readTreeDirectoryEntries } from "./service-tree-list";
 import { createServiceVisibilityResolver } from "./service-visibility";
@@ -135,17 +135,7 @@ export const createRepoFileService = ({
         timeoutMs,
         "search timed out",
       );
-      const queryTokens = tokenizeQuery(normalizedQuery);
-      const normalizedMatches = index
-        .map((item) => buildWordSearchMatch(item, queryTokens))
-        .filter((item): item is NonNullable<typeof item> => item != null)
-        .sort((left, right) => {
-          const scoreDiff = right.score - left.score;
-          if (scoreDiff !== 0) {
-            return scoreDiff;
-          }
-          return left.path.localeCompare(right.path);
-        });
+      const normalizedMatches = buildSortedSearchMatches(index, normalizedQuery);
 
       const paged = paginateItems({
         allItems: normalizedMatches,
