@@ -1,5 +1,5 @@
 import { MonitorX, RefreshCw, Search } from "lucide-react";
-import { type CSSProperties, useCallback, useEffect, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button, EmptyCard } from "@/components/ui";
@@ -53,6 +53,29 @@ export const SessionListView = ({
   onTouchPanePin,
 }: SessionListViewProps) => {
   const [reorderScrollTarget, setReorderScrollTarget] = useState<ReorderScrollTarget | null>(null);
+  const repoScrollTargetsRef = useRef(new Map<string, HTMLElement>());
+  const paneScrollTargetsRef = useRef(new Map<string, HTMLAnchorElement>());
+
+  const registerRepoScrollTarget = useCallback((key: string, element: HTMLElement | null) => {
+    const targetMap = repoScrollTargetsRef.current;
+    if (!element) {
+      targetMap.delete(key);
+      return;
+    }
+    targetMap.set(key, element);
+  }, []);
+
+  const registerPaneScrollTarget = useCallback(
+    (paneId: string, element: HTMLAnchorElement | null) => {
+      const targetMap = paneScrollTargetsRef.current;
+      if (!element) {
+        targetMap.delete(paneId);
+        return;
+      }
+      targetMap.set(paneId, element);
+    },
+    [],
+  );
 
   const handleTouchRepoPinWithScroll = useCallback(
     (repoRoot: string | null) => {
@@ -81,34 +104,36 @@ export const SessionListView = ({
       return;
     }
 
-    const resolveTarget = () => {
-      if (reorderScrollTarget.scope === "repo") {
-        return Array.from(document.querySelectorAll<HTMLElement>("[data-repo-scroll-key]")).find(
-          (element) => element.dataset.repoScrollKey === reorderScrollTarget.key,
-        );
-      }
-      return Array.from(document.querySelectorAll<HTMLElement>("[data-pane-scroll-key]")).find(
-        (element) => element.dataset.paneScrollKey === reorderScrollTarget.key,
-      );
-    };
+    let frameId: number | null = null;
+    let attempt = 0;
+    const maxAttempts = reorderScrollTarget.scope === "repo" ? 8 : 24;
 
     const tryScroll = () => {
-      const target = resolveTarget();
+      const target =
+        reorderScrollTarget.scope === "repo"
+          ? repoScrollTargetsRef.current.get(reorderScrollTarget.key)
+          : paneScrollTargetsRef.current.get(reorderScrollTarget.key);
       if (!target) {
+        attempt += 1;
+        if (attempt >= maxAttempts) {
+          setReorderScrollTarget(null);
+          return;
+        }
+        frameId = window.requestAnimationFrame(tryScroll);
         return;
       }
       target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
       setReorderScrollTarget(null);
     };
 
-    const delays =
-      reorderScrollTarget.scope === "repo" ? [0, 80, 180] : [220, 420, 700, 1100, 1600];
-    const timeoutIds = delays.map((delay) => window.setTimeout(tryScroll, delay));
+    frameId = window.requestAnimationFrame(tryScroll);
 
     return () => {
-      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      if (frameId != null) {
+        window.cancelAnimationFrame(frameId);
+      }
     };
-  }, [groups, reorderScrollTarget, sessions]);
+  }, [reorderScrollTarget]);
 
   return (
     <>
@@ -202,20 +227,25 @@ export const SessionListView = ({
                   }
                 />
               )}
-              {groups.map((group) => (
-                <div
-                  key={group.repoRoot ?? "no-repo"}
-                  data-repo-scroll-key={createRepoPinKey(group.repoRoot)}
-                >
-                  <SessionGroupSection
-                    group={group}
-                    allSessions={sessions}
-                    nowMs={nowMs}
-                    onTouchRepoPin={handleTouchRepoPinWithScroll}
-                    onTouchPanePin={handleTouchPanePinWithScroll}
-                  />
-                </div>
-              ))}
+              {groups.map((group) => {
+                const repoScrollKey = createRepoPinKey(group.repoRoot);
+                return (
+                  <div
+                    key={group.repoRoot ?? "no-repo"}
+                    data-repo-scroll-key={repoScrollKey}
+                    ref={(element) => registerRepoScrollTarget(repoScrollKey, element)}
+                  >
+                    <SessionGroupSection
+                      group={group}
+                      allSessions={sessions}
+                      nowMs={nowMs}
+                      onTouchRepoPin={handleTouchRepoPinWithScroll}
+                      onTouchPanePin={handleTouchPanePinWithScroll}
+                      onRegisterPaneScrollTarget={registerPaneScrollTarget}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

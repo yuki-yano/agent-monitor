@@ -10,6 +10,7 @@ type SessionWindowSectionProps = {
   totalPanes: number;
   nowMs: number;
   onTouchPanePin: (paneId: string) => void;
+  onRegisterPaneScrollTarget?: (paneId: string, element: HTMLAnchorElement | null) => void;
 };
 
 export const SessionWindowSection = ({
@@ -17,6 +18,7 @@ export const SessionWindowSection = ({
   totalPanes,
   nowMs,
   onTouchPanePin,
+  onRegisterPaneScrollTarget,
 }: SessionWindowSectionProps) => {
   return (
     <InsetPanel className="p-3 sm:p-4">
@@ -46,6 +48,7 @@ export const SessionWindowSection = ({
             session={session}
             nowMs={nowMs}
             onTouchPin={onTouchPanePin}
+            onRegisterScrollTarget={onRegisterPaneScrollTarget}
           />
         ))}
       </div>

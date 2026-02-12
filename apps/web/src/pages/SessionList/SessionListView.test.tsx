@@ -400,6 +400,38 @@ describe("SessionListView", () => {
     expect(onTouchPanePin).toHaveBeenCalledWith("pane-pin-target");
   });
 
+  it("uses requestAnimationFrame to scroll the pinned pane card into view", () => {
+    const session = buildSession({
+      paneId: "pane-pin-target",
+      sessionName: "session-pin-target",
+      windowIndex: 7,
+      repoRoot: "/Users/test/repo-pin-target",
+    });
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      });
+    const scrollIntoViewSpy = vi
+      .spyOn(HTMLElement.prototype, "scrollIntoView")
+      .mockImplementation(() => {});
+    const props = createViewProps({
+      sessions: [session],
+      onTouchPanePin: vi.fn(),
+    });
+
+    renderWithRouter(<SessionListView {...props} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Pin pane to top" }));
+
+    expect(requestAnimationFrameSpy).toHaveBeenCalled();
+    expect(scrollIntoViewSpy).toHaveBeenCalled();
+
+    requestAnimationFrameSpy.mockRestore();
+    scrollIntoViewSpy.mockRestore();
+  });
+
   it("opens GitHub repository from repo header button", () => {
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     const session = buildSession({

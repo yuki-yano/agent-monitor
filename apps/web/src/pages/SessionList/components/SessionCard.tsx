@@ -25,6 +25,7 @@ type SessionCardProps = {
   session: SessionSummary;
   nowMs: number;
   onTouchPin?: (paneId: string) => void;
+  onRegisterScrollTarget?: (paneId: string, element: HTMLAnchorElement | null) => void;
 };
 
 const sessionStateStyles: Record<
@@ -67,7 +68,12 @@ const resolveSessionTitle = (session: SessionSummary) => {
   return session.sessionName;
 };
 
-export const SessionCard = ({ session, nowMs, onTouchPin }: SessionCardProps) => {
+export const SessionCard = ({
+  session,
+  nowMs,
+  onTouchPin,
+  onRegisterScrollTarget,
+}: SessionCardProps) => {
   const sessionTone = getLastInputTone(session.lastInputAt, nowMs);
   const sessionTitle = resolveSessionTitle(session);
   const showAgentBadge = isKnownAgent(session.agent);
@@ -86,6 +92,7 @@ export const SessionCard = ({ session, nowMs, onTouchPin }: SessionCardProps) =>
     <Link
       to="/sessions/$paneId"
       params={{ paneId: session.paneId }}
+      ref={(element) => onRegisterScrollTarget?.(session.paneId, element)}
       data-pane-scroll-key={session.paneId}
       className="group block w-full min-w-0 max-w-full"
     >

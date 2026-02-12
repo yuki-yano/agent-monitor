@@ -17,6 +17,7 @@ type SessionGroupSectionProps = {
   allSessions: SessionSummary[];
   onTouchRepoPin: (repoRoot: string | null) => void;
   onTouchPanePin: (paneId: string) => void;
+  onRegisterPaneScrollTarget?: (paneId: string, element: HTMLAnchorElement | null) => void;
 };
 
 export const SessionGroupSection = ({
@@ -25,6 +26,7 @@ export const SessionGroupSection = ({
   allSessions,
   onTouchRepoPin,
   onTouchPanePin,
+  onRegisterPaneScrollTarget,
 }: SessionGroupSectionProps) => {
   const groupTone = getLastInputTone(group.lastInputAt, nowMs);
   const repoName = formatRepoName(group.repoRoot);
@@ -138,6 +140,7 @@ export const SessionGroupSection = ({
                     }
                     nowMs={nowMs}
                     onTouchPanePin={onTouchPanePin}
+                    onRegisterPaneScrollTarget={onRegisterPaneScrollTarget}
                   />
                 ))}
               </div>
