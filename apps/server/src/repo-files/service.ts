@@ -2,7 +2,6 @@ import type {
   FileNavigatorConfig,
   RepoFileContent,
   RepoFileSearchPage,
-  RepoFileTreeNode,
   RepoFileTreePage,
 } from "@vde-monitor/shared";
 
@@ -22,7 +21,11 @@ import { createRunLsFiles } from "./service-git-ls-files";
 import { paginateItems } from "./service-pagination";
 import { buildSortedSearchMatches } from "./service-search-matcher";
 import { withServiceTimeout } from "./service-timeout";
-import { buildVisibleTreeNodes, readTreeDirectoryEntries } from "./service-tree-list";
+import {
+  buildListTreePage,
+  buildVisibleTreeNodes,
+  readTreeDirectoryEntries,
+} from "./service-tree-list";
 import { createServiceVisibilityResolver } from "./service-visibility";
 
 const VISIBILITY_CACHE_TTL_MS = 5_000;
@@ -64,10 +67,6 @@ type RepoFileServiceDeps = {
   now?: () => number;
 };
 
-const normalizeAndSortNodes = (nodes: RepoFileTreeNode[]) => {
-  return nodes.sort((left, right) => left.name.localeCompare(right.name));
-};
-
 export const createRepoFileService = ({
   fileNavigatorConfig,
   now = () => Date.now(),
@@ -102,18 +101,12 @@ export const createRepoFileService = ({
       });
 
       const nodesWithIgnored = await withIgnoredFlags(repoRoot, visibleNodes);
-
-      const normalizedNodes = normalizeAndSortNodes(nodesWithIgnored);
-      const paged = paginateItems({
-        allItems: normalizedNodes,
+      return buildListTreePage({
+        basePath,
+        nodes: nodesWithIgnored,
         cursor,
         limit,
       });
-      return {
-        basePath,
-        entries: paged.items,
-        nextCursor: paged.nextCursor,
-      } satisfies RepoFileTreePage;
     } catch (error) {
       throw toServiceError(error);
     }

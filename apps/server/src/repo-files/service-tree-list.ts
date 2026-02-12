@@ -1,7 +1,7 @@
 import type { Dirent } from "node:fs";
 import fs from "node:fs/promises";
 
-import type { RepoFileTreeNode } from "@vde-monitor/shared";
+import type { RepoFileTreeNode, RepoFileTreePage } from "@vde-monitor/shared";
 
 import type { FileVisibilityPolicy } from "./file-visibility-policy";
 import { resolveRepoAbsolutePath } from "./path-guard";
@@ -11,6 +11,7 @@ import {
   isReadablePermissionError,
   isRepoFileServiceError,
 } from "./service-context";
+import { paginateItems } from "./service-pagination";
 import { toDirectoryRelativePath } from "./service-visibility";
 
 type ReadTreeDirectoryEntriesArgs = {
@@ -28,6 +29,13 @@ type BuildVisibleTreeNodesArgs = {
     relativePath: string;
     policy: FileVisibilityPolicy;
   }) => Promise<boolean>;
+};
+
+type BuildListTreePageArgs = {
+  basePath: string;
+  nodes: RepoFileTreeNode[];
+  cursor?: string;
+  limit: number;
 };
 
 export const readTreeDirectoryEntries = async ({
@@ -98,4 +106,18 @@ export const buildVisibleTreeNodes = async ({
   }
 
   return visibleNodes;
+};
+
+export const buildListTreePage = ({ basePath, nodes, cursor, limit }: BuildListTreePageArgs) => {
+  const sortedNodes = [...nodes].sort((left, right) => left.name.localeCompare(right.name));
+  const paged = paginateItems({
+    allItems: sortedNodes,
+    cursor,
+    limit,
+  });
+  return {
+    basePath,
+    entries: paged.items,
+    nextCursor: paged.nextCursor,
+  } satisfies RepoFileTreePage;
 };
