@@ -133,7 +133,7 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
   return (
     <Card
       className={cn(
-        "border-latte-surface1/70 bg-latte-mantle/80 relative flex h-full flex-col p-4 shadow-[0_18px_50px_-25px_rgba(17,17,27,0.6)]",
+        "border-latte-surface1/70 bg-latte-mantle/80 shadow-popover relative flex h-full flex-col p-4",
         className,
       )}
     >

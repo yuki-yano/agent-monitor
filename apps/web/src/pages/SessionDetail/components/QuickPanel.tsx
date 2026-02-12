@@ -123,7 +123,7 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
   return (
     <div className="fixed bottom-4 left-6 z-40 flex flex-col items-start gap-3">
       {open && (
-        <Card className="font-body animate-panel-enter border-latte-lavender/30 bg-latte-mantle/85 relative flex max-h-[75dvh] w-[calc(100vw-3.5rem)] max-w-[480px] flex-col overflow-hidden rounded-3xl border-2 p-4 shadow-[0_25px_80px_-20px_rgba(114,135,253,0.4),0_0_0_1px_rgba(114,135,253,0.15)] ring-1 ring-inset ring-white/10 backdrop-blur-xl">
+        <Card className="font-body animate-panel-enter border-latte-lavender/30 bg-latte-mantle/85 shadow-accent-panel relative flex max-h-[75dvh] w-[calc(100vw-3.5rem)] max-w-[480px] flex-col overflow-hidden rounded-3xl border-2 p-4 ring-1 ring-inset ring-white/10 backdrop-blur-xl">
           <IconButton
             type="button"
             onClick={onClose}
@@ -159,7 +159,7 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
                   <div key={group.repoRoot ?? "no-repo"} className="space-y-3">
                     <div className="border-latte-surface2/70 bg-latte-base/70 flex items-center justify-between gap-2 rounded-2xl border px-3 py-2">
                       <div className="flex items-center gap-2">
-                        <span className="bg-latte-lavender/70 h-2 w-2 rounded-full shadow-[0_0_8px_rgba(114,135,253,0.5)]" />
+                        <span className="bg-latte-lavender/70 h-2 w-2 rounded-full shadow-[0_0_8px_rgb(var(--ctp-lavender)/0.5)]" />
                         <span className="text-latte-lavender/80 text-[11px] font-semibold uppercase tracking-wider">
                           {formatRepoDirLabel(group.repoRoot)}
                         </span>
@@ -211,7 +211,7 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
                                     aria-current={isCurrent ? "true" : undefined}
                                     className={`flex w-full min-w-0 flex-col gap-2.5 ${
                                       isCurrent
-                                        ? "border-latte-lavender/70 bg-latte-lavender/10 shadow-[0_0_0_1px_rgba(114,135,253,0.35),0_10px_20px_-12px_rgba(114,135,253,0.35)]"
+                                        ? "border-latte-lavender/70 bg-latte-lavender/10 shadow-accent"
                                         : ""
                                     }`}
                                   >
@@ -301,7 +301,7 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
                                     variant={isCurrent ? "lavenderStrong" : "lavender"}
                                     size="sm"
                                     aria-label="Open session link"
-                                    className="absolute right-0 top-1/2 z-10 -translate-y-1/2 shadow-md"
+                                    className="shadow-elev-3 absolute right-0 top-1/2 z-10 -translate-y-1/2"
                                   >
                                     <ArrowRight className="h-3.5 w-3.5" />
                                   </IconButton>

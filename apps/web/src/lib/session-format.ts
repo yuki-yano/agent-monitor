@@ -137,23 +137,23 @@ export const getLastInputTone = (value: string | null, nowMs: number): LastInput
   if (diffSec < 300) {
     return {
       pill: "border-latte-green/40 bg-latte-green/10 text-latte-green",
-      dot: "bg-latte-green shadow-[0_0_8px_rgba(64,160,43,0.6)]",
+      dot: "bg-latte-green shadow-[0_0_8px_rgb(var(--ctp-green)/0.6)]",
     };
   }
   if (diffSec < 1800) {
     return {
       pill: "border-latte-yellow/40 bg-latte-yellow/10 text-latte-yellow",
-      dot: "bg-latte-yellow shadow-[0_0_8px_rgba(223,142,29,0.6)]",
+      dot: "bg-latte-yellow shadow-[0_0_8px_rgb(var(--ctp-yellow)/0.6)]",
     };
   }
   if (diffSec < 7200) {
     return {
       pill: "border-latte-peach/40 bg-latte-peach/10 text-latte-peach",
-      dot: "bg-latte-peach shadow-[0_0_8px_rgba(239,159,118,0.6)]",
+      dot: "bg-latte-peach shadow-[0_0_8px_rgb(var(--ctp-peach)/0.6)]",
     };
   }
   return {
     pill: "border-latte-red/40 bg-latte-red/10 text-latte-red",
-    dot: "bg-latte-red shadow-[0_0_8px_rgba(210,15,57,0.6)]",
+    dot: "bg-latte-red shadow-[0_0_8px_rgb(var(--ctp-red)/0.6)]",
   };
 };

@@ -25,6 +25,36 @@
   --ctp-mauve: 136 57 239;
   --ctp-maroon: 230 69 83;
   --ctp-shadow: 31 30 58;
+  --shadow-elev-1:
+    0 1px 2px 0 rgb(var(--ctp-shadow) / 0.16), 0 1px 1px -1px rgb(var(--ctp-shadow) / 0.1);
+  --shadow-elev-2:
+    0 2px 5px -2px rgb(var(--ctp-shadow) / 0.2), 0 1px 2px -1px rgb(var(--ctp-shadow) / 0.12);
+  --shadow-elev-3:
+    0 6px 14px -8px rgb(var(--ctp-shadow) / 0.24), 0 3px 8px -6px rgb(var(--ctp-shadow) / 0.16);
+  --shadow-elev-4:
+    0 12px 24px -12px rgb(var(--ctp-shadow) / 0.28), 0 6px 12px -10px rgb(var(--ctp-shadow) / 0.2);
+  --shadow-elev-5:
+    0 20px 40px -20px rgb(var(--ctp-shadow) / 0.32), 0 10px 20px -16px rgb(var(--ctp-shadow) / 0.24);
+  --shadow-elev-6:
+    0 28px 56px -24px rgb(var(--ctp-shadow) / 0.36), 0 14px 28px -20px rgb(var(--ctp-shadow) / 0.28);
+  --shadow-inner: inset 0 2px 4px 0 rgb(var(--ctp-shadow) / 0.16);
+  --shadow-glass: 0 20px 60px -30px rgb(var(--ctp-shadow) / 0.35);
+  --shadow-glow:
+    0 0 0 1px rgb(var(--ctp-lavender) / 0.3), 0 15px 40px -20px rgb(var(--ctp-lavender) / 0.6);
+  --shadow-accent-inset: inset 0 0 0 1px rgb(var(--ctp-lavender) / 0.18);
+  --shadow-accent-outline: 0 0 0 1px rgb(var(--ctp-lavender) / 0.24);
+  --shadow-accent-sm: 0 4px 12px -8px rgb(var(--ctp-lavender) / 0.25);
+  --shadow-accent:
+    0 0 0 1px rgb(var(--ctp-lavender) / 0.28), 0 10px 24px -12px rgb(var(--ctp-lavender) / 0.34);
+  --shadow-accent-lg: 0 0 20px rgb(var(--ctp-lavender) / 0.4);
+  --shadow-accent-panel:
+    0 25px 80px -20px rgb(var(--ctp-lavender) / 0.32), 0 0 0 1px rgb(var(--ctp-lavender) / 0.14);
+  --shadow-surface-hover: 0 8px 18px -10px rgb(var(--ctp-lavender) / 0.32);
+  --shadow-modal:
+    0 26px 85px -30px rgb(var(--ctp-shadow) / 0.55), 0 0 0 1px rgb(var(--ctp-lavender) / 0.12);
+  --shadow-popover: 0 18px 50px -25px rgb(var(--ctp-shadow) / 0.6);
+  --shadow-danger-outline: 0 0 0 1px rgb(var(--ctp-red) / 0.3);
+  --shadow-inner-highlight: inset 0 1px 0 rgb(255 255 255 / 0.2);
   --grid-dot-alpha: 0.15;
   --grid-opacity: 0.08;
   --bg-gradient-1: radial-gradient(
@@ -67,6 +97,38 @@
   --ctp-mauve: 203 166 247;
   --ctp-maroon: 235 160 172;
   --ctp-shadow: 8 10 22;
+  --shadow-elev-1:
+    0 1px 2px 0 rgb(var(--ctp-shadow) / 0.6), 0 0 0 1px rgb(var(--ctp-overlay2) / 0.2);
+  --shadow-elev-2:
+    0 2px 6px -2px rgb(var(--ctp-shadow) / 0.72), 0 0 0 1px rgb(var(--ctp-overlay2) / 0.22);
+  --shadow-elev-3:
+    0 8px 16px -10px rgb(var(--ctp-shadow) / 0.82), 0 0 0 1px rgb(var(--ctp-overlay2) / 0.24);
+  --shadow-elev-4:
+    0 14px 28px -14px rgb(var(--ctp-shadow) / 0.86), 0 0 0 1px rgb(var(--ctp-overlay2) / 0.26);
+  --shadow-elev-5:
+    0 24px 44px -20px rgb(var(--ctp-shadow) / 0.9), 0 0 0 1px rgb(var(--ctp-overlay2) / 0.28);
+  --shadow-elev-6:
+    0 32px 60px -24px rgb(var(--ctp-shadow) / 0.94), 0 0 0 1px rgb(var(--ctp-overlay2) / 0.32);
+  --shadow-inner: inset 0 2px 4px 0 rgb(var(--ctp-shadow) / 0.5);
+  --shadow-glass:
+    0 20px 60px -30px rgb(var(--ctp-shadow) / 0.72), 0 0 0 1px rgb(var(--ctp-overlay2) / 0.22);
+  --shadow-glow:
+    0 0 0 1px rgb(var(--ctp-lavender) / 0.42), 0 18px 40px -20px rgb(var(--ctp-lavender) / 0.5);
+  --shadow-accent-inset: inset 0 0 0 1px rgb(var(--ctp-lavender) / 0.32);
+  --shadow-accent-outline: 0 0 0 1px rgb(var(--ctp-lavender) / 0.4);
+  --shadow-accent-sm: 0 4px 14px -8px rgb(var(--ctp-lavender) / 0.45);
+  --shadow-accent:
+    0 0 0 1px rgb(var(--ctp-lavender) / 0.44), 0 12px 28px -14px rgb(var(--ctp-lavender) / 0.5);
+  --shadow-accent-lg: 0 0 20px rgb(var(--ctp-lavender) / 0.58);
+  --shadow-accent-panel:
+    0 26px 80px -20px rgb(var(--ctp-lavender) / 0.45), 0 0 0 1px rgb(var(--ctp-lavender) / 0.22);
+  --shadow-surface-hover: 0 10px 22px -10px rgb(var(--ctp-lavender) / 0.48);
+  --shadow-modal:
+    0 26px 85px -30px rgb(var(--ctp-shadow) / 0.88), 0 0 0 1px rgb(var(--ctp-lavender) / 0.22);
+  --shadow-popover:
+    0 18px 50px -25px rgb(var(--ctp-shadow) / 0.82), 0 0 0 1px rgb(var(--ctp-overlay2) / 0.24);
+  --shadow-danger-outline: 0 0 0 1px rgb(var(--ctp-red) / 0.44);
+  --shadow-inner-highlight: inset 0 1px 0 rgb(var(--ctp-overlay2) / 0.24);
   --grid-dot-alpha: 0.12;
   --grid-opacity: 0.12;
   --bg-gradient-1: radial-gradient(

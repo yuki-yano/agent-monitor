@@ -21,7 +21,7 @@ import {
 } from "../sessionDetailUtils";
 
 const surfaceLinkClass =
-  "border-latte-surface2/70 bg-latte-base/70 focus-visible:ring-latte-lavender block w-full rounded-2xl border px-3 py-3.5 text-left transition-all duration-200 hover:border-latte-lavender/50 hover:bg-latte-mantle/70 hover:shadow-[0_8px_18px_-10px_rgba(114,135,253,0.35)] focus-visible:outline-none focus-visible:ring-2";
+  "border-latte-surface2/70 bg-latte-base/70 focus-visible:ring-latte-lavender block w-full rounded-2xl border px-3 py-3.5 text-left transition-all duration-200 hover:border-latte-lavender/50 hover:bg-latte-mantle/70 hover:shadow-surface-hover focus-visible:outline-none focus-visible:ring-2";
 
 const sidebarSessionBorderClassByState: Record<SessionSummary["state"], string> = {
   RUNNING: "border-green-500/50",
@@ -147,7 +147,7 @@ export const SessionSidebarItem = memo(
             "min-w-0 flex-1 flex-col gap-3",
             sessionBorderClass,
             isCurrent
-              ? "bg-latte-lavender/20 ring-latte-lavender/40 hover:bg-latte-lavender/25 shadow-[0_0_0_1px_rgba(114,135,253,0.45),0_12px_24px_-12px_rgba(114,135,253,0.45)] ring-1 ring-inset"
+              ? "bg-latte-lavender/20 ring-latte-lavender/40 hover:bg-latte-lavender/25 shadow-accent ring-1 ring-inset"
               : "hover:border-latte-lavender/60 hover:bg-latte-lavender/10",
           )}
         >

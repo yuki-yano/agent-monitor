@@ -167,7 +167,7 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
       blockquote: ({ children, ...props }) => (
         <blockquote
           {...props}
-          className="border-latte-peach/65 bg-latte-lavender/10 my-4 rounded-r-xl border-l-4 px-4 py-3 text-[0.9rem] leading-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
+          className="border-latte-peach/65 bg-latte-lavender/10 shadow-inner-highlight my-4 rounded-r-xl border-l-4 px-4 py-3 text-[0.9rem] leading-7"
         >
           {children}
         </blockquote>
@@ -240,7 +240,7 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
         onClick={onClose}
       />
-      <Card className="border-latte-lavender/25 bg-latte-mantle/95 relative z-10 flex h-[min(92dvh,920px)] min-h-0 w-[min(1160px,calc(100vw-1.5rem))] flex-col gap-2 overflow-hidden rounded-3xl border-2 p-4 shadow-[0_26px_85px_-30px_rgba(0,0,0,0.62),0_0_0_1px_rgba(114,135,253,0.12)] ring-1 ring-inset ring-white/10 md:p-5">
+      <Card className="border-latte-lavender/25 bg-latte-mantle/95 shadow-modal relative z-10 flex h-[min(92dvh,920px)] min-h-0 w-[min(1160px,calc(100vw-1.5rem))] flex-col gap-2 overflow-hidden rounded-3xl border-2 p-4 ring-1 ring-inset ring-white/10 md:p-5">
         <div className="flex min-w-0 items-start gap-2 rounded-2xl px-3 py-2.5 md:px-3.5">
           <div className="min-w-0 flex-1">
             {activePath.length > 0 ? (

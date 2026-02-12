@@ -151,7 +151,7 @@ export const LogModal = ({ state, actions }: LogModalProps) => {
 
   return (
     <div className="fixed bottom-[76px] left-6 top-4 z-50 min-h-0 w-[min(900px,calc(100vw-3rem))]">
-      <Card className="font-body animate-panel-enter border-latte-lavender/30 bg-latte-mantle/85 relative flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border-2 p-4 shadow-[0_25px_80px_-20px_rgba(114,135,253,0.4),0_0_0_1px_rgba(114,135,253,0.15)] ring-1 ring-inset ring-white/10 backdrop-blur-xl">
+      <Card className="font-body animate-panel-enter border-latte-lavender/30 bg-latte-mantle/85 shadow-accent-panel relative flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border-2 p-4 ring-1 ring-inset ring-white/10 backdrop-blur-xl">
         <IconButton
           type="button"
           onClick={onClose}
@@ -195,7 +195,7 @@ export const LogModal = ({ state, actions }: LogModalProps) => {
           </Callout>
         )}
         <div
-          className="border-latte-surface2/50 bg-latte-crust/60 relative mt-3 flex min-h-0 w-full flex-1 rounded-2xl border shadow-inner"
+          className="border-latte-surface2/50 bg-latte-crust/60 shadow-inner-soft relative mt-3 flex min-h-0 w-full flex-1 rounded-2xl border"
           onCopy={handleCopy}
         >
           {loading && <LoadingOverlay label="Loading log..." size="sm" />}

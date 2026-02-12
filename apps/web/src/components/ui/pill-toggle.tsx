@@ -16,7 +16,7 @@ const PillToggle = forwardRef<HTMLButtonElement, PillToggleProps>(
         className={cn(
           "focus-visible:ring-latte-lavender inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] transition focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-60",
           active
-            ? "border-latte-lavender/60 bg-latte-lavender/10 text-latte-lavender shadow-[inset_0_0_0_1px_rgba(114,135,253,0.12)]"
+            ? "border-latte-lavender/60 bg-latte-lavender/10 text-latte-lavender shadow-accent-inset"
             : "border-latte-surface2/70 text-latte-subtext0 hover:border-latte-overlay1 hover:text-latte-text",
           className,
         )}

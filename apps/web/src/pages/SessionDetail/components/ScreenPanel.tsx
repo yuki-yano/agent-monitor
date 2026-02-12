@@ -157,7 +157,7 @@ const RawModeIndicator = ({
     return null;
   }
   return (
-    <div className="border-latte-lavender/60 bg-latte-lavender/10 text-latte-lavender inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] shadow-[inset_0_0_0_1px_rgba(114,135,253,0.12)]">
+    <div className="border-latte-lavender/60 bg-latte-lavender/10 text-latte-lavender shadow-accent-inset inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em]">
       Raw
       {allowDangerKeys && (
         <span className="bg-latte-red/20 text-latte-red rounded-full px-2 py-0.5 text-[9px] tracking-[0.24em]">
@@ -200,7 +200,7 @@ const ScreenContent = ({
   const showImage = mode === "image" && Boolean(imageBase64);
 
   return (
-    <div className="border-latte-surface2/80 bg-latte-crust/95 relative min-h-[320px] w-full min-w-0 max-w-full flex-1 rounded-2xl border-2 shadow-inner">
+    <div className="border-latte-surface2/80 bg-latte-crust/95 shadow-inner-soft relative min-h-[320px] w-full min-w-0 max-w-full flex-1 rounded-2xl border-2">
       {isScreenLoading && <LoadingOverlay label="Loading screen..." />}
       {showImage ? (
         <div className="flex w-full items-center justify-center p-3">

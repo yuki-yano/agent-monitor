@@ -130,7 +130,7 @@ const SessionTitleInput = ({
       maxLength={80}
       enterKeyHint="done"
       disabled={titleSaving}
-      className="border-latte-surface2 text-latte-text focus:border-latte-lavender focus:ring-latte-lavender/30 bg-latte-base/70 min-w-[180px] flex-1 rounded-2xl border px-3 py-1.5 text-xl shadow-sm outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
+      className="border-latte-surface2 text-latte-text focus:border-latte-lavender focus:ring-latte-lavender/30 bg-latte-base/70 shadow-elev-1 min-w-[180px] flex-1 rounded-2xl border px-3 py-1.5 text-xl outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
       aria-label="Custom session title"
       autoFocus
     />

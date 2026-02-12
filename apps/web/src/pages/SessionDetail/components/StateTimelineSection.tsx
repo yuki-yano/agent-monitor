@@ -184,7 +184,7 @@ export const StateTimelineSection = ({ state, actions }: StateTimelineSectionPro
               className={cn(
                 "bg-latte-base/75 transition-all duration-200",
                 compactView
-                  ? "border-latte-lavender/85 bg-latte-lavender/22 text-latte-lavender ring-latte-lavender/35 hover:border-latte-lavender hover:bg-latte-lavender/28 shadow-[inset_0_0_0_1px_rgba(114,135,253,0.35),0_6px_16px_-10px_rgba(114,135,253,0.55)] ring-1"
+                  ? "border-latte-lavender/85 bg-latte-lavender/22 text-latte-lavender ring-latte-lavender/35 hover:border-latte-lavender hover:bg-latte-lavender/28 shadow-accent ring-1"
                   : "border-latte-surface2/70 text-latte-subtext0 hover:border-latte-overlay1 hover:bg-latte-base/85 hover:text-latte-text",
               )}
             >

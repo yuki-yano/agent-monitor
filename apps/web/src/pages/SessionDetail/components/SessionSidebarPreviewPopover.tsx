@@ -78,7 +78,7 @@ const SessionPreviewTimeline = ({
     : null;
 
   return (
-    <div className="border-latte-surface1/80 bg-latte-mantle rounded-xl border px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
+    <div className="border-latte-surface1/80 bg-latte-mantle shadow-inner-highlight rounded-xl border px-3 py-2.5">
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
         <TagPill tone="meta">State Timeline</TagPill>
         <TagPill tone="meta">Range {timeline?.range ?? "1h"}</TagPill>
@@ -176,7 +176,7 @@ export const SessionSidebarPreviewPopover = memo(
       }}
       aria-hidden="true"
     >
-      <div className="border-latte-surface1/80 bg-latte-base relative flex h-full flex-col rounded-2xl border p-4 shadow-[0_30px_80px_-30px_rgba(17,17,27,0.75)]">
+      <div className="border-latte-surface1/80 bg-latte-base shadow-popover relative flex h-full flex-col rounded-2xl border p-4">
         <div className="from-latte-lavender/12 absolute inset-x-0 top-0 h-14 rounded-t-2xl bg-gradient-to-b to-transparent" />
         <div className="relative flex items-start justify-between gap-2">
           <div className="min-w-0">
