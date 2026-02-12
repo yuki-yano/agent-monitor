@@ -1,7 +1,6 @@
 import { execFile } from "node:child_process";
 import type { Dirent } from "node:fs";
 import fs from "node:fs/promises";
-import path from "node:path";
 import { promisify } from "node:util";
 
 import type {
@@ -13,7 +12,6 @@ import type {
 } from "@vde-monitor/shared";
 
 import { resolveFileContent } from "./file-content-resolver";
-import { createFileVisibilityPolicy, type FileVisibilityPolicy } from "./file-visibility-policy";
 import { normalizeRepoRelativePath, resolveRepoAbsolutePath } from "./path-guard";
 import { createSearchIndexResolver } from "./search-index-resolver";
 import {
@@ -30,6 +28,7 @@ import {
 } from "./service-context";
 import { paginateItems } from "./service-pagination";
 import { buildWordSearchMatch, tokenizeQuery } from "./service-search-matcher";
+import { createServiceVisibilityResolver, toDirectoryRelativePath } from "./service-visibility";
 
 const VISIBILITY_CACHE_TTL_MS = 5_000;
 const GIT_LS_FILES_TIMEOUT_MS = 1_500;
@@ -72,16 +71,6 @@ type RepoFileServiceDeps = {
   now?: () => number;
 };
 
-type VisibilityCacheEntry = {
-  policy: FileVisibilityPolicy;
-  expiresAt: number;
-};
-
-type VisibleChildrenCacheEntry = {
-  hasChildren: boolean;
-  expiresAt: number;
-};
-
 const splitNullSeparated = (value: string) => value.split("\0").filter((token) => token.length > 0);
 
 const extractStdoutFromExecError = (error: unknown) => {
@@ -94,27 +83,6 @@ const extractStdoutFromExecError = (error: unknown) => {
 
 const normalizeAndSortNodes = (nodes: RepoFileTreeNode[]) => {
   return nodes.sort((left, right) => left.name.localeCompare(right.name));
-};
-
-const resolveGitignorePatterns = async (repoRoot: string) => {
-  const gitignorePath = path.join(repoRoot, ".gitignore");
-  const basePatterns = [".git/"];
-  try {
-    const raw = await fs.readFile(gitignorePath, "utf8");
-    const lines = raw
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-    return [...basePatterns, ...lines];
-  } catch (error) {
-    if (isNotFoundError(error)) {
-      return basePatterns;
-    }
-    if (isReadablePermissionError(error)) {
-      throw createServiceError("PERMISSION_DENIED", 403, "permission denied");
-    }
-    throw createServiceError("INTERNAL", 500, "failed to read .gitignore");
-  }
 };
 
 const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string) => {
@@ -133,81 +101,15 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, timeoutMes
   }
 };
 
-const toDirectoryRelativePath = (basePath: string, name: string) => {
-  return basePath === "." ? name : `${basePath}/${name}`;
-};
-
-const hasVisibleChildren = async ({
-  repoRoot,
-  relativePath,
-  policy,
-}: {
-  repoRoot: string;
-  relativePath: string;
-  policy: FileVisibilityPolicy;
-}) => {
-  const absolutePath = resolveRepoAbsolutePath(repoRoot, relativePath);
-  let entries: Dirent[];
-  try {
-    entries = await fs.readdir(absolutePath, { withFileTypes: true });
-  } catch (error) {
-    if (isReadablePermissionError(error)) {
-      return false;
-    }
-    if (isNotFoundError(error)) {
-      return false;
-    }
-    throw error;
-  }
-  for (const entry of entries) {
-    if (entry.isSymbolicLink()) {
-      continue;
-    }
-    const childRelativePath = toDirectoryRelativePath(relativePath, entry.name);
-    if (entry.isDirectory()) {
-      if (
-        policy.shouldIncludePath({ relativePath: childRelativePath, isDirectory: true }) ||
-        policy.shouldTraverseDirectory(childRelativePath)
-      ) {
-        return true;
-      }
-      continue;
-    }
-    if (
-      entry.isFile() &&
-      policy.shouldIncludePath({ relativePath: childRelativePath, isDirectory: false })
-    ) {
-      return true;
-    }
-  }
-  return false;
-};
-
 export const createRepoFileService = ({
   fileNavigatorConfig,
   now = () => Date.now(),
 }: RepoFileServiceDeps): RepoFileService => {
-  const visibilityCache = new Map<string, VisibilityCacheEntry>();
-  const visibleChildrenCache = new Map<string, Map<string, VisibleChildrenCacheEntry>>();
-
-  const resolveVisibilityPolicy = async (repoRoot: string) => {
-    const cached = visibilityCache.get(repoRoot);
-    if (cached && cached.expiresAt > now()) {
-      return cached.policy;
-    }
-    const gitignorePatterns = await resolveGitignorePatterns(repoRoot);
-    const policy = createFileVisibilityPolicy({
-      gitignorePatterns,
-      includeIgnoredPaths: fileNavigatorConfig.includeIgnoredPaths,
-    });
-    visibilityCache.set(repoRoot, {
-      policy,
-      expiresAt: now() + VISIBILITY_CACHE_TTL_MS,
-    });
-    // Policy更新時は子要素判定キャッシュを破棄して整合性を保つ。
-    visibleChildrenCache.delete(repoRoot);
-    return policy;
-  };
+  const { resolveVisibilityPolicy, resolveHasVisibleChildren } = createServiceVisibilityResolver({
+    now,
+    includeIgnoredPaths: fileNavigatorConfig.includeIgnoredPaths,
+    visibilityCacheTtlMs: VISIBILITY_CACHE_TTL_MS,
+  });
 
   const runLsFiles = async (repoRoot: string, args: string[]) => {
     const output = await execFileAsync("git", ["-C", repoRoot, ...args], {
@@ -229,34 +131,6 @@ export const createRepoFileService = ({
     now,
     runLsFiles,
   });
-
-  const resolveHasVisibleChildren = async ({
-    repoRoot,
-    relativePath,
-    policy,
-  }: {
-    repoRoot: string;
-    relativePath: string;
-    policy: FileVisibilityPolicy;
-  }) => {
-    const nowMs = now();
-    const cacheByRepo =
-      visibleChildrenCache.get(repoRoot) ?? new Map<string, VisibleChildrenCacheEntry>();
-    if (!visibleChildrenCache.has(repoRoot)) {
-      visibleChildrenCache.set(repoRoot, cacheByRepo);
-    }
-    const cached = cacheByRepo.get(relativePath);
-    if (cached && cached.expiresAt > nowMs) {
-      return cached.hasChildren;
-    }
-
-    const hasChildren = await hasVisibleChildren({ repoRoot, relativePath, policy });
-    cacheByRepo.set(relativePath, {
-      hasChildren,
-      expiresAt: nowMs + VISIBILITY_CACHE_TTL_MS,
-    });
-    return hasChildren;
-  };
 
   const listTree = async ({ repoRoot, path: rawPath, cursor, limit }: ListTreeInput) => {
     await ensureRepoRootAvailable(repoRoot);
