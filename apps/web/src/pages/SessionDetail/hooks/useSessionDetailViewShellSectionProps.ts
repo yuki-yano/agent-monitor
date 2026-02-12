@@ -1,0 +1,264 @@
+import { useMemo } from "react";
+
+import type { SessionDetailViewProps } from "../SessionDetailView";
+import {
+  buildControlsPanelProps,
+  buildLogModalProps,
+  buildQuickPanelProps,
+  buildSessionHeaderProps,
+  buildSessionSidebarProps,
+} from "./section-props-builders";
+
+export const useSessionDetailViewShellSectionProps = ({
+  meta,
+  sidebar,
+  controls,
+  logs,
+  title,
+  actions,
+}: SessionDetailViewProps) => {
+  const { paneId, session, nowMs, connectionIssue } = meta;
+  const {
+    sessionGroups,
+    getRepoSortAnchorAt,
+    connected,
+    connectionIssue: sidebarConnectionIssue,
+    requestStateTimeline,
+    requestScreen,
+    highlightCorrections,
+    resolvedTheme,
+  } = sidebar;
+  const {
+    textInputRef,
+    autoEnter,
+    shiftHeld,
+    ctrlHeld,
+    controlsOpen,
+    rawMode,
+    allowDangerKeys,
+    isSendingText,
+    interactive,
+    handleSendKey,
+    handleSendText,
+    handleUploadImage,
+    handleRawBeforeInput,
+    handleRawInput,
+    handleRawKeyDown,
+    handleRawCompositionStart,
+    handleRawCompositionEnd,
+    toggleAutoEnter,
+    toggleControls,
+    toggleShift,
+    toggleCtrl,
+    toggleRawMode,
+    toggleAllowDangerKeys,
+    handleTouchSession,
+  } = controls;
+  const {
+    quickPanelOpen,
+    logModalOpen,
+    selectedSession,
+    selectedLogLines,
+    selectedLogLoading,
+    selectedLogError,
+    openLogModal,
+    closeLogModal,
+    toggleQuickPanel,
+    closeQuickPanel,
+  } = logs;
+  const {
+    titleDraft,
+    titleEditing,
+    titleSaving,
+    titleError,
+    openTitleEditor,
+    closeTitleEditor,
+    updateTitleDraft,
+    saveTitle,
+    resetTitle,
+  } = title;
+  const {
+    handleFocusPane,
+    handleTouchPane,
+    handleTouchRepoPin,
+    handleOpenPaneHere,
+    handleOpenHere,
+    handleOpenInNewTab,
+  } = actions;
+
+  const quickPanelProps = useMemo(
+    () =>
+      buildQuickPanelProps({
+        quickPanelOpen,
+        sessionGroups,
+        nowMs,
+        paneId,
+        openLogModal,
+        handleOpenPaneHere,
+        closeQuickPanel,
+        toggleQuickPanel,
+      }),
+    [
+      quickPanelOpen,
+      sessionGroups,
+      nowMs,
+      paneId,
+      openLogModal,
+      handleOpenPaneHere,
+      closeQuickPanel,
+      toggleQuickPanel,
+    ],
+  );
+
+  const logModalProps = useMemo(
+    () =>
+      buildLogModalProps({
+        logModalOpen,
+        selectedSession,
+        selectedLogLines,
+        selectedLogLoading,
+        selectedLogError,
+        closeLogModal,
+        handleOpenHere,
+        handleOpenInNewTab,
+      }),
+    [
+      logModalOpen,
+      selectedSession,
+      selectedLogLines,
+      selectedLogLoading,
+      selectedLogError,
+      closeLogModal,
+      handleOpenHere,
+      handleOpenInNewTab,
+    ],
+  );
+
+  const sessionHeaderProps = useMemo(() => {
+    return buildSessionHeaderProps({
+      session,
+      connectionIssue,
+      nowMs,
+      titleDraft,
+      titleEditing,
+      titleSaving,
+      titleError,
+      updateTitleDraft,
+      saveTitle,
+      resetTitle,
+      openTitleEditor,
+      closeTitleEditor,
+      handleTouchSession,
+    });
+  }, [
+    session,
+    connectionIssue,
+    nowMs,
+    titleDraft,
+    titleEditing,
+    titleSaving,
+    titleError,
+    updateTitleDraft,
+    saveTitle,
+    resetTitle,
+    openTitleEditor,
+    closeTitleEditor,
+    handleTouchSession,
+  ]);
+
+  const sessionSidebarProps = useMemo(
+    () =>
+      buildSessionSidebarProps({
+        sessionGroups,
+        getRepoSortAnchorAt,
+        nowMs,
+        connected,
+        sidebarConnectionIssue,
+        requestStateTimeline,
+        requestScreen,
+        highlightCorrections,
+        resolvedTheme,
+        paneId,
+        handleFocusPane,
+        handleTouchPane,
+        handleTouchRepoPin,
+      }),
+    [
+      sessionGroups,
+      getRepoSortAnchorAt,
+      nowMs,
+      connected,
+      sidebarConnectionIssue,
+      requestStateTimeline,
+      requestScreen,
+      highlightCorrections,
+      resolvedTheme,
+      paneId,
+      handleFocusPane,
+      handleTouchPane,
+      handleTouchRepoPin,
+    ],
+  );
+
+  const controlsPanelProps = useMemo(
+    () =>
+      buildControlsPanelProps({
+        interactive,
+        textInputRef,
+        autoEnter,
+        controlsOpen,
+        rawMode,
+        allowDangerKeys,
+        isSendingText,
+        shiftHeld,
+        ctrlHeld,
+        handleSendText,
+        handleUploadImage,
+        toggleAutoEnter,
+        toggleControls,
+        toggleRawMode,
+        toggleAllowDangerKeys,
+        toggleShift,
+        toggleCtrl,
+        handleSendKey,
+        handleRawBeforeInput,
+        handleRawInput,
+        handleRawKeyDown,
+        handleRawCompositionStart,
+        handleRawCompositionEnd,
+      }),
+    [
+      interactive,
+      textInputRef,
+      autoEnter,
+      controlsOpen,
+      rawMode,
+      allowDangerKeys,
+      isSendingText,
+      shiftHeld,
+      ctrlHeld,
+      handleSendText,
+      handleUploadImage,
+      toggleAutoEnter,
+      toggleControls,
+      toggleRawMode,
+      toggleAllowDangerKeys,
+      toggleShift,
+      toggleCtrl,
+      handleSendKey,
+      handleRawBeforeInput,
+      handleRawInput,
+      handleRawKeyDown,
+      handleRawCompositionStart,
+      handleRawCompositionEnd,
+    ],
+  );
+
+  return {
+    quickPanelProps,
+    logModalProps,
+    sessionHeaderProps,
+    sessionSidebarProps,
+    controlsPanelProps,
+  };
+};
