@@ -32,6 +32,7 @@ import {
   resetSearchExpandOverrides,
   scheduleSearchRequest,
 } from "./useSessionFiles-search-effect";
+import { useSessionFilesTreeActions } from "./useSessionFiles-tree-actions";
 import {
   buildNormalRenderNodes,
   buildSearchRenderNodes,
@@ -386,52 +387,17 @@ export const useSessionFiles = ({
 
   const isSearchActive = searchQuery.trim().length > 0;
 
-  const onToggleDirectory = useCallback(
-    (targetPath: string) => {
-      if (isSearchActive) {
-        const isExpanded = effectiveSearchExpandedDirSet.has(targetPath);
-        if (isExpanded) {
-          setSearchExpandedDirSet((prev) => {
-            const next = new Set(prev);
-            next.delete(targetPath);
-            return next;
-          });
-          setSearchCollapsedDirSet((prev) => {
-            const next = new Set(prev);
-            next.add(targetPath);
-            return next;
-          });
-          return;
-        }
-        setSearchCollapsedDirSet((prev) => {
-          const next = new Set(prev);
-          next.delete(targetPath);
-          return next;
-        });
-        setSearchExpandedDirSet((prev) => {
-          const next = new Set(prev);
-          next.add(targetPath);
-          return next;
-        });
-        return;
-      }
-
-      const alreadyExpanded = expandedDirSet.has(targetPath);
-      setExpandedDirSet((prev) => {
-        const next = new Set(prev);
-        if (next.has(targetPath)) {
-          next.delete(targetPath);
-          return next;
-        }
-        next.add(targetPath);
-        return next;
-      });
-      if (!alreadyExpanded && !treePagesRef.current[targetPath]) {
-        void loadTree(targetPath);
-      }
-    },
-    [effectiveSearchExpandedDirSet, expandedDirSet, isSearchActive, loadTree],
-  );
+  const { onToggleDirectory, onLoadMoreTreeRoot } = useSessionFilesTreeActions({
+    isSearchActive,
+    effectiveSearchExpandedDirSet,
+    expandedDirSet,
+    treePages,
+    setSearchExpandedDirSet,
+    setSearchCollapsedDirSet,
+    setExpandedDirSet,
+    treePagesRef,
+    loadTree,
+  });
 
   const onSelectFile = useCallback(
     (targetPath: string) => {
@@ -485,17 +451,6 @@ export const useSessionFiles = ({
     onSelectFile,
     onOpenFileModal,
   });
-
-  const onLoadMoreTreeRoot = useCallback(() => {
-    const target = resolveTreeLoadMoreTarget({
-      treePages,
-      expandedDirSet,
-    });
-    if (!target) {
-      return;
-    }
-    void loadTree(target.path, target.cursor);
-  }, [expandedDirSet, loadTree, treePages]);
 
   const resetLogFileCandidateState = useCallback(() => {
     resetLogFileCandidateStateValue({
