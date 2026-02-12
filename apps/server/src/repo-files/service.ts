@@ -76,6 +76,11 @@ type VisibilityCacheEntry = {
   expiresAt: number;
 };
 
+type VisibleChildrenCacheEntry = {
+  hasChildren: boolean;
+  expiresAt: number;
+};
+
 const encodeCursor = (offset: number) => {
   return Buffer.from(String(offset), "utf8").toString("base64url");
 };
@@ -267,6 +272,7 @@ export const createRepoFileService = ({
   now = () => Date.now(),
 }: RepoFileServiceDeps): RepoFileService => {
   const visibilityCache = new Map<string, VisibilityCacheEntry>();
+  const visibleChildrenCache = new Map<string, Map<string, VisibleChildrenCacheEntry>>();
 
   const resolveVisibilityPolicy = async (repoRoot: string) => {
     const cached = visibilityCache.get(repoRoot);
@@ -282,6 +288,8 @@ export const createRepoFileService = ({
       policy,
       expiresAt: now() + VISIBILITY_CACHE_TTL_MS,
     });
+    // Policy更新時は子要素判定キャッシュを破棄して整合性を保つ。
+    visibleChildrenCache.delete(repoRoot);
     return policy;
   };
 
@@ -305,6 +313,34 @@ export const createRepoFileService = ({
     now,
     runLsFiles,
   });
+
+  const resolveHasVisibleChildren = async ({
+    repoRoot,
+    relativePath,
+    policy,
+  }: {
+    repoRoot: string;
+    relativePath: string;
+    policy: FileVisibilityPolicy;
+  }) => {
+    const nowMs = now();
+    const cacheByRepo =
+      visibleChildrenCache.get(repoRoot) ?? new Map<string, VisibleChildrenCacheEntry>();
+    if (!visibleChildrenCache.has(repoRoot)) {
+      visibleChildrenCache.set(repoRoot, cacheByRepo);
+    }
+    const cached = cacheByRepo.get(relativePath);
+    if (cached && cached.expiresAt > nowMs) {
+      return cached.hasChildren;
+    }
+
+    const hasChildren = await hasVisibleChildren({ repoRoot, relativePath, policy });
+    cacheByRepo.set(relativePath, {
+      hasChildren,
+      expiresAt: nowMs + VISIBILITY_CACHE_TTL_MS,
+    });
+    return hasChildren;
+  };
 
   const listTree = async ({ repoRoot, path: rawPath, cursor, limit }: ListTreeInput) => {
     await ensureRepoRootAvailable(repoRoot);
@@ -345,7 +381,7 @@ export const createRepoFileService = ({
           if (!include) {
             continue;
           }
-          const hasChildren = await hasVisibleChildren({ repoRoot, relativePath, policy });
+          const hasChildren = await resolveHasVisibleChildren({ repoRoot, relativePath, policy });
           visibleNodes.push({
             path: relativePath,
             name: entry.name,

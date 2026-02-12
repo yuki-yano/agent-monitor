@@ -1,10 +1,11 @@
 import { execFile } from "node:child_process";
+import fs from "node:fs/promises";
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createRepoFileService } from "./service";
 
@@ -15,6 +16,62 @@ const runGitCommand = async (repoRoot: string, args: string[]) => {
 };
 
 describe("createRepoFileService", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("caches directory child visibility checks within policy ttl", async () => {
+    const repoRoot = await mkdtemp(
+      path.join(os.tmpdir(), "vde-monitor-repo-files-children-cache-"),
+    );
+    try {
+      await runGitCommand(repoRoot, ["init"]);
+      await mkdir(path.join(repoRoot, "src"), { recursive: true });
+      await writeFile(path.join(repoRoot, ".gitignore"), "");
+      await writeFile(path.join(repoRoot, "src", "index.ts"), "export {};\n");
+
+      let nowMs = 0;
+      const service = createRepoFileService({
+        fileNavigatorConfig: {
+          includeIgnoredPaths: [],
+          autoExpandMatchLimit: 100,
+        },
+        now: () => nowMs,
+      });
+      const readdirSpy = vi.spyOn(fs, "readdir");
+
+      await service.listTree({
+        repoRoot,
+        path: ".",
+        limit: 100,
+      });
+      await service.listTree({
+        repoRoot,
+        path: ".",
+        limit: 100,
+      });
+
+      const srcAbsolutePath = path.join(repoRoot, "src");
+      const callsWithinTtl = readdirSpy.mock.calls.filter(([targetPath]) => {
+        return String(targetPath) === srcAbsolutePath;
+      }).length;
+      expect(callsWithinTtl).toBe(1);
+
+      nowMs = 6_000;
+      await service.listTree({
+        repoRoot,
+        path: ".",
+        limit: 100,
+      });
+      const callsAfterTtl = readdirSpy.mock.calls.filter(([targetPath]) => {
+        return String(targetPath) === srcAbsolutePath;
+      }).length;
+      expect(callsAfterTtl).toBe(2);
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
   it("lists tree nodes with pagination and includeIgnoredPaths override", async () => {
     const repoRoot = await mkdtemp(path.join(os.tmpdir(), "vde-monitor-repo-files-"));
     try {
