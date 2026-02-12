@@ -15,7 +15,7 @@ import type {
 import { resolveFileContent } from "./file-content-resolver";
 import { createFileVisibilityPolicy, type FileVisibilityPolicy } from "./file-visibility-policy";
 import { normalizeRepoRelativePath, resolveRepoAbsolutePath } from "./path-guard";
-import { createSearchIndexResolver, type SearchIndexItem } from "./search-index-resolver";
+import { createSearchIndexResolver } from "./search-index-resolver";
 import {
   createServiceError,
   ensureRepoRootAvailable,
@@ -28,8 +28,9 @@ import {
   toServiceError,
   validateMaxBytes,
 } from "./service-context";
+import { paginateItems } from "./service-pagination";
+import { buildWordSearchMatch, tokenizeQuery } from "./service-search-matcher";
 
-const DEFAULT_CURSOR_OFFSET = 0;
 const VISIBILITY_CACHE_TTL_MS = 5_000;
 const GIT_LS_FILES_TIMEOUT_MS = 1_500;
 const DEFAULT_SEARCH_TIMEOUT_MS = 2_000;
@@ -79,27 +80,6 @@ type VisibilityCacheEntry = {
 type VisibleChildrenCacheEntry = {
   hasChildren: boolean;
   expiresAt: number;
-};
-
-const encodeCursor = (offset: number) => {
-  return Buffer.from(String(offset), "utf8").toString("base64url");
-};
-
-const decodeCursor = (cursor: string | undefined) => {
-  if (!cursor) {
-    return DEFAULT_CURSOR_OFFSET;
-  }
-  let decoded = "";
-  try {
-    decoded = Buffer.from(cursor, "base64url").toString("utf8");
-  } catch {
-    throw createServiceError("INVALID_PAYLOAD", 400, "invalid cursor");
-  }
-  const parsed = Number.parseInt(decoded, 10);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    throw createServiceError("INVALID_PAYLOAD", 400, "invalid cursor");
-  }
-  return parsed;
 };
 
 const splitNullSeparated = (value: string) => value.split("\0").filter((token) => token.length > 0);
@@ -201,70 +181,6 @@ const hasVisibleChildren = async ({
     }
   }
   return false;
-};
-
-const tokenizeQuery = (query: string) => {
-  const rawTokens = query
-    .split(/\s+/)
-    .map((token) => token.trim().toLowerCase())
-    .filter((token) => token.length > 0);
-  return Array.from(new Set(rawTokens));
-};
-
-const buildWordSearchMatch = (item: SearchIndexItem, tokens: string[]) => {
-  const lowerName = item.name.toLowerCase();
-  const lowerPath = item.path.toLowerCase();
-  const highlightSet = new Set<number>();
-  let score = 0;
-
-  for (const token of tokens) {
-    const nameMatchStart = lowerName.indexOf(token);
-    const pathMatchStart = lowerPath.indexOf(token);
-    if (nameMatchStart < 0 && pathMatchStart < 0) {
-      return null;
-    }
-    if (nameMatchStart >= 0) {
-      for (let offset = 0; offset < token.length; offset += 1) {
-        highlightSet.add(nameMatchStart + offset);
-      }
-      const positionScore = Math.max(0, 220 - nameMatchStart);
-      score += positionScore + token.length * 12;
-      continue;
-    }
-    const positionScore = Math.max(0, 120 - pathMatchStart);
-    score += positionScore + token.length * 8;
-  }
-
-  score += Math.max(0, 100 - item.name.length);
-
-  return {
-    path: item.path,
-    name: item.name,
-    kind: item.kind,
-    score,
-    highlights: Array.from(highlightSet).sort((left, right) => left - right),
-    isIgnored: item.isIgnored,
-  };
-};
-
-const paginateItems = <T>({
-  allItems,
-  cursor,
-  limit,
-}: {
-  allItems: T[];
-  cursor: string | undefined;
-  limit: number;
-}) => {
-  const offset = decodeCursor(cursor);
-  const pagedItems = allItems.slice(offset, offset + limit);
-  const nextOffset = offset + pagedItems.length;
-  const nextCursor = nextOffset < allItems.length ? encodeCursor(nextOffset) : undefined;
-  return {
-    items: pagedItems,
-    nextCursor,
-    totalCount: allItems.length,
-  };
 };
 
 export const createRepoFileService = ({
