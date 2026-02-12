@@ -15,12 +15,7 @@ import {
 } from "./useSessionFiles-log-resolve-state";
 import { useSessionFilesRequestActions } from "./useSessionFiles-request-actions";
 import { useSessionFilesSearchActions } from "./useSessionFiles-search-actions";
-import {
-  applyEmptySearchState,
-  createNextSearchRequestId,
-  resetSearchExpandOverrides,
-  scheduleSearchRequest,
-} from "./useSessionFiles-search-effect";
+import { useSessionFilesSearchEffects } from "./useSessionFiles-search-effects";
 import { useSessionFilesTreeActions } from "./useSessionFiles-tree-actions";
 import { useSessionFilesTreeLoader } from "./useSessionFiles-tree-loader";
 import { useSessionFilesTreeRenderNodes } from "./useSessionFiles-tree-render-nodes";
@@ -185,63 +180,26 @@ export const useSessionFiles = ({
     setLogFileCandidateItems,
   });
 
-  useEffect(() => {
-    if (!repoRoot) {
-      return;
-    }
-    const normalized = searchQuery.trim();
-    const requestId = createNextSearchRequestId(activeSearchRequestIdRef);
-    resetSearchExpandOverrides({
-      setSearchExpandedDirSet,
-      setSearchCollapsedDirSet,
-    });
-    if (normalized.length === 0) {
-      applyEmptySearchState({
-        setSearchResult,
-        setSearchError,
-        setSearchLoading,
-        setSearchActiveIndex,
-      });
-      return;
-    }
+  const resolveSearchErrorMessage = useCallback(
+    (error: unknown) => resolveUnknownErrorMessage(error, API_ERROR_MESSAGES.fileSearch),
+    [],
+  );
 
-    const timerId = scheduleSearchRequest({
-      requestId,
-      activeSearchRequestIdRef,
-      normalizedQuery: normalized,
-      debounceMs: SEARCH_DEBOUNCE_MS,
-      fetchSearchPage,
-      resolveErrorMessage: (error) =>
-        resolveUnknownErrorMessage(error, API_ERROR_MESSAGES.fileSearch),
-      setSearchLoading,
-      setSearchError,
-      setSearchResult,
-      setSearchActiveIndex,
-    });
-
-    return () => {
-      window.clearTimeout(timerId);
-    };
-  }, [fetchSearchPage, repoRoot, searchQuery]);
-
-  useEffect(() => {
-    if (!searchResult) {
-      return;
-    }
-    if (searchResult.items.length === 0) {
-      setSearchActiveIndex(0);
-      return;
-    }
-    setSearchActiveIndex((prev) => {
-      if (prev < 0) {
-        return 0;
-      }
-      if (prev >= searchResult.items.length) {
-        return searchResult.items.length - 1;
-      }
-      return prev;
-    });
-  }, [searchResult]);
+  useSessionFilesSearchEffects({
+    repoRoot,
+    searchQuery,
+    searchResult,
+    searchDebounceMs: SEARCH_DEBOUNCE_MS,
+    activeSearchRequestIdRef,
+    fetchSearchPage,
+    resolveSearchErrorMessage,
+    setSearchExpandedDirSet,
+    setSearchCollapsedDirSet,
+    setSearchResult,
+    setSearchLoading,
+    setSearchError,
+    setSearchActiveIndex,
+  });
 
   const { revealFilePath } = useSessionFilesTreeReveal({
     repoRoot,
