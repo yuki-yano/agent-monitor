@@ -10,6 +10,7 @@ import {
 } from "@vde-monitor/shared";
 
 import { createJsonlTailer, createLogActivityPoller, ensureDir } from "./logs";
+import { mapWithConcurrencyLimitSettled } from "./monitor/concurrency";
 import { handleHookLine, type HookEventContext } from "./monitor/hook-tailer";
 import { createMonitorLoop } from "./monitor/loop";
 import { createPaneLogManager } from "./monitor/pane-log-manager";
@@ -32,56 +33,10 @@ const baseDir = path.join(os.homedir(), ".vde-monitor");
 const PANE_PROCESS_CONCURRENCY = 8;
 const VIEWED_PANE_TTL_MS = 20_000;
 
-type SettledMapResult<R> =
-  | { status: "fulfilled"; value: R }
-  | { status: "rejected"; reason: unknown };
-
 type PaneProcessingFailure = {
   count: number;
   lastFailedAt: string;
   lastErrorMessage: string;
-};
-
-export const mapWithConcurrencyLimit = async <T, R>(
-  items: T[],
-  limit: number,
-  mapper: (item: T, index: number) => Promise<R>,
-): Promise<R[]> => {
-  if (items.length === 0) {
-    return [];
-  }
-
-  const results = new Array<R>(items.length);
-  const workerCount = Math.min(items.length, Math.max(1, Math.floor(limit)));
-  let nextIndex = 0;
-
-  const worker = async () => {
-    while (true) {
-      const currentIndex = nextIndex;
-      nextIndex += 1;
-      if (currentIndex >= items.length) {
-        return;
-      }
-      results[currentIndex] = await mapper(items[currentIndex] as T, currentIndex);
-    }
-  };
-
-  await Promise.all(Array.from({ length: workerCount }, () => worker()));
-  return results;
-};
-
-export const mapWithConcurrencyLimitSettled = async <T, R>(
-  items: T[],
-  limit: number,
-  mapper: (item: T, index: number) => Promise<R>,
-): Promise<SettledMapResult<R>[]> => {
-  return mapWithConcurrencyLimit(items, limit, async (item, index) => {
-    try {
-      return { status: "fulfilled", value: await mapper(item, index) };
-    } catch (error) {
-      return { status: "rejected", reason: error };
-    }
-  });
 };
 
 const resolveErrorMessage = (error: unknown) => {

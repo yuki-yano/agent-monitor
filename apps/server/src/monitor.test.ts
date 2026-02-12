@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { mapWithConcurrencyLimit, mapWithConcurrencyLimitSettled } from "./monitor";
+import { mapWithConcurrencyLimit, mapWithConcurrencyLimitSettled } from "./monitor/concurrency";
 
 type Deferred = {
   promise: Promise<void>;
