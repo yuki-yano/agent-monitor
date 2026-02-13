@@ -289,18 +289,18 @@ describe("SessionDetailView", () => {
     expect(screen.getByRole("button", { name: "Edit session title" })).toBeTruthy();
     expect(screen.getByRole("separator", { name: "Resize sidebar" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Text" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Timeline panel" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Changes panel" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Files panel" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Commits panel" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Keys panel" })).toBeTruthy();
     expect(screen.getByText("State Timeline")).toBeTruthy();
+    expect(screen.getByText("Changes")).toBeTruthy();
+    expect(screen.getByText("File Navigator")).toBeTruthy();
+    expect(screen.getByText("Commit Log")).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: "Timeline panel" })).toBeNull();
     expect(screen.getByLabelText("Toggle session quick panel")).toBeTruthy();
   });
 
   it("switches section by icon tabs and stores selected tab", () => {
     const props = createViewProps({
       meta: { session: createSessionDetail() },
+      timeline: { isMobile: true },
     });
     renderWithRouter(<SessionDetailView {...props} />);
 
@@ -333,6 +333,7 @@ describe("SessionDetailView", () => {
     window.localStorage.setItem(DETAIL_SECTION_TAB_STORAGE_KEY, "file");
     const props = createViewProps({
       meta: { session: createSessionDetail() },
+      timeline: { isMobile: true },
     });
     renderWithRouter(<SessionDetailView {...props} />);
 
@@ -344,6 +345,7 @@ describe("SessionDetailView", () => {
     window.localStorage.setItem(DETAIL_SECTION_TAB_STORAGE_KEY, "timeline");
     const props = createViewProps({
       meta: { session: createSessionDetail() },
+      timeline: { isMobile: true },
     });
     renderWithRouter(<SessionDetailView {...props} />);
 
@@ -364,6 +366,7 @@ describe("SessionDetailView", () => {
     window.localStorage.setItem(DETAIL_SECTION_TAB_STORAGE_KEY, CLOSE_DETAIL_TAB_VALUE);
     const props = createViewProps({
       meta: { session: createSessionDetail() },
+      timeline: { isMobile: true },
     });
     renderWithRouter(<SessionDetailView {...props} />);
 
@@ -373,5 +376,19 @@ describe("SessionDetailView", () => {
     expect(
       screen.getByRole("tab", { name: "Close detail sections" }).getAttribute("data-state"),
     ).toBe("active");
+  });
+
+  it("ignores close tab state on non-mobile layouts", () => {
+    window.localStorage.setItem(DETAIL_SECTION_TAB_STORAGE_KEY, CLOSE_DETAIL_TAB_VALUE);
+    const props = createViewProps({
+      meta: { session: createSessionDetail() },
+      timeline: { isMobile: false },
+    });
+    renderWithRouter(<SessionDetailView {...props} />);
+
+    expect(screen.getByText("State Timeline")).toBeTruthy();
+    expect(screen.getByText("File Navigator")).toBeTruthy();
+    expect(screen.getByText("Commit Log")).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: "Close detail sections" })).toBeNull();
   });
 });

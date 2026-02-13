@@ -73,7 +73,15 @@ export const SessionDetailView = ({
 }: SessionDetailViewProps) => {
   const { session } = meta;
   const backToListSearch = useMemo(() => ({ filter: readStoredSessionListFilter() }), []);
-  const { sidebarWidth, handleSidebarPointerDown } = layout;
+  const {
+    is2xlUp,
+    sidebarWidth,
+    handleSidebarPointerDown,
+    detailSplitRatio,
+    detailSplitRef,
+    handleDetailSplitPointerDown,
+  } = layout;
+  const isMobileDetailLayout = timeline.isMobile;
   const [sectionTabsListElement, setSectionTabsListElement] = useState<HTMLDivElement | null>(null);
   const [selectedSectionTabValue, setSelectedSectionTabValue] = useState<SectionTabValue>(() =>
     readStoredSectionTabValue(),
@@ -200,96 +208,149 @@ export const SessionDetailView = ({
       >
         <div className="flex min-w-0 flex-col gap-2.5 sm:gap-4">
           <SessionHeader {...sessionHeaderProps} />
-          <ScreenPanel
-            {...screenPanelProps}
-            controls={<ControlsPanel {...controlsPanelProps} showKeysSection={false} />}
-          />
+          {isMobileDetailLayout ? (
+            <>
+              <ScreenPanel
+                {...screenPanelProps}
+                controls={<ControlsPanel {...controlsPanelProps} showKeysSection={false} />}
+              />
 
-          <Tabs value={selectedSectionTabValue} onValueChange={handleSectionTabChange}>
-            <TabsList
-              ref={setSectionTabsListElement}
-              aria-label="Session detail sections"
-              className="w-full rounded-2xl"
-            >
-              <TabsTrigger
-                value="keys"
-                aria-label="Keys panel"
-                title="Keys"
-                className={
-                  sectionTabsIconOnly ? SECTION_TAB_ICON_ONLY_CLASS : SECTION_TAB_TEXT_CLASS
-                }
-              >
-                <Keyboard className="h-3.5 w-3.5 shrink-0" />
-                {!sectionTabsIconOnly ? <span className="truncate">Keys</span> : null}
-              </TabsTrigger>
-              <TabsTrigger
-                value="timeline"
-                aria-label="Timeline panel"
-                title="Timeline"
-                className={
-                  sectionTabsIconOnly ? SECTION_TAB_ICON_ONLY_CLASS : SECTION_TAB_TEXT_CLASS
-                }
-              >
-                <Clock className="h-3.5 w-3.5 shrink-0" />
-                {!sectionTabsIconOnly ? <span className="truncate">Timeline</span> : null}
-              </TabsTrigger>
-              <TabsTrigger
-                value="file"
-                aria-label="Files panel"
-                title="Files"
-                className={
-                  sectionTabsIconOnly ? SECTION_TAB_ICON_ONLY_CLASS : SECTION_TAB_TEXT_CLASS
-                }
-              >
-                <FolderOpen className="h-3.5 w-3.5 shrink-0" />
-                {!sectionTabsIconOnly ? <span className="truncate">Files</span> : null}
-              </TabsTrigger>
-              <TabsTrigger
-                value="changes"
-                aria-label="Changes panel"
-                title="Changes"
-                className={
-                  sectionTabsIconOnly ? SECTION_TAB_ICON_ONLY_CLASS : SECTION_TAB_TEXT_CLASS
-                }
-              >
-                <FileCheck className="h-3.5 w-3.5 shrink-0" />
-                {!sectionTabsIconOnly ? <span className="truncate">Changes</span> : null}
-              </TabsTrigger>
-              <TabsTrigger
-                value="commits"
-                aria-label="Commits panel"
-                title="Commits"
-                className={
-                  sectionTabsIconOnly ? SECTION_TAB_ICON_ONLY_CLASS : SECTION_TAB_TEXT_CLASS
-                }
-              >
-                <GitCommitHorizontal className="h-3.5 w-3.5 shrink-0" />
-                {!sectionTabsIconOnly ? <span className="truncate">Commits</span> : null}
-              </TabsTrigger>
-              <TabsTrigger
-                value={CLOSE_DETAIL_TAB_VALUE}
-                aria-label="Close detail sections"
-                title="Close detail sections"
-                className="inline-flex h-8 w-7 shrink-0 items-center justify-center p-0 sm:h-9 sm:w-8"
-              >
-                <X className="h-3.5 w-3.5" />
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+              <Tabs value={selectedSectionTabValue} onValueChange={handleSectionTabChange}>
+                <TabsList
+                  ref={setSectionTabsListElement}
+                  aria-label="Session detail sections"
+                  className="w-full rounded-2xl"
+                >
+                  <TabsTrigger
+                    value="keys"
+                    aria-label="Keys panel"
+                    title="Keys"
+                    className={
+                      sectionTabsIconOnly ? SECTION_TAB_ICON_ONLY_CLASS : SECTION_TAB_TEXT_CLASS
+                    }
+                  >
+                    <Keyboard className="h-3.5 w-3.5 shrink-0" />
+                    {!sectionTabsIconOnly ? <span className="truncate">Keys</span> : null}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="timeline"
+                    aria-label="Timeline panel"
+                    title="Timeline"
+                    className={
+                      sectionTabsIconOnly ? SECTION_TAB_ICON_ONLY_CLASS : SECTION_TAB_TEXT_CLASS
+                    }
+                  >
+                    <Clock className="h-3.5 w-3.5 shrink-0" />
+                    {!sectionTabsIconOnly ? <span className="truncate">Timeline</span> : null}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="file"
+                    aria-label="Files panel"
+                    title="Files"
+                    className={
+                      sectionTabsIconOnly ? SECTION_TAB_ICON_ONLY_CLASS : SECTION_TAB_TEXT_CLASS
+                    }
+                  >
+                    <FolderOpen className="h-3.5 w-3.5 shrink-0" />
+                    {!sectionTabsIconOnly ? <span className="truncate">Files</span> : null}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="changes"
+                    aria-label="Changes panel"
+                    title="Changes"
+                    className={
+                      sectionTabsIconOnly ? SECTION_TAB_ICON_ONLY_CLASS : SECTION_TAB_TEXT_CLASS
+                    }
+                  >
+                    <FileCheck className="h-3.5 w-3.5 shrink-0" />
+                    {!sectionTabsIconOnly ? <span className="truncate">Changes</span> : null}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="commits"
+                    aria-label="Commits panel"
+                    title="Commits"
+                    className={
+                      sectionTabsIconOnly ? SECTION_TAB_ICON_ONLY_CLASS : SECTION_TAB_TEXT_CLASS
+                    }
+                  >
+                    <GitCommitHorizontal className="h-3.5 w-3.5 shrink-0" />
+                    {!sectionTabsIconOnly ? <span className="truncate">Commits</span> : null}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value={CLOSE_DETAIL_TAB_VALUE}
+                    aria-label="Close detail sections"
+                    title="Close detail sections"
+                    className="inline-flex h-8 w-7 shrink-0 items-center justify-center p-0 sm:h-9 sm:w-8"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
 
-          {selectedSectionTabValue === "timeline" ? (
-            <StateTimelineSection {...stateTimelineSectionProps} />
-          ) : null}
-          {selectedSectionTabValue === "changes" ? <DiffSection {...diffSectionProps} /> : null}
-          {selectedSectionTabValue === "file" ? (
-            <FileNavigatorSection {...fileNavigatorSectionProps} />
-          ) : null}
-          {selectedSectionTabValue === "commits" ? <CommitSection {...commitSectionProps} /> : null}
-          {selectedSectionTabValue === "keys" ? (
-            <Card className="p-3 sm:p-4">
-              <ControlsPanel {...controlsPanelProps} showComposerSection={false} />
-            </Card>
-          ) : null}
+              {selectedSectionTabValue === "timeline" ? (
+                <StateTimelineSection {...stateTimelineSectionProps} />
+              ) : null}
+              {selectedSectionTabValue === "changes" ? <DiffSection {...diffSectionProps} /> : null}
+              {selectedSectionTabValue === "file" ? (
+                <FileNavigatorSection {...fileNavigatorSectionProps} />
+              ) : null}
+              {selectedSectionTabValue === "commits" ? (
+                <CommitSection {...commitSectionProps} />
+              ) : null}
+              {selectedSectionTabValue === "keys" ? (
+                <Card className="p-3 sm:p-4">
+                  <ControlsPanel {...controlsPanelProps} showComposerSection={false} />
+                </Card>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <StateTimelineSection {...stateTimelineSectionProps} />
+
+              <div
+                ref={detailSplitRef}
+                className={
+                  is2xlUp
+                    ? "flex min-w-0 flex-row items-stretch gap-3"
+                    : "flex min-w-0 flex-col gap-2.5 sm:gap-4"
+                }
+              >
+                <div
+                  className={is2xlUp ? "min-w-0 flex-[0_0_auto]" : "min-w-0"}
+                  style={is2xlUp ? { flexBasis: `${detailSplitRatio * 100}%` } : undefined}
+                >
+                  <ScreenPanel
+                    {...screenPanelProps}
+                    controls={<ControlsPanel {...controlsPanelProps} />}
+                  />
+                </div>
+
+                <div
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="Resize panels"
+                  className={`group relative h-full w-4 cursor-col-resize touch-none items-center justify-center ${
+                    is2xlUp ? "flex" : "hidden"
+                  }`}
+                  onPointerDown={is2xlUp ? handleDetailSplitPointerDown : undefined}
+                >
+                  <span className="bg-latte-surface2/70 group-hover:bg-latte-lavender/60 pointer-events-none absolute inset-y-8 left-1/2 w-[2px] -translate-x-1/2 rounded-full transition-colors duration-200" />
+                  <span className="border-latte-surface2/70 bg-latte-crust/60 pointer-events-none flex h-10 w-4 items-center justify-center rounded-full border">
+                    <span className="flex flex-col items-center gap-1">
+                      <span className="bg-latte-lavender/70 h-1 w-1 rounded-full" />
+                      <span className="bg-latte-lavender/70 h-1 w-1 rounded-full" />
+                      <span className="bg-latte-lavender/70 h-1 w-1 rounded-full" />
+                    </span>
+                  </span>
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-2.5 sm:gap-4">
+                  <DiffSection {...diffSectionProps} />
+                  <FileNavigatorSection {...fileNavigatorSectionProps} />
+                  <CommitSection {...commitSectionProps} />
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
