@@ -152,6 +152,7 @@ export const LogModal = ({ state, actions }: LogModalProps) => {
   return (
     <div
       data-testid="log-modal-overlay"
+      data-log-modal-overlay="true"
       className="fixed inset-0 z-50"
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) {

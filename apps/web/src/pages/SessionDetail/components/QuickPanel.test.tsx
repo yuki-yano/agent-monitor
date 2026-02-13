@@ -211,6 +211,24 @@ describe("QuickPanel", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("does not close when clicking inside log modal overlay", () => {
+    const onClose = vi.fn();
+    const state = buildState({ open: true, sessionGroups: [] });
+    const actions = buildActions({ onClose });
+    render(<QuickPanel state={state} actions={actions} />);
+
+    const overlay = document.createElement("div");
+    overlay.setAttribute("data-log-modal-overlay", "");
+    const button = document.createElement("button");
+    overlay.append(button);
+    document.body.append(overlay);
+
+    fireEvent.pointerDown(button);
+    expect(onClose).not.toHaveBeenCalled();
+
+    overlay.remove();
+  });
+
   it("uses window-level pane totals from all sessions", () => {
     const agentOne = createSessionDetail({
       paneId: "pane-1",

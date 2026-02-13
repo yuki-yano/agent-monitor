@@ -53,6 +53,9 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
       if (!(target instanceof Element)) {
         return;
       }
+      if (target.closest("[data-log-modal-overlay]")) {
+        return;
+      }
       if (target.closest("[data-quick-panel-card]")) {
         return;
       }
