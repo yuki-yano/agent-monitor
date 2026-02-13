@@ -361,7 +361,7 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     activeResolveCandidatesRequestIdRef.current = requestId;
 
     if (referenceCandidateTokens.length === 0) {
-      setLinkableTokens(new Set());
+      setLinkableTokens((previous) => (previous.size === 0 ? previous : new Set()));
       return;
     }
 
@@ -378,6 +378,9 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
               next.add(token);
             }
           });
+          if (next.size === previous.size && [...next].every((token) => previous.has(token))) {
+            return previous;
+          }
           return next;
         });
       })
@@ -392,6 +395,9 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
               next.add(token);
             }
           });
+          if (next.size === previous.size && [...next].every((token) => previous.has(token))) {
+            return previous;
+          }
           return next;
         });
       });

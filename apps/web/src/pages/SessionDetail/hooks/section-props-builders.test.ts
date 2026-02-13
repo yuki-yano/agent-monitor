@@ -204,14 +204,14 @@ describe("section props builders", () => {
     expect(onCopyFileModalPath).toHaveBeenCalledTimes(1);
   });
 
-  it("builds screen panel props and injects pane context to resolve actions", async () => {
+  it("builds screen panel props with resolve actions passthrough", async () => {
     const handleModeChange = vi.fn();
     const handleRefreshScreen = vi.fn();
     const handleAtBottomChange = vi.fn();
     const scrollToBottom = vi.fn();
     const handleUserScrollStateChange = vi.fn();
-    const onResolveLogFileReference = vi.fn(async () => undefined);
-    const onResolveLogFileReferenceCandidates = vi.fn(async () => ["index.ts"]);
+    const onResolveFileReference = vi.fn(async () => undefined);
+    const onResolveFileReferenceCandidates = vi.fn(async () => ["index.ts"]);
 
     const props = buildScreenPanelProps({
       mode: "text",
@@ -235,25 +235,18 @@ describe("section props builders", () => {
       handleAtBottomChange,
       scrollToBottom,
       handleUserScrollStateChange,
-      onResolveLogFileReference,
-      onResolveLogFileReferenceCandidates,
-      paneId: "%1",
-      sourceRepoRoot: "/repo",
+      onResolveFileReference,
+      onResolveFileReferenceCandidates,
     });
+
+    expect(props.actions.onResolveFileReference).toBe(onResolveFileReference);
+    expect(props.actions.onResolveFileReferenceCandidates).toBe(onResolveFileReferenceCandidates);
 
     await props.actions.onResolveFileReference("src/index.ts:12");
-    expect(onResolveLogFileReference).toHaveBeenCalledWith({
-      rawToken: "src/index.ts:12",
-      sourcePaneId: "%1",
-      sourceRepoRoot: "/repo",
-    });
+    expect(onResolveFileReference).toHaveBeenCalledWith("src/index.ts:12");
 
     await props.actions.onResolveFileReferenceCandidates(["src/index.ts"]);
-    expect(onResolveLogFileReferenceCandidates).toHaveBeenCalledWith({
-      rawTokens: ["src/index.ts"],
-      sourcePaneId: "%1",
-      sourceRepoRoot: "/repo",
-    });
+    expect(onResolveFileReferenceCandidates).toHaveBeenCalledWith(["src/index.ts"]);
   });
 
   it("builds quick/log/log-candidate props with flattened sessions", () => {

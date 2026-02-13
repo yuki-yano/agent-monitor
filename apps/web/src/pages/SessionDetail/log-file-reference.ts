@@ -256,7 +256,6 @@ const buildLinkifiedTextFragment = (
       element.setAttribute("aria-label", `Open file ${rawToken}`);
       element.className = [
         "cursor-pointer",
-        "transition-colors",
         "hover:text-latte-lavender",
         "focus-visible:text-latte-lavender",
         isActive ? "text-latte-lavender" : "",

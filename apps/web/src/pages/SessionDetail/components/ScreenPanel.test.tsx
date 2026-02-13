@@ -326,6 +326,36 @@ describe("ScreenPanel", () => {
     });
   });
 
+  it("re-resolves candidates when resolver callback changes", async () => {
+    const initialResolver = vi.fn(async () => []);
+    const nextResolver = vi.fn(async (rawTokens: string[]) => rawTokens);
+    const state = buildState({
+      screenLines: ["src/main.ts:1"],
+    });
+    const actions = buildActions({ onResolveFileReferenceCandidates: initialResolver });
+    const { container, rerender } = render(
+      <ScreenPanel state={state} actions={actions} controls={null} />,
+    );
+
+    await waitFor(() => {
+      expect(initialResolver).toHaveBeenCalledWith(["src/main.ts:1"]);
+    });
+    expect(container.querySelector("[data-vde-file-ref='src/main.ts:1']")).toBeNull();
+
+    rerender(
+      <ScreenPanel
+        state={state}
+        actions={buildActions({ onResolveFileReferenceCandidates: nextResolver })}
+        controls={null}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(nextResolver).toHaveBeenCalledWith(["src/main.ts:1"]);
+      expect(container.querySelector("[data-vde-file-ref='src/main.ts:1']")).toBeTruthy();
+    });
+  });
+
   it("passes all visible-range candidates without token cap", async () => {
     const onResolveFileReferenceCandidates = vi.fn(async (rawTokens: string[]) => rawTokens);
     const manyTokens = Array.from({ length: 180 }, (_, index) => `file-${index}.ts`).join(" ");

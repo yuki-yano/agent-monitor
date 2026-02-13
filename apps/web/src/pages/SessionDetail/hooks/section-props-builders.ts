@@ -130,18 +130,8 @@ type BuildScreenPanelPropsArgs = {
   handleAtBottomChange: (value: boolean) => void;
   scrollToBottom: (behavior: "auto" | "smooth") => void;
   handleUserScrollStateChange: (value: boolean) => void;
-  onResolveLogFileReference: (args: {
-    rawToken: string;
-    sourcePaneId: string;
-    sourceRepoRoot: string | null;
-  }) => Promise<void>;
-  onResolveLogFileReferenceCandidates: (args: {
-    rawTokens: string[];
-    sourcePaneId: string;
-    sourceRepoRoot: string | null;
-  }) => Promise<string[]>;
-  paneId: string;
-  sourceRepoRoot: string | null;
+  onResolveFileReference: (rawToken: string) => Promise<void>;
+  onResolveFileReferenceCandidates: (rawTokens: string[]) => Promise<string[]>;
 };
 
 type BuildQuickPanelPropsArgs = {
@@ -450,10 +440,8 @@ export const buildScreenPanelProps = ({
   handleAtBottomChange,
   scrollToBottom,
   handleUserScrollStateChange,
-  onResolveLogFileReference,
-  onResolveLogFileReferenceCandidates,
-  paneId,
-  sourceRepoRoot,
+  onResolveFileReference,
+  onResolveFileReferenceCandidates,
 }: BuildScreenPanelPropsArgs) => ({
   state: {
     mode,
@@ -479,18 +467,8 @@ export const buildScreenPanelProps = ({
     onAtBottomChange: handleAtBottomChange,
     onScrollToBottom: scrollToBottom,
     onUserScrollStateChange: handleUserScrollStateChange,
-    onResolveFileReference: (rawToken: string) =>
-      onResolveLogFileReference({
-        rawToken,
-        sourcePaneId: paneId,
-        sourceRepoRoot,
-      }),
-    onResolveFileReferenceCandidates: (rawTokens: string[]) =>
-      onResolveLogFileReferenceCandidates({
-        rawTokens,
-        sourcePaneId: paneId,
-        sourceRepoRoot,
-      }),
+    onResolveFileReference,
+    onResolveFileReferenceCandidates,
   },
 });
 

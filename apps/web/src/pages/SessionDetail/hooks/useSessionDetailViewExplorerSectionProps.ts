@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import type { SessionDetailViewProps } from "../SessionDetailView";
 import {
@@ -16,6 +16,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
   files,
 }: SessionDetailViewProps) => {
   const { paneId, session, connectionIssue } = meta;
+  const sourceRepoRoot = session?.repoRoot ?? null;
   const { resolvedTheme } = sidebar;
   const {
     mode,
@@ -171,6 +172,26 @@ export const useSessionDetailViewExplorerSectionProps = ({
     ],
   );
 
+  const handleResolveFileReference = useCallback(
+    (rawToken: string) =>
+      onResolveLogFileReference({
+        rawToken,
+        sourcePaneId: paneId,
+        sourceRepoRoot,
+      }),
+    [onResolveLogFileReference, paneId, sourceRepoRoot],
+  );
+
+  const handleResolveFileReferenceCandidates = useCallback(
+    (rawTokens: string[]) =>
+      onResolveLogFileReferenceCandidates({
+        rawTokens,
+        sourcePaneId: paneId,
+        sourceRepoRoot,
+      }),
+    [onResolveLogFileReferenceCandidates, paneId, sourceRepoRoot],
+  );
+
   const screenPanelProps = useMemo(
     () =>
       buildScreenPanelProps({
@@ -195,10 +216,8 @@ export const useSessionDetailViewExplorerSectionProps = ({
         handleAtBottomChange,
         scrollToBottom,
         handleUserScrollStateChange,
-        onResolveLogFileReference,
-        onResolveLogFileReferenceCandidates,
-        paneId,
-        sourceRepoRoot: session?.repoRoot ?? null,
+        onResolveFileReference: handleResolveFileReference,
+        onResolveFileReferenceCandidates: handleResolveFileReferenceCandidates,
       }),
     [
       mode,
@@ -222,10 +241,8 @@ export const useSessionDetailViewExplorerSectionProps = ({
       handleAtBottomChange,
       scrollToBottom,
       handleUserScrollStateChange,
-      onResolveLogFileReference,
-      onResolveLogFileReferenceCandidates,
-      paneId,
-      session?.repoRoot,
+      handleResolveFileReference,
+      handleResolveFileReferenceCandidates,
     ],
   );
 
