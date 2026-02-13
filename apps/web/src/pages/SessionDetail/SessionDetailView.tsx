@@ -56,7 +56,9 @@ const isDetailSectionTab = (value: unknown): value is DetailSectionTab =>
 const isSectionTabValue = (value: unknown): value is SectionTabValue =>
   value === CLOSE_DETAIL_TAB_VALUE || isDetailSectionTab(value);
 
-const buildDetailSectionTabStorageKey = (scope: SectionTabStorageScope | null | undefined): string =>
+const buildDetailSectionTabStorageKey = (
+  scope: SectionTabStorageScope | null | undefined,
+): string =>
   `${DETAIL_SECTION_TAB_STORAGE_KEY_PREFIX}:${encodeURIComponent(scope?.repoRoot ?? SECTION_TAB_STORAGE_REPO_FALLBACK)}:${encodeURIComponent(scope?.branch ?? SECTION_TAB_STORAGE_BRANCH_FALLBACK)}`;
 
 const readStoredSectionTabValue = (storageKey: string): SectionTabValue => {
