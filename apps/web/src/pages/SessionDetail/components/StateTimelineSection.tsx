@@ -147,9 +147,11 @@ const resolveWaitingMs = (totalsMs: Record<SessionStateValue, number>) =>
   totalsMs.WAITING_INPUT + totalsMs.WAITING_PERMISSION;
 
 export const StateTimelineSection = ({ state, actions }: StateTimelineSectionProps) => {
-  const { timeline, timelineRange, timelineError, timelineLoading, timelineExpanded } = state;
+  const { timeline, timelineRange, timelineError, timelineLoading, timelineExpanded, isMobile } =
+    state;
   const { onTimelineRangeChange, onTimelineRefresh, onToggleTimelineExpanded } = actions;
   const [compactView, setCompactView] = useState(true);
+  const isTimelineExpanded = isMobile || timelineExpanded;
 
   const timelineDisplay = useMemo(
     () => buildTimelineDisplay(timeline, timelineRange, { compact: compactView }),
@@ -161,8 +163,8 @@ export const StateTimelineSection = ({ state, actions }: StateTimelineSectionPro
     [timelineDisplay.items, timelineRange],
   );
   const displayedTimelineItems = useMemo(
-    () => (timelineExpanded ? timelineDisplay.items : timelineDisplay.items.slice(0, 1)),
-    [timelineDisplay.items, timelineExpanded],
+    () => (isTimelineExpanded ? timelineDisplay.items : timelineDisplay.items.slice(0, 1)),
+    [isTimelineExpanded, timelineDisplay.items],
   );
   const waitingMs = resolveWaitingMs(timelineDisplay.totalsMs);
 
@@ -171,7 +173,7 @@ export const StateTimelineSection = ({ state, actions }: StateTimelineSectionPro
       <SectionHeader
         title="State Timeline"
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2">
             {timelineRangeTabs(timelineRange, onTimelineRangeChange)}
             <Button
               type="button"
@@ -199,19 +201,21 @@ export const StateTimelineSection = ({ state, actions }: StateTimelineSectionPro
             >
               <RefreshCw className={`h-4 w-4 ${timelineLoading ? "animate-spin" : ""}`} />
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onToggleTimelineExpanded}
-              aria-label={timelineExpanded ? "Collapse timeline" : "Expand timeline"}
-            >
-              {timelineExpanded ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </Button>
+            {!isMobile ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onToggleTimelineExpanded}
+                aria-label={timelineExpanded ? "Collapse timeline" : "Expand timeline"}
+              >
+                {timelineExpanded ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            ) : null}
           </div>
         }
       />

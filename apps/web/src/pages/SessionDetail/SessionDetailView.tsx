@@ -34,7 +34,7 @@ export type SessionDetailViewProps = SessionDetailVM;
 const DETAIL_SECTION_TAB_VALUES = ["keys", "timeline", "file", "changes", "commits"] as const;
 type DetailSectionTab = (typeof DETAIL_SECTION_TAB_VALUES)[number];
 
-const DETAIL_SECTION_TAB_STORAGE_KEY = "vde-monitor-session-detail-section-tab";
+const DETAIL_SECTION_TAB_STORAGE_KEY_PREFIX = "vde-monitor-session-detail-section-tab";
 const DEFAULT_DETAIL_SECTION_TAB: DetailSectionTab = "timeline";
 const DETAIL_SECTION_TAB_TEXT_MIN_WIDTH = 340;
 const CLOSE_DETAIL_TAB_VALUE = "__close__";
@@ -42,6 +42,13 @@ type SectionTabValue = DetailSectionTab | typeof CLOSE_DETAIL_TAB_VALUE;
 const SECTION_TAB_ICON_ONLY_CLASS = "inline-flex h-8 flex-1 items-center justify-center p-0 sm:h-9";
 const SECTION_TAB_TEXT_CLASS =
   "inline-flex h-8 flex-1 items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] leading-tight sm:h-9 sm:gap-1.5 sm:px-2 sm:text-[11px]";
+const SECTION_TAB_STORAGE_REPO_FALLBACK = "__unknown_repo__";
+const SECTION_TAB_STORAGE_BRANCH_FALLBACK = "__no_branch__";
+
+type SectionTabStorageScope = {
+  repoRoot?: null | string;
+  branch?: null | string;
+};
 
 const isDetailSectionTab = (value: unknown): value is DetailSectionTab =>
   typeof value === "string" && DETAIL_SECTION_TAB_VALUES.includes(value as DetailSectionTab);
@@ -49,11 +56,14 @@ const isDetailSectionTab = (value: unknown): value is DetailSectionTab =>
 const isSectionTabValue = (value: unknown): value is SectionTabValue =>
   value === CLOSE_DETAIL_TAB_VALUE || isDetailSectionTab(value);
 
-const readStoredSectionTabValue = (): SectionTabValue => {
+const buildDetailSectionTabStorageKey = (scope: SectionTabStorageScope | null | undefined): string =>
+  `${DETAIL_SECTION_TAB_STORAGE_KEY_PREFIX}:${encodeURIComponent(scope?.repoRoot ?? SECTION_TAB_STORAGE_REPO_FALLBACK)}:${encodeURIComponent(scope?.branch ?? SECTION_TAB_STORAGE_BRANCH_FALLBACK)}`;
+
+const readStoredSectionTabValue = (storageKey: string): SectionTabValue => {
   if (typeof window === "undefined") {
     return DEFAULT_DETAIL_SECTION_TAB;
   }
-  const stored = window.localStorage.getItem(DETAIL_SECTION_TAB_STORAGE_KEY);
+  const stored = window.localStorage.getItem(storageKey);
   return isSectionTabValue(stored) ? stored : DEFAULT_DETAIL_SECTION_TAB;
 };
 
@@ -82,9 +92,13 @@ export const SessionDetailView = ({
     handleDetailSplitPointerDown,
   } = layout;
   const isMobileDetailLayout = timeline.isMobile;
+  const sectionTabStorageKey = useMemo(
+    () => buildDetailSectionTabStorageKey({ repoRoot: session?.repoRoot, branch: session?.branch }),
+    [session?.branch, session?.repoRoot],
+  );
   const [sectionTabsListElement, setSectionTabsListElement] = useState<HTMLDivElement | null>(null);
   const [selectedSectionTabValue, setSelectedSectionTabValue] = useState<SectionTabValue>(() =>
-    readStoredSectionTabValue(),
+    readStoredSectionTabValue(sectionTabStorageKey),
   );
   const [sectionTabsIconOnly, setSectionTabsIconOnly] = useState(false);
   const {
@@ -125,8 +139,15 @@ export const SessionDetailView = ({
     if (typeof window === "undefined") {
       return;
     }
-    window.localStorage.setItem(DETAIL_SECTION_TAB_STORAGE_KEY, selectedSectionTabValue);
-  }, [selectedSectionTabValue]);
+    setSelectedSectionTabValue(readStoredSectionTabValue(sectionTabStorageKey));
+  }, [sectionTabStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(sectionTabStorageKey, selectedSectionTabValue);
+  }, [sectionTabStorageKey, selectedSectionTabValue]);
 
   useEffect(() => {
     const tabListElement = sectionTabsListElement;

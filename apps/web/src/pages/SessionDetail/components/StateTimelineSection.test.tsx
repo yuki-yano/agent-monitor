@@ -95,7 +95,18 @@ describe("StateTimelineSection", () => {
 
     expect(screen.getByText("inactive_timeout")).toBeTruthy();
     expect(screen.getByText("recent_output")).toBeTruthy();
-    expect(screen.getByLabelText("Collapse timeline")).toBeTruthy();
+    expect(screen.queryByLabelText("Collapse timeline")).toBeNull();
+    expect(screen.queryByLabelText("Expand timeline")).toBeNull();
+  });
+
+  it("keeps timeline expanded on mobile even when collapsed state is passed", () => {
+    const props = buildProps({ timelineExpanded: false, isMobile: true });
+    render(<StateTimelineSection {...props} />);
+
+    expect(screen.getByText("inactive_timeout")).toBeTruthy();
+    expect(screen.getByText("recent_output")).toBeTruthy();
+    expect(screen.queryByLabelText("Collapse timeline")).toBeNull();
+    expect(screen.queryByLabelText("Expand timeline")).toBeNull();
   });
 
   it("uses shared toggle action on desktop", () => {

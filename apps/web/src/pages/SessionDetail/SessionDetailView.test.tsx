@@ -23,6 +23,11 @@ vi.mock("./components/SessionSidebar", () => ({
 
 const DETAIL_SECTION_TAB_STORAGE_KEY = "vde-monitor-session-detail-section-tab";
 const CLOSE_DETAIL_TAB_VALUE = "__close__";
+const SECTION_TAB_STORAGE_REPO_FALLBACK = "__unknown_repo__";
+const SECTION_TAB_STORAGE_BRANCH_FALLBACK = "__no_branch__";
+
+const buildSectionTabStorageKey = (scope: { branch?: null | string; repoRoot?: null | string }) =>
+  `${DETAIL_SECTION_TAB_STORAGE_KEY}:${encodeURIComponent(scope.repoRoot ?? SECTION_TAB_STORAGE_REPO_FALLBACK)}:${encodeURIComponent(scope.branch ?? SECTION_TAB_STORAGE_BRANCH_FALLBACK)}`;
 
 const renderWithRouter = (ui: ReactNode) => {
   const rootRoute = createRootRoute({
@@ -269,7 +274,7 @@ const createViewProps = (overrides: SessionDetailViewOverrides = {}): SessionDet
 
 describe("SessionDetailView", () => {
   beforeEach(() => {
-    window.localStorage.removeItem(DETAIL_SECTION_TAB_STORAGE_KEY);
+    window.localStorage.clear();
   });
 
   it("renders not found state when session is missing", () => {
@@ -298,8 +303,13 @@ describe("SessionDetailView", () => {
   });
 
   it("switches section by icon tabs and stores selected tab", () => {
+    const session = createSessionDetail({ repoRoot: "/Users/test/repo-a", branch: "main" });
+    const storageKey = buildSectionTabStorageKey({
+      repoRoot: session.repoRoot,
+      branch: session.branch,
+    });
     const props = createViewProps({
-      meta: { session: createSessionDetail() },
+      meta: { session },
       timeline: { isMobile: true },
     });
     renderWithRouter(<SessionDetailView {...props} />);
@@ -308,31 +318,36 @@ describe("SessionDetailView", () => {
     expect(screen.getByRole("tab", { name: "Changes panel" }).getAttribute("data-state")).toBe(
       "active",
     );
-    expect(window.localStorage.getItem(DETAIL_SECTION_TAB_STORAGE_KEY)).toBe("changes");
+    expect(window.localStorage.getItem(storageKey)).toBe("changes");
 
     fireEvent.mouseDown(screen.getByRole("tab", { name: "Files panel" }), { button: 0 });
     expect(screen.getByRole("tab", { name: "Files panel" }).getAttribute("data-state")).toBe(
       "active",
     );
-    expect(window.localStorage.getItem(DETAIL_SECTION_TAB_STORAGE_KEY)).toBe("file");
+    expect(window.localStorage.getItem(storageKey)).toBe("file");
 
     fireEvent.mouseDown(screen.getByRole("tab", { name: "Commits panel" }), { button: 0 });
     expect(screen.getByRole("tab", { name: "Commits panel" }).getAttribute("data-state")).toBe(
       "active",
     );
-    expect(window.localStorage.getItem(DETAIL_SECTION_TAB_STORAGE_KEY)).toBe("commits");
+    expect(window.localStorage.getItem(storageKey)).toBe("commits");
 
     fireEvent.mouseDown(screen.getByRole("tab", { name: "Keys panel" }), { button: 0 });
     expect(screen.getByRole("tab", { name: "Keys panel" }).getAttribute("data-state")).toBe(
       "active",
     );
-    expect(window.localStorage.getItem(DETAIL_SECTION_TAB_STORAGE_KEY)).toBe("keys");
+    expect(window.localStorage.getItem(storageKey)).toBe("keys");
   });
 
   it("restores last selected tab from localStorage", () => {
-    window.localStorage.setItem(DETAIL_SECTION_TAB_STORAGE_KEY, "file");
+    const session = createSessionDetail({ repoRoot: "/Users/test/repo-a", branch: "main" });
+    const storageKey = buildSectionTabStorageKey({
+      repoRoot: session.repoRoot,
+      branch: session.branch,
+    });
+    window.localStorage.setItem(storageKey, "file");
     const props = createViewProps({
-      meta: { session: createSessionDetail() },
+      meta: { session },
       timeline: { isMobile: true },
     });
     renderWithRouter(<SessionDetailView {...props} />);
@@ -342,9 +357,14 @@ describe("SessionDetailView", () => {
   });
 
   it("hides section panels when close tab is selected", () => {
-    window.localStorage.setItem(DETAIL_SECTION_TAB_STORAGE_KEY, "timeline");
+    const session = createSessionDetail({ repoRoot: "/Users/test/repo-a", branch: "main" });
+    const storageKey = buildSectionTabStorageKey({
+      repoRoot: session.repoRoot,
+      branch: session.branch,
+    });
+    window.localStorage.setItem(storageKey, "timeline");
     const props = createViewProps({
-      meta: { session: createSessionDetail() },
+      meta: { session },
       timeline: { isMobile: true },
     });
     renderWithRouter(<SessionDetailView {...props} />);
@@ -357,15 +377,18 @@ describe("SessionDetailView", () => {
     expect(screen.queryByText("State Timeline")).toBeNull();
     expect(screen.queryByText("File Navigator")).toBeNull();
     expect(screen.queryByText("Commit Log")).toBeNull();
-    expect(window.localStorage.getItem(DETAIL_SECTION_TAB_STORAGE_KEY)).toBe(
-      CLOSE_DETAIL_TAB_VALUE,
-    );
+    expect(window.localStorage.getItem(storageKey)).toBe(CLOSE_DETAIL_TAB_VALUE);
   });
 
   it("restores close tab state from localStorage", () => {
-    window.localStorage.setItem(DETAIL_SECTION_TAB_STORAGE_KEY, CLOSE_DETAIL_TAB_VALUE);
+    const session = createSessionDetail({ repoRoot: "/Users/test/repo-a", branch: "main" });
+    const storageKey = buildSectionTabStorageKey({
+      repoRoot: session.repoRoot,
+      branch: session.branch,
+    });
+    window.localStorage.setItem(storageKey, CLOSE_DETAIL_TAB_VALUE);
     const props = createViewProps({
-      meta: { session: createSessionDetail() },
+      meta: { session },
       timeline: { isMobile: true },
     });
     renderWithRouter(<SessionDetailView {...props} />);
@@ -379,9 +402,14 @@ describe("SessionDetailView", () => {
   });
 
   it("ignores close tab state on non-mobile layouts", () => {
-    window.localStorage.setItem(DETAIL_SECTION_TAB_STORAGE_KEY, CLOSE_DETAIL_TAB_VALUE);
+    const session = createSessionDetail({ repoRoot: "/Users/test/repo-a", branch: "main" });
+    const storageKey = buildSectionTabStorageKey({
+      repoRoot: session.repoRoot,
+      branch: session.branch,
+    });
+    window.localStorage.setItem(storageKey, CLOSE_DETAIL_TAB_VALUE);
     const props = createViewProps({
-      meta: { session: createSessionDetail() },
+      meta: { session },
       timeline: { isMobile: false },
     });
     renderWithRouter(<SessionDetailView {...props} />);
@@ -390,5 +418,43 @@ describe("SessionDetailView", () => {
     expect(screen.getByText("File Navigator")).toBeTruthy();
     expect(screen.getByText("Commit Log")).toBeTruthy();
     expect(screen.queryByRole("tab", { name: "Close detail sections" })).toBeNull();
+  });
+
+  it("stores mobile tab selection independently per repo branch", () => {
+    const mainSession = createSessionDetail({ repoRoot: "/Users/test/repo-a", branch: "main" });
+    const featureSession = createSessionDetail({
+      repoRoot: "/Users/test/repo-a",
+      branch: "feature/mobile-tabs",
+    });
+    const mainStorageKey = buildSectionTabStorageKey({
+      repoRoot: mainSession.repoRoot,
+      branch: mainSession.branch,
+    });
+    const featureStorageKey = buildSectionTabStorageKey({
+      repoRoot: featureSession.repoRoot,
+      branch: featureSession.branch,
+    });
+
+    const mainProps = createViewProps({
+      meta: { session: mainSession },
+      timeline: { isMobile: true },
+    });
+    const firstRender = renderWithRouter(<SessionDetailView {...mainProps} />);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Changes panel" }), { button: 0 });
+    expect(window.localStorage.getItem(mainStorageKey)).toBe("changes");
+    firstRender.unmount();
+
+    const featureProps = createViewProps({
+      meta: { session: featureSession },
+      timeline: { isMobile: true },
+    });
+    renderWithRouter(<SessionDetailView {...featureProps} />);
+
+    expect(screen.getByRole("tab", { name: "Timeline panel" }).getAttribute("data-state")).toBe(
+      "active",
+    );
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Files panel" }), { button: 0 });
+    expect(window.localStorage.getItem(featureStorageKey)).toBe("file");
+    expect(window.localStorage.getItem(mainStorageKey)).toBe("changes");
   });
 });
