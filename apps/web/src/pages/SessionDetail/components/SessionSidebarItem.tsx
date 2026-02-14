@@ -168,7 +168,7 @@ export const SessionSidebarItem = memo(
                 {agentLabelFor(item.agent)}
               </Badge>
             )}
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex min-w-0 flex-wrap items-center gap-2">
               <LastInputPill
                 tone={lastInputTone}
                 label={<Clock className="h-3 w-3" />}

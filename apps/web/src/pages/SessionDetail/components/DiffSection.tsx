@@ -44,6 +44,8 @@ type DiffSectionState = {
 type DiffSectionActions = {
   onRefresh: () => void;
   onToggle: (path: string) => void;
+  onResolveFileReference?: (rawToken: string) => Promise<void>;
+  onResolveFileReferenceCandidates?: (rawTokens: string[]) => Promise<string[]>;
 };
 
 type DiffSectionProps = {
@@ -64,6 +66,8 @@ type DiffFilePatchContentProps = {
   fileData?: DiffFile;
   renderedPatch?: RenderedPatch;
   onExpandDiff: (path: string) => void;
+  onResolveFileReference?: (rawToken: string) => Promise<void>;
+  onResolveFileReferenceCandidates?: (rawTokens: string[]) => Promise<string[]>;
 };
 
 type DiffFileItemProps = {
@@ -74,6 +78,8 @@ type DiffFileItemProps = {
   renderedPatch?: RenderedPatch;
   onToggle: (path: string) => void;
   onExpandDiff: (path: string) => void;
+  onResolveFileReference?: (rawToken: string) => Promise<void>;
+  onResolveFileReferenceCandidates?: (rawTokens: string[]) => Promise<string[]>;
 };
 
 type DiffFileListProps = {
@@ -84,6 +90,8 @@ type DiffFileListProps = {
   renderedPatches: Record<string, RenderedPatch>;
   onToggle: (path: string) => void;
   onExpandDiff: (path: string) => void;
+  onResolveFileReference?: (rawToken: string) => Promise<void>;
+  onResolveFileReferenceCandidates?: (rawTokens: string[]) => Promise<string[]>;
 };
 
 const toFileCountLabel = (fileCount: number) => `${fileCount} file${fileCount === 1 ? "" : "s"}`;
@@ -265,7 +273,15 @@ const DiffSummaryDescription = memo(
 DiffSummaryDescription.displayName = "DiffSummaryDescription";
 
 const DiffFilePatchContent = memo(
-  ({ filePath, loadingFile, fileData, renderedPatch, onExpandDiff }: DiffFilePatchContentProps) => {
+  ({
+    filePath,
+    loadingFile,
+    fileData,
+    renderedPatch,
+    onExpandDiff,
+    onResolveFileReference,
+    onResolveFileReferenceCandidates,
+  }: DiffFilePatchContentProps) => {
     const message = resolveDiffPatchMessage({ loadingFile, fileData });
     if (message) {
       return <p className="text-latte-subtext0 text-xs">{message}</p>;
@@ -274,7 +290,13 @@ const DiffFilePatchContent = memo(
     const showServerTruncated = Boolean(fileData?.truncated);
     return (
       <div className="custom-scrollbar max-h-[360px] overflow-auto">
-        {renderedPatch ? <DiffPatch lines={renderedPatch.lines} /> : null}
+        {renderedPatch ? (
+          <DiffPatch
+            lines={renderedPatch.lines}
+            onResolveFileReference={onResolveFileReference}
+            onResolveFileReferenceCandidates={onResolveFileReferenceCandidates}
+          />
+        ) : null}
         {truncatedPreview ? (
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
             <span className="text-latte-subtext0">
@@ -309,6 +331,8 @@ const DiffFileItem = memo(
     renderedPatch,
     onToggle,
     onExpandDiff,
+    onResolveFileReference,
+    onResolveFileReferenceCandidates,
   }: DiffFileItemProps) => {
     const statusLabel = formatDiffStatusLabel(file.status);
     const additionsLabel = formatDiffCount(file.additions);
@@ -341,6 +365,8 @@ const DiffFileItem = memo(
               fileData={fileData}
               renderedPatch={renderedPatch}
               onExpandDiff={onExpandDiff}
+              onResolveFileReference={onResolveFileReference}
+              onResolveFileReferenceCandidates={onResolveFileReferenceCandidates}
             />
           </PanelSection>
         ) : null}
@@ -360,6 +386,8 @@ const DiffFileList = memo(
     renderedPatches,
     onToggle,
     onExpandDiff,
+    onResolveFileReference,
+    onResolveFileReferenceCandidates,
   }: DiffFileListProps) => (
     <div className="flex flex-col gap-1.5 sm:gap-2">
       {files.map((file) => (
@@ -372,6 +400,8 @@ const DiffFileList = memo(
           renderedPatch={renderedPatches[file.path]}
           onToggle={onToggle}
           onExpandDiff={onExpandDiff}
+          onResolveFileReference={onResolveFileReference}
+          onResolveFileReferenceCandidates={onResolveFileReferenceCandidates}
         />
       ))}
     </div>
@@ -383,7 +413,7 @@ DiffFileList.displayName = "DiffFileList";
 export const DiffSection = memo(({ state, actions }: DiffSectionProps) => {
   const { diffSummary, diffBranch, diffError, diffLoading, diffFiles, diffOpen, diffLoadingFiles } =
     state;
-  const { onRefresh, onToggle } = actions;
+  const { onRefresh, onToggle, onResolveFileReference, onResolveFileReferenceCandidates } = actions;
   const [expandedDiffs, setExpandedDiffs] = useAtom(diffExpandedAtom);
   const totals = useMemo(() => sumFileStats(diffSummary?.files), [diffSummary]);
   const files = diffSummary?.files ?? [];
@@ -445,6 +475,8 @@ export const DiffSection = memo(({ state, actions }: DiffSectionProps) => {
           renderedPatches={renderedPatches}
           onToggle={onToggle}
           onExpandDiff={handleExpandDiff}
+          onResolveFileReference={onResolveFileReference}
+          onResolveFileReferenceCandidates={onResolveFileReferenceCandidates}
         />
       </div>
     </Card>

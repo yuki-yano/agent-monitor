@@ -52,9 +52,9 @@ export const SessionSidebarGroupList = ({
         return (
           <div key={group.repoRoot ?? "no-repo"} className="space-y-3">
             <div className="border-latte-surface2/70 bg-latte-base/80 flex items-center justify-between gap-2 rounded-2xl border px-3 py-2">
-              <div className="flex items-center gap-2">
-                <span className="bg-latte-lavender/70 h-2 w-2 rounded-full shadow-[0_0_8px_rgb(var(--ctp-lavender)/0.5)]" />
-                <span className="text-latte-lavender/80 text-[11px] font-semibold uppercase tracking-wider">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="bg-latte-lavender/70 h-2 w-2 shrink-0 rounded-full shadow-[0_0_8px_rgb(var(--ctp-lavender)/0.5)]" />
+                <span className="text-latte-lavender/80 truncate text-[11px] font-semibold uppercase tracking-wider">
                   {formatRepoDirLabel(group.repoRoot)}
                 </span>
               </div>

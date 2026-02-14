@@ -89,7 +89,7 @@ const SessionSidebarListSection = ({
   registerItemRef,
 }: SessionSidebarListSectionProps) => (
   <div
-    className="custom-scrollbar -mr-2 min-h-0 flex-1 overflow-y-auto pr-2"
+    className="custom-scrollbar -mr-2 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-2"
     onScroll={onListScroll}
   >
     <SessionSidebarGroupList

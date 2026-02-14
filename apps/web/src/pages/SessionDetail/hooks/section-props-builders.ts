@@ -31,6 +31,8 @@ type BuildDiffSectionPropsArgs = {
   diffLoadingFiles: Record<string, boolean>;
   refreshDiff: () => void;
   toggleDiff: (path: string) => void;
+  onResolveFileReference?: (rawToken: string) => Promise<void>;
+  onResolveFileReferenceCandidates?: (rawTokens: string[]) => Promise<string[]>;
 };
 
 type BuildStateTimelineSectionPropsArgs = {
@@ -64,6 +66,8 @@ type BuildCommitSectionPropsArgs = {
   toggleCommit: (hash: string) => void;
   toggleCommitFile: (hash: string, path: string) => void;
   copyHash: (hash: string) => void;
+  onResolveFileReference?: (rawToken: string) => Promise<void>;
+  onResolveFileReferenceCandidates?: (rawTokens: string[]) => Promise<string[]>;
 };
 
 type BuildFileNavigatorSectionPropsArgs = {
@@ -244,6 +248,8 @@ export const buildDiffSectionProps = ({
   diffLoadingFiles,
   refreshDiff,
   toggleDiff,
+  onResolveFileReference,
+  onResolveFileReferenceCandidates,
 }: BuildDiffSectionPropsArgs) => ({
   state: {
     diffSummary,
@@ -257,6 +263,8 @@ export const buildDiffSectionProps = ({
   actions: {
     onRefresh: refreshDiff,
     onToggle: toggleDiff,
+    onResolveFileReference,
+    onResolveFileReferenceCandidates,
   },
 });
 
@@ -305,6 +313,8 @@ export const buildCommitSectionProps = ({
   toggleCommit,
   toggleCommitFile,
   copyHash,
+  onResolveFileReference,
+  onResolveFileReferenceCandidates,
 }: BuildCommitSectionPropsArgs) => ({
   state: {
     commitLog,
@@ -327,6 +337,8 @@ export const buildCommitSectionProps = ({
     onToggleCommit: toggleCommit,
     onToggleCommitFile: toggleCommitFile,
     onCopyHash: copyHash,
+    onResolveFileReference,
+    onResolveFileReferenceCandidates,
   },
 });
 

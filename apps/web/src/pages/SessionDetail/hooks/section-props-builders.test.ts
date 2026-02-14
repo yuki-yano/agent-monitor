@@ -19,6 +19,8 @@ describe("section props builders", () => {
   it("builds diff section props with state and action passthrough", () => {
     const refreshDiff = vi.fn();
     const toggleDiff = vi.fn();
+    const onResolveFileReference = vi.fn(async () => undefined);
+    const onResolveFileReferenceCandidates = vi.fn(async () => ["a.ts"]);
     const diffFiles = {
       "a.ts": {
         path: "a.ts",
@@ -44,12 +46,16 @@ describe("section props builders", () => {
       diffLoadingFiles: {},
       refreshDiff,
       toggleDiff,
+      onResolveFileReference,
+      onResolveFileReferenceCandidates,
     });
 
     expect(props.state.diffFiles).toBe(diffFiles);
     expect(props.state.diffBranch).toBe("feature/diff-header");
     expect(props.actions.onRefresh).toBe(refreshDiff);
     expect(props.actions.onToggle).toBe(toggleDiff);
+    expect(props.actions.onResolveFileReference).toBe(onResolveFileReference);
+    expect(props.actions.onResolveFileReferenceCandidates).toBe(onResolveFileReferenceCandidates);
   });
 
   it("builds timeline section props with renamed action keys", () => {
@@ -94,6 +100,8 @@ describe("section props builders", () => {
     const toggleCommit = vi.fn();
     const toggleCommitFile = vi.fn();
     const copyHash = vi.fn();
+    const onResolveFileReference = vi.fn(async () => undefined);
+    const onResolveFileReferenceCandidates = vi.fn(async () => ["a.ts"]);
 
     const props = buildCommitSectionProps({
       commitLog: {
@@ -118,6 +126,8 @@ describe("section props builders", () => {
       toggleCommit,
       toggleCommitFile,
       copyHash,
+      onResolveFileReference,
+      onResolveFileReferenceCandidates,
     });
 
     expect(props.state.commitHasMore).toBe(true);
@@ -126,6 +136,8 @@ describe("section props builders", () => {
     expect(props.actions.onToggleCommit).toBe(toggleCommit);
     expect(props.actions.onToggleCommitFile).toBe(toggleCommitFile);
     expect(props.actions.onCopyHash).toBe(copyHash);
+    expect(props.actions.onResolveFileReference).toBe(onResolveFileReference);
+    expect(props.actions.onResolveFileReferenceCandidates).toBe(onResolveFileReferenceCandidates);
   });
 
   it("builds file navigator section props with passthrough actions", () => {

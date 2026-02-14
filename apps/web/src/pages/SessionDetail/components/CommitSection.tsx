@@ -66,6 +66,8 @@ type CommitSectionActions = {
   onToggleCommit: (hash: string) => void;
   onToggleCommitFile: (hash: string, path: string) => void;
   onCopyHash: (hash: string) => void;
+  onResolveFileReference?: (rawToken: string) => Promise<void>;
+  onResolveFileReferenceCandidates?: (rawTokens: string[]) => Promise<string[]>;
 };
 
 type CommitSectionProps = {
@@ -83,12 +85,16 @@ type CommitFileRowProps = {
   fileDetail?: CommitFileDiff;
   renderedPatch?: string[];
   onToggleCommitFile: (hash: string, path: string) => void;
+  onResolveFileReference?: (rawToken: string) => Promise<void>;
+  onResolveFileReferenceCandidates?: (rawTokens: string[]) => Promise<string[]>;
 };
 
 type CommitFileDetailContentProps = {
   loadingFile: boolean;
   fileDetail?: CommitFileDiff;
   renderedPatch?: string[];
+  onResolveFileReference?: (rawToken: string) => Promise<void>;
+  onResolveFileReferenceCandidates?: (rawTokens: string[]) => Promise<string[]>;
 };
 
 type CommitFileRowsProps = {
@@ -99,6 +105,8 @@ type CommitFileRowsProps = {
   commitFileLoading: Record<string, boolean>;
   renderedPatches: Record<string, string[]>;
   onToggleCommitFile: (hash: string, path: string) => void;
+  onResolveFileReference?: (rawToken: string) => Promise<void>;
+  onResolveFileReferenceCandidates?: (rawTokens: string[]) => Promise<string[]>;
 };
 
 type CommitExpandedSectionProps = {
@@ -112,6 +120,8 @@ type CommitExpandedSectionProps = {
   commitFileLoading: Record<string, boolean>;
   renderedPatches: Record<string, string[]>;
   onToggleCommitFile: (hash: string, path: string) => void;
+  onResolveFileReference?: (rawToken: string) => Promise<void>;
+  onResolveFileReferenceCandidates?: (rawTokens: string[]) => Promise<string[]>;
 };
 
 type CommitItemProps = {
@@ -127,6 +137,8 @@ type CommitItemProps = {
   onToggleCommit: (hash: string) => void;
   onToggleCommitFile: (hash: string, path: string) => void;
   onCopyHash: (hash: string) => void;
+  onResolveFileReference?: (rawToken: string) => Promise<void>;
+  onResolveFileReferenceCandidates?: (rawTokens: string[]) => Promise<string[]>;
 };
 
 type CommitListProps = {
@@ -142,6 +154,8 @@ type CommitListProps = {
   onToggleCommit: (hash: string) => void;
   onToggleCommitFile: (hash: string, path: string) => void;
   onCopyHash: (hash: string) => void;
+  onResolveFileReference?: (rawToken: string) => Promise<void>;
+  onResolveFileReferenceCandidates?: (rawTokens: string[]) => Promise<string[]>;
 };
 
 type CommitLoadMoreButtonProps = {
@@ -158,6 +172,8 @@ const buildCommitFilesSection = ({
   commitFileLoading,
   renderedPatches,
   onToggleCommitFile,
+  onResolveFileReference,
+  onResolveFileReferenceCandidates,
 }: Pick<
   CommitExpandedSectionProps,
   | "commitHash"
@@ -167,6 +183,8 @@ const buildCommitFilesSection = ({
   | "commitFileLoading"
   | "renderedPatches"
   | "onToggleCommitFile"
+  | "onResolveFileReference"
+  | "onResolveFileReferenceCandidates"
 >) => {
   if (!detail) {
     return <p className="text-latte-subtext0 text-xs">No commit details.</p>;
@@ -186,6 +204,8 @@ const buildCommitFilesSection = ({
       commitFileLoading={commitFileLoading}
       renderedPatches={renderedPatches}
       onToggleCommitFile={onToggleCommitFile}
+      onResolveFileReference={onResolveFileReference}
+      onResolveFileReferenceCandidates={onResolveFileReferenceCandidates}
     />
   );
 };
@@ -264,7 +284,13 @@ const CommitEmptyStateNotice = memo(({ showEmptyState }: { showEmptyState: boole
 CommitEmptyStateNotice.displayName = "CommitEmptyStateNotice";
 
 const CommitFileDetailContent = memo(
-  ({ loadingFile, fileDetail, renderedPatch }: CommitFileDetailContentProps) => {
+  ({
+    loadingFile,
+    fileDetail,
+    renderedPatch,
+    onResolveFileReference,
+    onResolveFileReferenceCandidates,
+  }: CommitFileDetailContentProps) => {
     if (loadingFile) {
       return <p className="text-latte-subtext0 text-xs">Loading diff…</p>;
     }
@@ -276,7 +302,13 @@ const CommitFileDetailContent = memo(
     }
     return (
       <div className="custom-scrollbar max-h-[240px] overflow-auto">
-        {renderedPatch && <DiffPatch lines={renderedPatch} />}
+        {renderedPatch && (
+          <DiffPatch
+            lines={renderedPatch}
+            onResolveFileReference={onResolveFileReference}
+            onResolveFileReferenceCandidates={onResolveFileReferenceCandidates}
+          />
+        )}
         {fileDetail.truncated && (
           <p className="text-latte-subtext0 mt-2 text-xs">Diff truncated.</p>
         )}
@@ -298,6 +330,8 @@ const CommitFileRow = memo(
     fileDetail,
     renderedPatch,
     onToggleCommitFile,
+    onResolveFileReference,
+    onResolveFileReferenceCandidates,
   }: CommitFileRowProps) => {
     const labelContainerRef = useRef<HTMLDivElement | null>(null);
     const statusLabel = formatDiffStatusLabel(file.status);
@@ -342,6 +376,8 @@ const CommitFileRow = memo(
               loadingFile={loadingFile}
               fileDetail={fileDetail}
               renderedPatch={renderedPatch}
+              onResolveFileReference={onResolveFileReference}
+              onResolveFileReferenceCandidates={onResolveFileReferenceCandidates}
             />
           </div>
         )}
@@ -361,6 +397,8 @@ const CommitFileRows = memo(
     commitFileLoading,
     renderedPatches,
     onToggleCommitFile,
+    onResolveFileReference,
+    onResolveFileReferenceCandidates,
   }: CommitFileRowsProps) => (
     <div className="flex flex-col gap-1.5 text-xs sm:gap-2">
       {files.map((file) => {
@@ -377,6 +415,8 @@ const CommitFileRows = memo(
             fileDetail={commitFileDetails[fileKey]}
             renderedPatch={renderedPatches[fileKey]}
             onToggleCommitFile={onToggleCommitFile}
+            onResolveFileReference={onResolveFileReference}
+            onResolveFileReferenceCandidates={onResolveFileReferenceCandidates}
           />
         );
       })}
@@ -398,6 +438,8 @@ const CommitExpandedSection = memo(
     commitFileLoading,
     renderedPatches,
     onToggleCommitFile,
+    onResolveFileReference,
+    onResolveFileReferenceCandidates,
   }: CommitExpandedSectionProps) => {
     if (loadingDetail) {
       return <p className="text-latte-subtext0 text-xs">Loading commit…</p>;
@@ -410,6 +452,8 @@ const CommitExpandedSection = memo(
       commitFileLoading,
       renderedPatches,
       onToggleCommitFile,
+      onResolveFileReference,
+      onResolveFileReferenceCandidates,
     });
 
     return (
@@ -446,6 +490,8 @@ const CommitItem = memo(
     onToggleCommit,
     onToggleCommitFile,
     onCopyHash,
+    onResolveFileReference,
+    onResolveFileReferenceCandidates,
   }: CommitItemProps) => {
     const commitBody = detail?.body ?? commit.body;
     const totals = sumFileStats(detail?.files);
@@ -498,6 +544,8 @@ const CommitItem = memo(
               commitFileLoading={commitFileLoading}
               renderedPatches={renderedPatches}
               onToggleCommitFile={onToggleCommitFile}
+              onResolveFileReference={onResolveFileReference}
+              onResolveFileReferenceCandidates={onResolveFileReferenceCandidates}
             />
           </PanelSection>
         )}
@@ -522,6 +570,8 @@ const CommitList = memo(
     onToggleCommit,
     onToggleCommitFile,
     onCopyHash,
+    onResolveFileReference,
+    onResolveFileReferenceCandidates,
   }: CommitListProps) => (
     <div className="flex flex-col gap-1.5 sm:gap-2">
       {commits.map((commit) => (
@@ -539,6 +589,8 @@ const CommitList = memo(
           onToggleCommit={onToggleCommit}
           onToggleCommitFile={onToggleCommitFile}
           onCopyHash={onCopyHash}
+          onResolveFileReference={onResolveFileReference}
+          onResolveFileReferenceCandidates={onResolveFileReferenceCandidates}
         />
       ))}
     </div>
@@ -579,7 +631,15 @@ export const CommitSection = memo(({ state, actions }: CommitSectionProps) => {
     commitLoadingDetails,
     copiedHash,
   } = state;
-  const { onRefresh, onLoadMore, onToggleCommit, onToggleCommitFile, onCopyHash } = actions;
+  const {
+    onRefresh,
+    onLoadMore,
+    onToggleCommit,
+    onToggleCommitFile,
+    onCopyHash,
+    onResolveFileReference,
+    onResolveFileReferenceCandidates,
+  } = actions;
   const renderedPatches = useMemo(
     () => buildRenderedPatches(commitFileOpen, commitFileDetails),
     [commitFileDetails, commitFileOpen],
@@ -637,6 +697,8 @@ export const CommitSection = memo(({ state, actions }: CommitSectionProps) => {
           onToggleCommit={onToggleCommit}
           onToggleCommitFile={onToggleCommitFile}
           onCopyHash={onCopyHash}
+          onResolveFileReference={onResolveFileReference}
+          onResolveFileReferenceCandidates={onResolveFileReferenceCandidates}
         />
       </div>
       <CommitLoadMoreButton

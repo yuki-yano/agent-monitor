@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import type { SessionDetailViewProps } from "../SessionDetailView";
 import {
@@ -11,8 +11,11 @@ export const useSessionDetailViewDataSectionProps = ({
   meta,
   timeline,
   diffs,
+  files,
   commits,
 }: SessionDetailViewProps) => {
+  const { paneId, session } = meta;
+  const sourceRepoRoot = session?.repoRoot ?? null;
   const {
     timeline: stateTimeline,
     timelineRange,
@@ -34,6 +37,7 @@ export const useSessionDetailViewDataSectionProps = ({
     refreshDiff,
     toggleDiff,
   } = diffs;
+  const { onResolveLogFileReference, onResolveLogFileReferenceCandidates } = files;
   const {
     commitLog,
     commitError,
@@ -53,7 +57,27 @@ export const useSessionDetailViewDataSectionProps = ({
     toggleCommitFile,
     copyHash,
   } = commits;
-  const sessionBranch = meta.session?.branch ?? null;
+  const sessionBranch = session?.branch ?? null;
+
+  const handleResolveFileReference = useCallback(
+    (rawToken: string) =>
+      onResolveLogFileReference({
+        rawToken,
+        sourcePaneId: paneId,
+        sourceRepoRoot,
+      }),
+    [onResolveLogFileReference, paneId, sourceRepoRoot],
+  );
+
+  const handleResolveFileReferenceCandidates = useCallback(
+    (rawTokens: string[]) =>
+      onResolveLogFileReferenceCandidates({
+        rawTokens,
+        sourcePaneId: paneId,
+        sourceRepoRoot,
+      }),
+    [onResolveLogFileReferenceCandidates, paneId, sourceRepoRoot],
+  );
 
   const diffSectionProps = useMemo(
     () =>
@@ -67,6 +91,8 @@ export const useSessionDetailViewDataSectionProps = ({
         diffLoadingFiles,
         refreshDiff,
         toggleDiff,
+        onResolveFileReference: handleResolveFileReference,
+        onResolveFileReferenceCandidates: handleResolveFileReferenceCandidates,
       }),
     [
       diffSummary,
@@ -78,6 +104,8 @@ export const useSessionDetailViewDataSectionProps = ({
       diffLoadingFiles,
       refreshDiff,
       toggleDiff,
+      handleResolveFileReference,
+      handleResolveFileReferenceCandidates,
     ],
   );
 
@@ -128,6 +156,8 @@ export const useSessionDetailViewDataSectionProps = ({
         toggleCommit,
         toggleCommitFile,
         copyHash,
+        onResolveFileReference: handleResolveFileReference,
+        onResolveFileReferenceCandidates: handleResolveFileReferenceCandidates,
       }),
     [
       commitLog,
@@ -148,6 +178,8 @@ export const useSessionDetailViewDataSectionProps = ({
       toggleCommit,
       toggleCommitFile,
       copyHash,
+      handleResolveFileReference,
+      handleResolveFileReferenceCandidates,
     ],
   );
 

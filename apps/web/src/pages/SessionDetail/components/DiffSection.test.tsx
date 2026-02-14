@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createStore, Provider as JotaiProvider } from "jotai";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -95,6 +95,32 @@ describe("DiffSection", () => {
 
     expect(screen.getByText("+hello")).toBeTruthy();
     expect(screen.getByText("-world")).toBeTruthy();
+  });
+
+  it("resolves file reference links rendered in patch", async () => {
+    const onResolveFileReference = vi.fn(async () => undefined);
+    const onResolveFileReferenceCandidates = vi.fn(async () => ["src/index.ts:12"]);
+    const state = buildState({
+      diffSummary: createDiffSummary(),
+      diffFiles: { "src/index.ts": createDiffFile({ patch: "+at src/index.ts:12" }) },
+      diffOpen: { "src/index.ts": true },
+    });
+    const actions = buildActions({
+      onResolveFileReference,
+      onResolveFileReferenceCandidates,
+    });
+    const wrapper = createWrapper();
+    render(<DiffSection state={state} actions={actions} />, { wrapper });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Open file src/index.ts:12" })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Open file src/index.ts:12" }));
+
+    expect(onResolveFileReferenceCandidates).toHaveBeenCalledWith(
+      expect.arrayContaining(["src/index.ts:12"]),
+    );
+    expect(onResolveFileReference).toHaveBeenCalledWith("src/index.ts:12");
   });
 
   it("expands large diff when requested", () => {

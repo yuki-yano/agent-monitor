@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { createCommitDetail, createCommitFileDiff, createCommitLog } from "../test-helpers";
@@ -113,5 +113,33 @@ describe("CommitSection", () => {
     render(<CommitSection state={state} actions={actions} />);
 
     expect(screen.getByText("No commit details.")).toBeTruthy();
+  });
+
+  it("resolves file reference links rendered in commit diff", async () => {
+    const onResolveFileReference = vi.fn(async () => undefined);
+    const onResolveFileReferenceCandidates = vi.fn(async () => ["src/index.ts:10"]);
+    const fileKey = "abc123:src/index.ts";
+    const state = buildState({
+      commitLog: createCommitLog(),
+      commitDetails: { abc123: createCommitDetail() },
+      commitFileDetails: { [fileKey]: createCommitFileDiff({ patch: "+at src/index.ts:10" }) },
+      commitFileOpen: { [fileKey]: true },
+      commitOpen: { abc123: true },
+    });
+    const actions = buildActions({
+      onResolveFileReference,
+      onResolveFileReferenceCandidates,
+    });
+    render(<CommitSection state={state} actions={actions} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Open file src/index.ts:10" })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Open file src/index.ts:10" }));
+
+    expect(onResolveFileReferenceCandidates).toHaveBeenCalledWith(
+      expect.arrayContaining(["src/index.ts:10"]),
+    );
+    expect(onResolveFileReference).toHaveBeenCalledWith("src/index.ts:10");
   });
 });
