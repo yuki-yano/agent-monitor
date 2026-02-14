@@ -11,6 +11,7 @@ import type { SessionSummary } from "@vde-monitor/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_SESSION_LIST_FILTER, isSessionListFilter } from "./sessionListFilters";
+import { normalizeSessionListSearchQuery } from "./sessionListSearch";
 import { useSessionListVM } from "./useSessionListVM";
 
 const STORAGE_KEY = "vde-monitor-session-list-pins";
@@ -107,7 +108,11 @@ const createTestRouter = (initialEntries: string[]) => {
       const filter = isSessionListFilter(search.filter)
         ? search.filter
         : DEFAULT_SESSION_LIST_FILTER;
-      return { filter };
+      const q = normalizeSessionListSearchQuery(search.q);
+      if (q.length === 0) {
+        return { filter };
+      }
+      return { filter, q };
     },
   });
   return createRouter({
@@ -133,12 +138,20 @@ const TestComponent = () => {
       <button type="button" onClick={() => vm.onFilterChange("invalid")}>
         set-invalid
       </button>
+      <button type="button" onClick={() => vm.onSearchQueryChange("repo")}>
+        set-query
+      </button>
+      <button type="button" onClick={() => vm.onSearchQueryChange("")}>
+        clear-query
+      </button>
       <button type="button" onClick={() => vm.onTouchPanePin("pane-test")}>
         touch-pane
       </button>
       <button type="button" onClick={vm.onOpenNewTab}>
         open-new-tab
       </button>
+      <span data-testid="query">{vm.searchQuery}</span>
+      <span data-testid="visible-count">{vm.visibleSessionCount}</span>
     </div>
   );
 };
@@ -195,6 +208,7 @@ describe("useSessionListVM", () => {
   it("defaults to AGENT when search is missing", async () => {
     await renderWithRouter(["/"]);
     expect(screen.getByTestId("filter").textContent).toBe("AGENT");
+    expect(screen.getByTestId("query").textContent).toBe("");
   });
 
   it("updates filter when onFilterChange is called", async () => {
@@ -219,6 +233,51 @@ describe("useSessionListVM", () => {
     await waitFor(() => {
       expect(screen.getByTestId("filter").textContent).toBe("AGENT");
     });
+  });
+
+  it("reads search query from search params", async () => {
+    await renderWithRouter(["/?filter=AGENT&q=backend"]);
+    expect(screen.getByTestId("query").textContent).toBe("backend");
+  });
+
+  it("updates query when onSearchQueryChange is called", async () => {
+    await renderWithRouter(["/?filter=AGENT"]);
+    fireEvent.click(screen.getByRole("button", { name: "set-query" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("query").textContent).toBe("repo");
+    });
+  });
+
+  it("filters sessions by search query", async () => {
+    const matchSession = buildSession({
+      paneId: "pane-match",
+      repoRoot: "/Users/test/repo-match",
+      title: "Session Match",
+      currentPath: "/Users/test/repo-match/apps/server",
+      branch: "feature/match",
+    });
+    const unmatchSession = buildSession({
+      paneId: "pane-unmatch",
+      repoRoot: "/Users/test/another-repo",
+      title: "Other Session",
+      currentPath: "/Users/test/another-repo",
+      branch: "feature/other",
+    });
+    mockUseSessions.mockReturnValue({
+      sessions: [matchSession, unmatchSession],
+      connected: true,
+      connectionStatus: "healthy",
+      connectionIssue: null,
+      refreshSessions: vi.fn(),
+      requestStateTimeline: vi.fn(),
+      requestScreen: vi.fn(),
+      touchSession: vi.fn(),
+      highlightCorrections: { codex: true, claude: true },
+    });
+
+    await renderWithRouter(["/?filter=ALL&q=repo-match"]);
+    expect(screen.getByTestId("query").textContent).toBe("repo-match");
+    expect(screen.getByTestId("visible-count").textContent).toBe("1");
   });
 
   it("uses touchSession for pane pin action", async () => {

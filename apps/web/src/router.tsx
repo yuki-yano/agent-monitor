@@ -7,6 +7,7 @@ import {
   DEFAULT_SESSION_LIST_FILTER,
   isSessionListFilter,
 } from "./pages/SessionList/sessionListFilters";
+import { normalizeSessionListSearchQuery } from "./pages/SessionList/sessionListSearch";
 
 const rootRoute = createRootRoute({
   component: App,
@@ -18,7 +19,11 @@ const indexRoute = createRoute({
   component: SessionListPage,
   validateSearch: (search: Record<string, unknown>) => {
     const filter = isSessionListFilter(search.filter) ? search.filter : DEFAULT_SESSION_LIST_FILTER;
-    return { filter };
+    const q = normalizeSessionListSearchQuery(search.q);
+    if (q.length === 0) {
+      return { filter };
+    }
+    return { filter, q };
   },
 });
 

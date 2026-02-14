@@ -21,6 +21,7 @@ import {
   storeSessionListPins,
   touchSessionListPin,
 } from "./sessionListPins";
+import { matchesSessionListSearch, normalizeSessionListSearchQuery } from "./sessionListSearch";
 
 const FILTER_OPTIONS = SESSION_LIST_FILTER_VALUES.map((value) => ({
   value,
@@ -42,6 +43,7 @@ export const useSessionListVM = () => {
   const nowMs = useNowMs();
   const search = useSearch({ from: "/" });
   const filter = isSessionListFilter(search.filter) ? search.filter : DEFAULT_SESSION_LIST_FILTER;
+  const searchQuery = normalizeSessionListSearchQuery(search.q);
   const navigate = useNavigate({ from: "/" });
   const { resolvedTheme } = useTheme();
   const { sidebarWidth, handlePointerDown } = useSidebarWidth();
@@ -62,8 +64,11 @@ export const useSessionListVM = () => {
   );
 
   const visibleSessions = useMemo(() => {
-    return sessions.filter((session) => matchesSessionListFilter(session, filter));
-  }, [filter, sessions]);
+    return sessions.filter(
+      (session) =>
+        matchesSessionListFilter(session, filter) && matchesSessionListSearch(session, searchQuery),
+    );
+  }, [filter, searchQuery, sessions]);
   const paneRepoRootMap = useMemo(
     () => new Map(sessions.map((session) => [session.paneId, session.repoRoot ?? null] as const)),
     [sessions],
@@ -130,11 +135,29 @@ export const useSessionListVM = () => {
       const nextFilter = isSessionListFilter(value) ? value : DEFAULT_SESSION_LIST_FILTER;
       if (nextFilter === filter) return;
       void navigate({
-        search: { filter: nextFilter },
+        search: (prev) => ({
+          ...prev,
+          filter: nextFilter,
+        }),
         replace: true,
       });
     },
     [filter, navigate],
+  );
+
+  const handleSearchQueryChange = useCallback(
+    (value: string) => {
+      const nextQuery = normalizeSessionListSearchQuery(value);
+      if (nextQuery === searchQuery) return;
+      void navigate({
+        search: (prev) => ({
+          ...prev,
+          q: nextQuery.length > 0 ? nextQuery : undefined,
+        }),
+        replace: true,
+      });
+    },
+    [navigate, searchQuery],
   );
 
   const handleRefresh = useCallback(() => {
@@ -164,6 +187,7 @@ export const useSessionListVM = () => {
     visibleSessionCount: visibleSessions.length,
     quickPanelGroups,
     filter,
+    searchQuery,
     filterOptions: FILTER_OPTIONS,
     connected,
     connectionStatus,
@@ -175,6 +199,7 @@ export const useSessionListVM = () => {
     nowMs,
     sidebarWidth,
     onFilterChange: handleFilterChange,
+    onSearchQueryChange: handleSearchQueryChange,
     onRefresh: handleRefresh,
     onSidebarResizeStart: handlePointerDown,
     quickPanelOpen,

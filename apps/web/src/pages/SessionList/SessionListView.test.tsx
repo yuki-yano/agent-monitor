@@ -148,6 +148,7 @@ const createViewProps = (overrides: Partial<SessionListViewProps> = {}): Session
     visibleSessionCount,
     quickPanelGroups,
     filter: "AGENT",
+    searchQuery: "",
     filterOptions,
     connected: true,
     connectionStatus: "healthy",
@@ -159,6 +160,7 @@ const createViewProps = (overrides: Partial<SessionListViewProps> = {}): Session
     nowMs: Date.now(),
     sidebarWidth: 280,
     onFilterChange: vi.fn(),
+    onSearchQueryChange: vi.fn(),
     onRefresh: vi.fn(),
     onSidebarResizeStart: vi.fn(),
     quickPanelOpen: false,
@@ -215,6 +217,26 @@ describe("SessionListView", () => {
     expect(onFilterChange).toHaveBeenCalledWith("ALL");
   });
 
+  it("renders clear search action when no results with search query", () => {
+    const session = buildSession();
+    const onSearchQueryChange = vi.fn();
+    const props = createViewProps({
+      sessions: [session],
+      groups: [],
+      visibleSessionCount: 0,
+      searchQuery: "repo",
+      onSearchQueryChange,
+    });
+    renderWithRouter(<SessionListView {...props} />);
+
+    expect(screen.getByText("No Matching Sessions")).toBeTruthy();
+    expect(
+      screen.getByText("No sessions match the current search query. Try a different query."),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Clear Search" }));
+    expect(onSearchQueryChange).toHaveBeenCalledWith("");
+  });
+
   it("calls refresh when refresh button is clicked", () => {
     const onRefresh = vi.fn();
     const props = createViewProps({ connectionStatus: "healthy", onRefresh });
@@ -231,6 +253,17 @@ describe("SessionListView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "SHELL" }));
     expect(onFilterChange).toHaveBeenCalledWith("SHELL");
+  });
+
+  it("calls onSearchQueryChange when typing in search input", () => {
+    const onSearchQueryChange = vi.fn();
+    const props = createViewProps({ onSearchQueryChange });
+    renderWithRouter(<SessionListView {...props} />);
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Search sessions" }), {
+      target: { value: "repo" },
+    });
+    expect(onSearchQueryChange).toHaveBeenCalledWith("repo");
   });
 
   it("includes scope filter buttons", () => {

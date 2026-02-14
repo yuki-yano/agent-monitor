@@ -1,13 +1,23 @@
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Search, X } from "lucide-react";
+import type { ChangeEvent } from "react";
 
-import { Button, Callout, ConnectionStatusPill, FilterToggleGroup, Toolbar } from "@/components/ui";
+import {
+  Button,
+  Callout,
+  ConnectionStatusPill,
+  FilterToggleGroup,
+  Input,
+  Toolbar,
+} from "@/components/ui";
 
 type SessionListHeaderProps = {
   connectionStatus: "healthy" | "degraded" | "disconnected";
   connectionIssue: string | null;
   filter: string;
+  searchQuery: string;
   filterOptions: { value: string; label: string }[];
   onFilterChange: (value: string) => void;
+  onSearchQueryChange: (value: string) => void;
   onRefresh: () => void;
 };
 
@@ -15,10 +25,16 @@ export const SessionListHeader = ({
   connectionStatus,
   connectionIssue,
   filter,
+  searchQuery,
   filterOptions,
   onFilterChange,
+  onSearchQueryChange,
   onRefresh,
 }: SessionListHeaderProps) => {
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onSearchQueryChange(event.target.value);
+  };
+
   return (
     <header className="shadow-glass border-latte-surface1/60 bg-latte-base/80 animate-fade-in stagger-1 flex flex-col gap-3 rounded-3xl border p-3 opacity-0 backdrop-blur sm:gap-4 sm:p-6">
       <Toolbar className="gap-3">
@@ -38,6 +54,29 @@ export const SessionListHeader = ({
           </div>
         </div>
       </Toolbar>
+      <div className="relative">
+        <Search className="text-latte-subtext0 pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+        <Input
+          value={searchQuery}
+          onChange={handleSearchChange}
+          placeholder="Search sessions"
+          aria-label="Search sessions"
+          className="h-10 py-0 pl-9 pr-12 text-sm"
+        />
+        {searchQuery.length > 0 && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="absolute right-1.5 top-1/2 h-7 -translate-y-1/2 px-2"
+            onClick={() => onSearchQueryChange("")}
+            aria-label="Clear search"
+            title="Clear search"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
       <FilterToggleGroup
         value={filter}
         onChange={onFilterChange}

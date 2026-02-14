@@ -23,6 +23,7 @@ export const SessionListView = ({
   visibleSessionCount,
   quickPanelGroups,
   filter,
+  searchQuery,
   filterOptions,
   connected,
   connectionStatus,
@@ -34,6 +35,7 @@ export const SessionListView = ({
   nowMs,
   sidebarWidth,
   onFilterChange,
+  onSearchQueryChange,
   onRefresh,
   onSidebarResizeStart,
   quickPanelOpen,
@@ -183,8 +185,10 @@ export const SessionListView = ({
             connectionStatus={connectionStatus}
             connectionIssue={connectionIssue}
             filter={filter}
+            searchQuery={searchQuery}
             filterOptions={filterOptions}
             onFilterChange={onFilterChange}
+            onSearchQueryChange={onSearchQueryChange}
             onRefresh={onRefresh}
           />
 
@@ -211,19 +215,34 @@ export const SessionListView = ({
                 <EmptyCard
                   icon={<Search className="text-latte-overlay1 h-8 w-8" />}
                   title="No Matching Sessions"
-                  description="No sessions match the selected scope. Try selecting a different scope."
+                  description={
+                    searchQuery.length > 0
+                      ? "No sessions match the current search query. Try a different query."
+                      : "No sessions match the selected scope. Try selecting a different scope."
+                  }
                   className="py-10 sm:py-12"
                   iconWrapperClassName="bg-latte-surface1/50 h-16 w-16"
                   titleClassName="text-lg"
                   action={
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onFilterChange("ALL")}
-                      className="mt-2"
-                    >
-                      Show All Sessions
-                    </Button>
+                    searchQuery.length > 0 ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onSearchQueryChange("")}
+                        className="mt-2"
+                      >
+                        Clear Search
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onFilterChange("ALL")}
+                        className="mt-2"
+                      >
+                        Show All Sessions
+                      </Button>
+                    )
                   }
                 />
               )}
