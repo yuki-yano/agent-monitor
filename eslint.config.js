@@ -9,7 +9,7 @@ import prettier from "eslint-config-prettier";
 
 export default [
   {
-    ignores: ["**/dist/**", "**/node_modules/**", "tmp/**"],
+    ignores: ["**/dist/**", "**/node_modules/**", ".worktree/**", "tmp/**"],
   },
   js.configs.recommended,
   {

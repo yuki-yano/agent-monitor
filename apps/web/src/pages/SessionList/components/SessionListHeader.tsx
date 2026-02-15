@@ -34,6 +34,12 @@ export const SessionListHeader = ({
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     onSearchQueryChange(event.target.value);
   };
+  const connectionIssueLines = connectionIssue
+    ? connectionIssue
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+    : [];
 
   return (
     <header className="shadow-glass border-latte-surface1/60 bg-latte-base/80 animate-fade-in stagger-1 flex flex-col gap-3 rounded-3xl border p-3 opacity-0 backdrop-blur sm:gap-4 sm:p-6">
@@ -89,9 +95,13 @@ export const SessionListHeader = ({
         buttonClassName="uppercase tracking-[0.14em] text-[11px] px-3 py-1"
         options={filterOptions}
       />
-      {connectionIssue && (
+      {connectionIssueLines.length > 0 && (
         <Callout tone="warning" size="sm">
-          {connectionIssue}
+          {connectionIssueLines.map((line, index) => (
+            <p key={`${index}-${line}`} className={index === 0 ? undefined : "mt-1"}>
+              {line}
+            </p>
+          ))}
         </Callout>
       )}
     </header>

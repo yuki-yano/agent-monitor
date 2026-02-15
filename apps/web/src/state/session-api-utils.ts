@@ -41,7 +41,9 @@ export type RefreshSessionsResult = {
 export type SessionsResponseEnvelope = ApiEnvelope<{
   sessions?: SessionSummary[];
   clientConfig?: ClientConfig;
-}>;
+}> & {
+  errorCause?: string;
+};
 
 export const buildRefreshFailureResult = (status: number): RefreshSessionsResult => ({
   ok: false,
@@ -157,6 +159,14 @@ export const applyRefreshSessionsFailure = ({
   onConnectionIssue: (message: string | null) => void;
 }): RefreshSessionsResult => {
   const fallback = res.ok ? API_ERROR_MESSAGES.invalidResponse : API_ERROR_MESSAGES.requestFailed;
+  const refreshErrorCause =
+    res.status === 500 && typeof data?.errorCause === "string" ? data.errorCause.trim() : "";
+  if (refreshErrorCause.length > 0) {
+    onConnectionIssue(
+      `${API_ERROR_MESSAGES.requestFailed} (${res.status})\nError cause: ${refreshErrorCause}`,
+    );
+    return buildRefreshFailureResult(res.status);
+  }
   onConnectionIssue(extractErrorMessage(res, data, fallback, { includeStatus: !res.ok }));
   return buildRefreshFailureResult(res.status);
 };

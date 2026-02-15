@@ -211,6 +211,37 @@ describe("createApiRouter", () => {
     expect(data.timeline.paneId).toBe("pane-1");
   });
 
+  it("returns config validation cause when request handler throws invalid config error", async () => {
+    const { api } = createTestContext();
+    const cause =
+      "invalid config: /tmp/.vde/monitor/config.json activity.pollIntervalMs Invalid input: expected number, received string";
+    api.get("/__test/config-validation-error", () => {
+      throw new Error(cause);
+    });
+
+    const res = await api.request("/__test/config-validation-error", {
+      headers: authHeaders,
+    });
+    expect(res.status).toBe(500);
+    const data = await res.json();
+    expect(data.error.code).toBe("INTERNAL");
+    expect(data.error.message).toBe("configuration validation failed");
+    expect(data.errorCause).toBe(cause);
+  });
+
+  it("returns plain 500 response when request handler throws non-config error", async () => {
+    const { api } = createTestContext();
+    api.get("/__test/unhandled-error", () => {
+      throw new Error("boom");
+    });
+
+    const res = await api.request("/__test/unhandled-error", {
+      headers: authHeaders,
+    });
+    expect(res.status).toBe(500);
+    expect(await res.text()).toBe("Internal Server Error");
+  });
+
   it("accepts extended timeline range values", async () => {
     const { api, getStateTimeline } = createTestContext();
     const res = await api.request("/sessions/pane-1/timeline?range=24h&limit=20", {

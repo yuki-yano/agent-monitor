@@ -20,6 +20,18 @@ type ApiContext = {
 
 const CORS_ALLOW_METHODS = "GET,POST,PUT,OPTIONS";
 const CORS_ALLOW_HEADERS = "Authorization,Content-Type,Request-Id,X-Request-Id,Content-Length";
+const CONFIG_VALIDATION_ERROR_PATTERN = /^invalid (?:project )?config(?: JSON)?: /i;
+
+const resolveConfigValidationErrorCause = (error: unknown) => {
+  if (!(error instanceof Error)) {
+    return null;
+  }
+  const message = error.message.trim();
+  if (!CONFIG_VALIDATION_ERROR_PATTERN.test(message)) {
+    return null;
+  }
+  return message;
+};
 
 const mergeVary = (existing: string | null, value: string) => {
   if (!existing) {
@@ -50,6 +62,19 @@ const applyCorsHeaders = (
 
 export const createApiRouter = ({ config, monitor, actions }: ApiContext) => {
   const api = new Hono();
+  api.onError((error, c) => {
+    const configValidationErrorCause = resolveConfigValidationErrorCause(error);
+    if (configValidationErrorCause) {
+      return c.json(
+        {
+          error: buildError("INTERNAL", "configuration validation failed"),
+          errorCause: configValidationErrorCause,
+        },
+        500,
+      );
+    }
+    return c.text("Internal Server Error", 500);
+  });
   const sendLimiter = createRateLimiter(config.rateLimit.send.windowMs, config.rateLimit.send.max);
   const screenLimiter = createRateLimiter(
     config.rateLimit.screen.windowMs,

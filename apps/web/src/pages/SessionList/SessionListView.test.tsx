@@ -516,6 +516,18 @@ describe("SessionListView", () => {
     expect(screen.getByText("Connection unstable")).toBeTruthy();
   });
 
+  it("renders error cause below 500 status in connectionIssue callout", () => {
+    const cause =
+      "invalid config: /tmp/.vde/monitor/config.json activity.pollIntervalMs Invalid input: expected number, received string";
+    const props = createViewProps({
+      connectionIssue: `Request failed (500)\nError cause: ${cause}`,
+    });
+    renderWithRouter(<SessionListView {...props} />);
+
+    expect(screen.getByText("Request failed (500)")).toBeTruthy();
+    expect(screen.getByText(`Error cause: ${cause}`)).toBeTruthy();
+  });
+
   it("wires QuickPanel handlers", () => {
     const onOpenLogModal = vi.fn();
     const onOpenPaneHere = vi.fn();

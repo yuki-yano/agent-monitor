@@ -11,6 +11,7 @@ import {
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
 import { Card, Tabs, TabsList, TabsTrigger } from "@/components/ui";
+import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import { buildSessionDocumentTitle } from "@/lib/brand";
 import { readStoredSessionListFilter } from "@/pages/SessionList/sessionListFilters";
 
@@ -70,6 +71,45 @@ const readStoredSectionTabValue = (storageKey: string): SectionTabValue => {
   return isSectionTabValue(stored) ? stored : DEFAULT_DETAIL_SECTION_TAB;
 };
 
+const CONFIG_VALIDATION_ERROR_PATTERN = /invalid (?:project )?config(?: JSON)?: /i;
+
+const splitConnectionIssueLines = (connectionIssue: string | null) =>
+  connectionIssue
+    ? connectionIssue
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+    : [];
+
+const resolveMissingSessionState = (connectionIssue: string | null) => {
+  const issueLines = splitConnectionIssueLines(connectionIssue);
+  if (issueLines.length === 0) {
+    return {
+      title: "Session not found.",
+      details: [] as string[],
+    };
+  }
+
+  if (connectionIssue === API_ERROR_MESSAGES.unauthorized) {
+    return {
+      title: "Authentication error.",
+      details: issueLines,
+    };
+  }
+
+  if (issueLines.some((line) => CONFIG_VALIDATION_ERROR_PATTERN.test(line))) {
+    return {
+      title: "Configuration error on server.",
+      details: issueLines,
+    };
+  }
+
+  return {
+    title: "Session could not be loaded.",
+    details: issueLines,
+  };
+};
+
 export const SessionDetailView = ({
   meta,
   sidebar,
@@ -85,6 +125,7 @@ export const SessionDetailView = ({
   actions,
 }: SessionDetailViewProps) => {
   const { session } = meta;
+  const missingSessionState = resolveMissingSessionState(meta.connectionIssue);
   const sessionDisplayTitle =
     session?.customTitle ?? session?.title ?? session?.sessionName ?? null;
   const documentTitle = buildSessionDocumentTitle(sessionDisplayTitle);
@@ -205,7 +246,16 @@ export const SessionDetailView = ({
         <title>{documentTitle}</title>
         <div className="mx-auto flex max-w-2xl flex-col gap-4 px-2.5 py-4 sm:px-4 sm:py-6">
           <Card>
-            <p className="text-latte-subtext0 text-sm">Session not found.</p>
+            <p className="text-latte-subtext0 text-sm">{missingSessionState.title}</p>
+            {missingSessionState.details.length > 0 ? (
+              <div className="mt-2 space-y-1">
+                {missingSessionState.details.map((detail, index) => (
+                  <p key={`${index}-${detail}`} className="text-latte-subtext1 break-all text-xs">
+                    {detail}
+                  </p>
+                ))}
+              </div>
+            ) : null}
             <Link to="/" search={backToListSearch} className={`${backLinkClass} mt-4`}>
               <ArrowLeft className="h-4 w-4" />
               Back to list

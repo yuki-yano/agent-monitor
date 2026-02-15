@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { API_ERROR_MESSAGES } from "@/lib/api-messages";
+
 import {
+  applyRefreshSessionsFailure,
   buildCommitFileQuery,
   buildCommitLogQuery,
   buildDiffFileQuery,
@@ -37,6 +40,33 @@ describe("session-api-utils", () => {
       authError: false,
       rateLimited: true,
     });
+  });
+
+  it("formats refresh 500 errors with explicit error cause", () => {
+    const onConnectionIssueCalls: Array<string | null> = [];
+    const cause =
+      "invalid config: /tmp/.vde/monitor/config.json activity.pollIntervalMs Invalid input: expected number, received string";
+
+    const result = applyRefreshSessionsFailure({
+      res: new Response(null, { status: 500 }),
+      data: {
+        error: { code: "INTERNAL", message: "configuration validation failed" },
+        errorCause: cause,
+      },
+      onConnectionIssue: (message) => {
+        onConnectionIssueCalls.push(message);
+      },
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      status: 500,
+      authError: false,
+      rateLimited: false,
+    });
+    expect(onConnectionIssueCalls).toEqual([
+      `${API_ERROR_MESSAGES.requestFailed} (500)\nError cause: ${cause}`,
+    ]);
   });
 
   it("builds screen request json without cursor in image mode", () => {

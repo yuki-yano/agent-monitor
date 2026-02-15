@@ -11,6 +11,7 @@ import type { MutableRefObject, ReactNode } from "react";
 import type { VirtuosoHandle } from "react-virtuoso";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import { buildSessionGroups } from "@/lib/session-group";
 import { ThemeProvider } from "@/state/theme-context";
 
@@ -287,6 +288,31 @@ describe("SessionDetailView", () => {
     expect(screen.getByText("Session not found.")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to list" })).toBeTruthy();
     expect(document.title).toBe("VDE Monitor");
+  });
+
+  it("shows authentication error in missing-session state", () => {
+    const props = createViewProps({
+      meta: { session: null, connectionIssue: API_ERROR_MESSAGES.unauthorized },
+    });
+    renderWithRouter(<SessionDetailView {...props} />);
+
+    expect(screen.getByText("Authentication error.")).toBeTruthy();
+    expect(screen.getByText(API_ERROR_MESSAGES.unauthorized)).toBeTruthy();
+    expect(screen.queryByText("Session not found.")).toBeNull();
+  });
+
+  it("shows configuration error cause in missing-session state", () => {
+    const cause =
+      "invalid config: /tmp/.vde/monitor/config.json activity.pollIntervalMs Invalid input: expected number, received string";
+    const props = createViewProps({
+      meta: { session: null, connectionIssue: `Request failed (500)\nError cause: ${cause}` },
+    });
+    renderWithRouter(<SessionDetailView {...props} />);
+
+    expect(screen.getByText("Configuration error on server.")).toBeTruthy();
+    expect(screen.getByText("Request failed (500)")).toBeTruthy();
+    expect(screen.getByText(`Error cause: ${cause}`)).toBeTruthy();
+    expect(screen.queryByText("Session not found.")).toBeNull();
   });
 
   it("renders main sections when session exists", () => {
