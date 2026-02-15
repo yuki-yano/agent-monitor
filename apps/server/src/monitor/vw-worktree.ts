@@ -13,7 +13,10 @@ const vwSnapshotCache = new Map<string, { snapshot: VwWorktreeSnapshot | null; a
 const inflight = new Map<string, Promise<VwWorktreeSnapshot | null>>();
 const ghLookupAt = new Map<string, number>();
 const repoRootByCwd = new Map<string, string>();
-const prCreatedByRepoRoot = new Map<string, Map<string, boolean | null>>();
+const mergedStateByRepoRoot = new Map<
+  string,
+  Map<string, { byPR: boolean | null; overall: boolean | null }>
+>();
 
 type VwWorktreeEntry = {
   path: string;
@@ -80,7 +83,7 @@ const resolveLookupKey = (cwd: string) => {
   }
 
   let matchedRepoRoot: string | null = null;
-  for (const repoRoot of prCreatedByRepoRoot.keys()) {
+  for (const repoRoot of mergedStateByRepoRoot.keys()) {
     if (
       isWithinPath(cwd, repoRoot) &&
       (!matchedRepoRoot || repoRoot.length > matchedRepoRoot.length)
@@ -123,25 +126,28 @@ const trackRepoRoot = (cwd: string, repoRoot: string | null) => {
   ghLookupAt.delete(cwd);
 };
 
-const buildPrCreatedByBranch = (entries: VwWorktreeEntry[]) => {
-  const byBranch = new Map<string, boolean | null>();
+const buildMergedStateByBranch = (entries: VwWorktreeEntry[]) => {
+  const byBranch = new Map<string, { byPR: boolean | null; overall: boolean | null }>();
   entries.forEach((entry) => {
     if (!entry.branch) {
       return;
     }
-    byBranch.set(entry.branch, entry.merged.byPR);
+    byBranch.set(entry.branch, {
+      byPR: entry.merged.byPR,
+      overall: entry.merged.overall,
+    });
   });
   return byBranch;
 };
 
-const applyCachedPrCreated = (
+const applyCachedMergedState = (
   repoRoot: string | null,
   entries: VwWorktreeEntry[],
 ): VwWorktreeEntry[] => {
   if (!repoRoot) {
     return entries;
   }
-  const cached = prCreatedByRepoRoot.get(repoRoot);
+  const cached = mergedStateByRepoRoot.get(repoRoot);
   if (!cached) {
     return entries;
   }
@@ -154,8 +160,11 @@ const applyCachedPrCreated = (
     if (!cached.has(entry.branch)) {
       return entry;
     }
-    const cachedByPr = cached.get(entry.branch) ?? null;
-    if (entry.merged.byPR === cachedByPr) {
+    const cachedState = cached.get(entry.branch) ?? {
+      byPR: null,
+      overall: null,
+    };
+    if (entry.merged.byPR === cachedState.byPR && entry.merged.overall === cachedState.overall) {
       return entry;
     }
     changed = true;
@@ -163,7 +172,8 @@ const applyCachedPrCreated = (
       ...entry,
       merged: {
         ...entry.merged,
-        byPR: cachedByPr,
+        byPR: cachedState.byPR,
+        overall: cachedState.overall,
       },
     };
   });
@@ -282,15 +292,15 @@ export const resolveVwWorktreeSnapshotCached = async (
         trackRepoRoot(normalizedCwd, snapshot.repoRoot);
         if (ghLookup.ghEnabled) {
           setMapEntryWithLimit(
-            prCreatedByRepoRoot,
+            mergedStateByRepoRoot,
             snapshot.repoRoot ?? normalizedCwd,
-            buildPrCreatedByBranch(snapshot.entries),
+            buildMergedStateByBranch(snapshot.entries),
             VW_GH_LOOKUP_CACHE_MAX_ENTRIES,
           );
         } else {
           resolvedSnapshot = {
             ...snapshot,
-            entries: applyCachedPrCreated(snapshot.repoRoot, snapshot.entries),
+            entries: applyCachedMergedState(snapshot.repoRoot, snapshot.entries),
           };
         }
       }

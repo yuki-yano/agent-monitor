@@ -99,7 +99,7 @@ describe("resolveVwWorktreeSnapshotCached", () => {
     expect(execaMock).toHaveBeenCalledTimes(1);
   });
 
-  it("uses --no-gh within refresh interval and reuses cached PR state", async () => {
+  it("uses --no-gh within refresh interval and reuses cached merged state", async () => {
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
@@ -116,7 +116,7 @@ describe("resolveVwWorktreeSnapshotCached", () => {
               path: "/repo/.worktree/feature/foo",
               dirty: false,
               locked: {},
-              merged: { overall: false, byPR: true },
+              merged: { overall: true, byPR: true },
             },
           ],
         }),
@@ -126,6 +126,9 @@ describe("resolveVwWorktreeSnapshotCached", () => {
       expect(execaMock).toHaveBeenNthCalledWith(1, "vw", ["list", "--json"], expect.any(Object));
       expect(
         resolveWorktreeStatusFromSnapshot(first, "/repo/.worktree/feature/foo")?.worktreePrCreated,
+      ).toBe(true);
+      expect(
+        resolveWorktreeStatusFromSnapshot(first, "/repo/.worktree/feature/foo")?.worktreeMerged,
       ).toBe(true);
 
       vi.setSystemTime(new Date("2026-01-01T00:00:03.100Z"));
@@ -155,6 +158,9 @@ describe("resolveVwWorktreeSnapshotCached", () => {
       );
       expect(
         resolveWorktreeStatusFromSnapshot(second, "/repo/.worktree/feature/foo")?.worktreePrCreated,
+      ).toBe(true);
+      expect(
+        resolveWorktreeStatusFromSnapshot(second, "/repo/.worktree/feature/foo")?.worktreeMerged,
       ).toBe(true);
     } finally {
       vi.useRealTimers();
