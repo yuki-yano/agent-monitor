@@ -237,6 +237,16 @@ describe("section props builders", () => {
       fallbackReason: null,
       error: null,
       pollingPauseReason: null,
+      promptGitContext: {
+        branch: "feature/prompt-meta",
+        fileChanges: {
+          add: 1,
+          m: 1,
+          d: 1,
+        },
+        additions: 12,
+        deletions: 4,
+      },
       contextLeftLabel: null,
       isScreenLoading: false,
       imageBase64: null,
@@ -259,6 +269,16 @@ describe("section props builders", () => {
 
     expect(props.actions.onResolveFileReference).toBe(onResolveFileReference);
     expect(props.actions.onResolveFileReferenceCandidates).toBe(onResolveFileReferenceCandidates);
+    expect(props.state.promptGitContext).toEqual({
+      branch: "feature/prompt-meta",
+      fileChanges: {
+        add: 1,
+        m: 1,
+        d: 1,
+      },
+      additions: 12,
+      deletions: 4,
+    });
 
     await props.actions.onResolveFileReference("src/index.ts:12");
     expect(onResolveFileReference).toHaveBeenCalledWith("src/index.ts:12");

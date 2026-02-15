@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { sumFileStats } from "../sessionDetailUtils";
 import type { SessionDetailViewProps } from "../SessionDetailView";
 import {
   buildFileContentModalProps,
@@ -14,6 +15,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
   screen,
   controls,
   files,
+  diffs,
 }: SessionDetailViewProps) => {
   const { paneId, session, connectionIssue } = meta;
   const sourceRepoRoot = session?.repoRoot ?? null;
@@ -37,6 +39,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
     scrollerRef,
     handleRefreshScreen,
   } = screen;
+  const { diffSummary } = diffs;
   const { rawMode, allowDangerKeys } = controls;
   const {
     unavailable,
@@ -83,6 +86,32 @@ export const useSessionDetailViewExplorerSectionProps = ({
     onLoadMoreTreeRoot,
     onLoadMoreSearch,
   } = files;
+  const promptGitContext = useMemo(() => {
+    const totals = sumFileStats(diffSummary?.files);
+    const fileChanges = diffSummary
+      ? diffSummary.files.reduce(
+          (counts, file) => {
+            if (file.status === "A") {
+              counts.add += 1;
+              return counts;
+            }
+            if (file.status === "D") {
+              counts.d += 1;
+              return counts;
+            }
+            counts.m += 1;
+            return counts;
+          },
+          { add: 0, m: 0, d: 0 },
+        )
+      : null;
+    return {
+      branch: session?.branch ?? null,
+      fileChanges,
+      additions: totals?.additions ?? null,
+      deletions: totals?.deletions ?? null,
+    };
+  }, [diffSummary, session?.branch]);
 
   const fileNavigatorSectionProps = useMemo(
     () =>
@@ -200,6 +229,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
         fallbackReason,
         error,
         pollingPauseReason,
+        promptGitContext,
         contextLeftLabel,
         isScreenLoading,
         imageBase64,
@@ -225,6 +255,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
       fallbackReason,
       error,
       pollingPauseReason,
+      promptGitContext,
       contextLeftLabel,
       isScreenLoading,
       imageBase64,

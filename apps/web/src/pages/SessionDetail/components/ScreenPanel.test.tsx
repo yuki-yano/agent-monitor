@@ -31,6 +31,16 @@ describe("ScreenPanel", () => {
     fallbackReason: null,
     error: null,
     pollingPauseReason: null,
+    promptGitContext: {
+      branch: "feature/session-detail",
+      fileChanges: {
+        add: 1,
+        m: 2,
+        d: 1,
+      },
+      additions: 18,
+      deletions: 6,
+    },
     contextLeftLabel: null,
     isScreenLoading: false,
     imageBase64: null,
@@ -85,15 +95,51 @@ describe("ScreenPanel", () => {
     expect(screen.queryByText("Disconnected. Reconnecting...")).toBeNull();
   });
 
+  it("shows prompt git context row", () => {
+    const state = buildState();
+    const actions = buildActions();
+    render(<ScreenPanel state={state} actions={actions} controls={null} />);
+
+    expect(screen.getByText("feature/session-detail")).toBeTruthy();
+    expect(screen.getByText("add 1")).toBeTruthy();
+    expect(screen.getByText("m 2")).toBeTruthy();
+    expect(screen.getByText("d 1")).toBeTruthy();
+    expect(screen.getByText("+18")).toBeTruthy();
+    expect(screen.getByText("-6")).toBeTruthy();
+    expect(screen.getByTestId("prompt-git-context-row")).toBeTruthy();
+  });
+
+  it("shows only existing file-change categories", () => {
+    const state = buildState({
+      promptGitContext: {
+        branch: "feature/session-detail",
+        fileChanges: {
+          add: 0,
+          m: 3,
+          d: 0,
+        },
+        additions: 10,
+        deletions: 1,
+      },
+    });
+    const actions = buildActions();
+    render(<ScreenPanel state={state} actions={actions} controls={null} />);
+
+    expect(screen.queryByText("add 0")).toBeNull();
+    expect(screen.getByText("m 3")).toBeTruthy();
+    expect(screen.queryByText("d 0")).toBeNull();
+  });
+
   it("shows context-left label when available", () => {
     const state = buildState({ contextLeftLabel: "73% context left" });
     const actions = buildActions();
     render(<ScreenPanel state={state} actions={actions} controls={null} />);
 
     expect(screen.getByText("73% context left")).toBeTruthy();
+    expect(screen.getByTestId("prompt-git-context-row")).toBeTruthy();
   });
 
-  it("shows polling pause indicator near context-left label", () => {
+  it("shows polling pause indicator on second row and keeps context on first row", () => {
     const state = buildState({
       pollingPauseReason: "offline",
       contextLeftLabel: "73% context left",
@@ -101,6 +147,11 @@ describe("ScreenPanel", () => {
     const actions = buildActions();
     render(<ScreenPanel state={state} actions={actions} controls={null} />);
 
+    const gitRow = screen.getByTestId("prompt-git-context-row");
+    const statusRow = screen.getByTestId("prompt-status-row");
+    expect(gitRow.textContent).toContain("73% context left");
+    expect(statusRow.textContent).toContain("PAUSED (offline)");
+    expect(statusRow.textContent).not.toContain("73% context left");
     expect(screen.getByText("PAUSED (offline)")).toBeTruthy();
     expect(screen.getByText("73% context left")).toBeTruthy();
   });

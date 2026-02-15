@@ -1,4 +1,4 @@
-import { ArrowDown, FileText, Image, RefreshCw } from "lucide-react";
+import { ArrowDown, FileText, GitBranch, Image, RefreshCw } from "lucide-react";
 import {
   type ClipboardEvent,
   forwardRef,
@@ -24,6 +24,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  TagPill,
   Toolbar,
 } from "@/components/ui";
 import { sanitizeLogCopyText } from "@/lib/clipboard";
@@ -34,7 +35,7 @@ import {
   extractLogReferenceTokensFromLine,
   linkifyLogLineFileReferences,
 } from "../log-file-reference";
-import { DISCONNECTED_MESSAGE } from "../sessionDetailUtils";
+import { DISCONNECTED_MESSAGE, formatBranchLabel } from "../sessionDetailUtils";
 
 type ScreenPanelState = {
   mode: ScreenMode;
@@ -42,6 +43,16 @@ type ScreenPanelState = {
   fallbackReason: string | null;
   error: string | null;
   pollingPauseReason: "disconnected" | "unauthorized" | "offline" | "hidden" | null;
+  promptGitContext: {
+    branch: string | null;
+    fileChanges: {
+      add: number;
+      m: number;
+      d: number;
+    } | null;
+    additions: number | null;
+    deletions: number | null;
+  } | null;
   contextLeftLabel: string | null;
   isScreenLoading: boolean;
   imageBase64: string | null;
@@ -74,6 +85,8 @@ type ScreenPanelProps = {
 const shouldShowErrorMessage = (error: string | null, connectionIssue: string | null) =>
   Boolean(error) &&
   (!connectionIssue || (error !== connectionIssue && error !== DISCONNECTED_MESSAGE));
+
+const formatGitMetric = (value: number | null) => (value == null ? "—" : String(value));
 
 const pollingPauseLabelMap: Record<
   NonNullable<ScreenPanelState["pollingPauseReason"]>,
@@ -268,6 +281,7 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     fallbackReason,
     error,
     pollingPauseReason,
+    promptGitContext,
     contextLeftLabel,
     isScreenLoading,
     imageBase64,
@@ -291,6 +305,30 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
   } = actions;
   const showError = shouldShowErrorMessage(error, connectionIssue);
   const pollingPauseMeta = pollingPauseReason ? pollingPauseLabelMap[pollingPauseReason] : null;
+  const gitBranchLabel = formatBranchLabel(promptGitContext?.branch);
+  const gitFileChanges = promptGitContext?.fileChanges;
+  const gitAdditionsLabel = formatGitMetric(promptGitContext?.additions ?? null);
+  const gitDeletionsLabel = formatGitMetric(promptGitContext?.deletions ?? null);
+  const visibleFileChangeCategories = [
+    {
+      key: "add",
+      label: "add",
+      value: gitFileChanges?.add ?? 0,
+      className: "text-latte-green",
+    },
+    {
+      key: "m",
+      label: "m",
+      value: gitFileChanges?.m ?? 0,
+      className: "text-latte-yellow",
+    },
+    {
+      key: "d",
+      label: "d",
+      value: gitFileChanges?.d ?? 0,
+      className: "text-latte-red",
+    },
+  ].filter((item) => item.value > 0);
   const [linkableTokens, setLinkableTokens] = useState<Set<string>>(new Set());
   const [visibleRange, setVisibleRange] = useState<{ startIndex: number; endIndex: number } | null>(
     null,
@@ -521,22 +559,50 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
           onResolveFileReferenceKeyDown={handleResolveFileReferenceKeyDown}
         />
       </div>
-      {pollingPauseMeta || contextLeftLabel ? (
-        <div className="-mt-1 flex items-center justify-between gap-2">
-          {pollingPauseMeta ? (
-            <span
-              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${pollingPauseMeta.className}`}
+      {promptGitContext || contextLeftLabel ? (
+        <div
+          data-testid="prompt-git-context-row"
+          className="-mt-1 flex items-center justify-between gap-2"
+        >
+          <div className="flex min-w-0 items-center gap-1.5">
+            <TagPill
+              tone="neutral"
+              className="text-latte-text inline-flex min-w-0 max-w-[240px] items-center gap-1 truncate px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em]"
+              title={gitBranchLabel}
             >
-              {pollingPauseMeta.label}
+              <GitBranch className="text-latte-subtext0 h-3 w-3 shrink-0" />
+              <span className="min-w-0 truncate font-mono">{gitBranchLabel}</span>
+            </TagPill>
+            {visibleFileChangeCategories.map((item) => (
+              <TagPill
+                key={item.key}
+                tone="meta"
+                className={`${item.className} shrink-0 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]`}
+              >
+                {item.label} {item.value}
+              </TagPill>
+            ))}
+            <span className="text-latte-green shrink-0 text-[11px] font-semibold">
+              +{gitAdditionsLabel}
             </span>
-          ) : (
-            <span />
-          )}
+            <span className="text-latte-red shrink-0 text-[11px] font-semibold">
+              -{gitDeletionsLabel}
+            </span>
+          </div>
           {contextLeftLabel ? (
-            <span className="text-latte-subtext0 px-1 text-[12px] font-medium tracking-[0.14em]">
+            <span className="text-latte-subtext0 shrink-0 px-1 text-[12px] font-medium tracking-[0.14em]">
               {contextLeftLabel}
             </span>
           ) : null}
+        </div>
+      ) : null}
+      {pollingPauseMeta ? (
+        <div data-testid="prompt-status-row" className="-mt-0.5 flex items-center gap-2">
+          <span
+            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${pollingPauseMeta.className}`}
+          >
+            {pollingPauseMeta.label}
+          </span>
         </div>
       ) : null}
       <div>{controls}</div>

@@ -93,7 +93,10 @@ export const useSessionTimeline = ({
       } finally {
         if (!silent) {
           pendingInteractiveLoadsRef.current = Math.max(0, pendingInteractiveLoadsRef.current - 1);
-          if (activePaneIdRef.current === targetPaneId && pendingInteractiveLoadsRef.current === 0) {
+          if (
+            activePaneIdRef.current === targetPaneId &&
+            pendingInteractiveLoadsRef.current === 0
+          ) {
             setTimelineLoading(false);
           }
         }

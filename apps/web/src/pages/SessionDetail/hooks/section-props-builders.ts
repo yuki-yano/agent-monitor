@@ -122,6 +122,16 @@ type BuildScreenPanelPropsArgs = {
   fallbackReason: string | null;
   error: string | null;
   pollingPauseReason: "disconnected" | "unauthorized" | "offline" | "hidden" | null;
+  promptGitContext: {
+    branch: string | null;
+    fileChanges: {
+      add: number;
+      m: number;
+      d: number;
+    } | null;
+    additions: number | null;
+    deletions: number | null;
+  } | null;
   contextLeftLabel: string | null;
   isScreenLoading: boolean;
   imageBase64: string | null;
@@ -450,6 +460,7 @@ export const buildScreenPanelProps = ({
   fallbackReason,
   error,
   pollingPauseReason,
+  promptGitContext,
   contextLeftLabel,
   isScreenLoading,
   imageBase64,
@@ -475,6 +486,7 @@ export const buildScreenPanelProps = ({
     fallbackReason,
     error,
     pollingPauseReason,
+    promptGitContext,
     contextLeftLabel,
     isScreenLoading,
     imageBase64,
