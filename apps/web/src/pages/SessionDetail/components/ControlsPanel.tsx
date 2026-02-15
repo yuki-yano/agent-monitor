@@ -5,6 +5,7 @@ import {
   ArrowUp,
   CornerDownLeft,
   ImagePlus,
+  Loader2,
   Send,
 } from "lucide-react";
 import {
@@ -302,11 +303,12 @@ const ComposerActionsRow = ({
         <Button
           onClick={onSendText}
           aria-label="Send"
-          className="h-7 gap-1 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] sm:h-8 sm:px-2.5"
+          className="h-7 min-w-[72px] justify-center gap-1 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] sm:h-8 sm:px-2.5"
           disabled={rawMode || !interactive || isSendingText}
         >
-          <Send className="h-4 w-4" />
-          <span>{isSendingText ? "Sending..." : "Send"}</span>
+          {isSendingText ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          <span>Send</span>
+          {isSendingText ? <span className="sr-only">Sending</span> : null}
         </Button>
       </div>
     </div>

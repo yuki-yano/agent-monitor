@@ -85,6 +85,16 @@ describe("ControlsPanel", () => {
     expect((screen.getByLabelText("Send") as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("keeps send label stable while showing sending indicator", () => {
+    const state = buildState({ isSendingText: true });
+    const actions = buildActions();
+    render(<ControlsPanel state={state} actions={actions} />);
+
+    const sendButton = screen.getByLabelText("Send");
+    expect(sendButton.textContent).toContain("Send");
+    expect(screen.queryByText("Sending...")).toBeNull();
+  });
+
   it("sends keys", () => {
     const onSendKey = vi.fn();
     const onToggleShift = vi.fn();
