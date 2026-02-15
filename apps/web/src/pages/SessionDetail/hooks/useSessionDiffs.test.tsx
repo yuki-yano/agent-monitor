@@ -83,6 +83,37 @@ describe("useSessionDiffs", () => {
     });
   });
 
+  it("loads diff file without toggling open state", async () => {
+    const diffSummary = createDiffSummary();
+    const requestDiffSummary = vi.fn().mockResolvedValue(diffSummary);
+    const requestDiffFile = vi.fn().mockResolvedValue(createDiffFile());
+
+    const wrapper = createWrapper();
+    const { result } = renderHook(
+      () =>
+        useSessionDiffs({
+          paneId: "pane-1",
+          connected: true,
+          requestDiffSummary,
+          requestDiffFile,
+        }),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(result.current.diffSummary).not.toBeNull();
+    });
+
+    result.current.ensureDiffFile("src/index.ts");
+
+    await waitFor(() => {
+      expect(requestDiffFile).toHaveBeenCalledWith("pane-1", "src/index.ts", "HEAD", {
+        force: true,
+      });
+    });
+    expect(result.current.diffOpen["src/index.ts"]).toBeUndefined();
+  });
+
   it("reloads diff summary when reconnected", async () => {
     const diffSummary = createDiffSummary();
     const requestDiffSummary = vi.fn().mockResolvedValue(diffSummary);

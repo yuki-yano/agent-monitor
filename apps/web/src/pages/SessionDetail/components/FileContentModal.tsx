@@ -26,7 +26,12 @@ type FileContentModalState = {
   loading: boolean;
   error: string | null;
   file: RepoFileContent | null;
-  markdownViewMode: "code" | "preview";
+  markdownViewMode: "code" | "preview" | "diff";
+  diffAvailable: boolean;
+  diffLoading: boolean;
+  diffPatch: string | null;
+  diffBinary: boolean;
+  diffError: string | null;
   showLineNumbers: boolean;
   copiedPath: boolean;
   copyError: string | null;
@@ -38,7 +43,8 @@ type FileContentModalActions = {
   onClose: () => void;
   onToggleLineNumbers: () => void;
   onCopyPath: () => Promise<void>;
-  onMarkdownViewModeChange: (mode: "code" | "preview") => void;
+  onMarkdownViewModeChange: (mode: "code" | "preview" | "diff") => void;
+  onLoadDiff: (path: string) => void;
 };
 
 type FileContentModalProps = {
@@ -68,19 +74,28 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
     error,
     file,
     markdownViewMode,
+    diffAvailable,
+    diffLoading,
+    diffPatch,
+    diffBinary,
+    diffError,
     showLineNumbers,
     copiedPath,
     copyError,
     highlightLine,
     theme,
   } = state;
-  const { onClose, onToggleLineNumbers, onCopyPath, onMarkdownViewModeChange } = actions;
+  const { onClose, onToggleLineNumbers, onCopyPath, onMarkdownViewModeChange, onLoadDiff } =
+    actions;
 
   const markdownEnabled = isMarkdownContent(file, path) && !file?.isBinary && !error && !loading;
   const activePath = path ?? file?.path ?? "";
   const title = activePath.length > 0 ? activePath : "File content";
   const effectiveCode = file?.content ?? "";
   const effectiveLanguage = file?.languageHint ?? (markdownEnabled ? "markdown" : null);
+  const resolvedViewMode =
+    markdownViewMode === "diff" && !diffAvailable ? "code" : markdownViewMode;
+  const showViewTabs = markdownEnabled || diffAvailable;
 
   useEffect(() => {
     if (!open) {
@@ -106,6 +121,31 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
       document.documentElement.style.overflow = previousHtmlOverflow;
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open || markdownViewMode !== "diff") {
+      return;
+    }
+    if (!diffAvailable) {
+      onMarkdownViewModeChange("code");
+      return;
+    }
+    if (!activePath || diffPatch != null || diffBinary || diffLoading || diffError) {
+      return;
+    }
+    onLoadDiff(activePath);
+  }, [
+    activePath,
+    diffAvailable,
+    diffBinary,
+    diffError,
+    diffLoading,
+    diffPatch,
+    markdownViewMode,
+    onLoadDiff,
+    onMarkdownViewModeChange,
+    open,
+  ]);
 
   const markdownComponents = useMemo<Components>(
     () => ({
@@ -307,19 +347,20 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
           </Callout>
         ) : null}
 
-        {markdownEnabled ? (
+        {showViewTabs ? (
           <div className="flex items-center justify-end px-0.5">
             <Tabs
-              value={markdownViewMode}
+              value={resolvedViewMode}
               onValueChange={(nextValue) => {
-                if (nextValue === "code" || nextValue === "preview") {
+                if (nextValue === "code" || nextValue === "preview" || nextValue === "diff") {
                   onMarkdownViewModeChange(nextValue);
                 }
               }}
             >
               <TabsList>
                 <TabsTrigger value="code">Code</TabsTrigger>
-                <TabsTrigger value="preview">Preview</TabsTrigger>
+                {markdownEnabled ? <TabsTrigger value="preview">Preview</TabsTrigger> : null}
+                {diffAvailable ? <TabsTrigger value="diff">Diff</TabsTrigger> : null}
               </TabsList>
             </Tabs>
           </div>
@@ -341,7 +382,7 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
             </div>
           ) : null}
 
-          {!loading && !error && file?.isBinary ? (
+          {!loading && !error && file?.isBinary && resolvedViewMode !== "diff" ? (
             <div className="p-3 sm:p-4">
               <Callout tone="warning" size="xs">
                 Binary file preview is not available.
@@ -353,7 +394,7 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
           !error &&
           !file?.isBinary &&
           markdownEnabled &&
-          markdownViewMode === "preview" ? (
+          resolvedViewMode === "preview" ? (
             <div className="custom-scrollbar h-full overflow-auto overscroll-contain">
               <article className="vde-markdown text-latte-text space-y-4 p-3 sm:p-4 md:p-5">
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
@@ -366,7 +407,8 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
           {!loading &&
           !error &&
           !file?.isBinary &&
-          (!markdownEnabled || markdownViewMode === "code") ? (
+          resolvedViewMode !== "diff" &&
+          (!markdownEnabled || resolvedViewMode === "code") ? (
             <ShikiCodeBlock
               code={effectiveCode}
               language={effectiveLanguage}
@@ -376,6 +418,43 @@ export const FileContentModal = ({ state, actions }: FileContentModalProps) => {
               highlightLine={highlightLine}
               className="h-full"
             />
+          ) : null}
+
+          {!loading && !error && resolvedViewMode === "diff" ? (
+            diffLoading ? (
+              <div className="flex h-full items-center justify-center gap-2 px-3 sm:px-4">
+                <Spinner size="sm" />
+                <span className="text-latte-subtext0 text-xs">Loading diff...</span>
+              </div>
+            ) : diffError ? (
+              <div className="p-3 sm:p-4">
+                <Callout tone="error" size="xs">
+                  {diffError}
+                </Callout>
+              </div>
+            ) : diffBinary ? (
+              <div className="p-3 sm:p-4">
+                <Callout tone="warning" size="xs">
+                  Binary diff preview is not available.
+                </Callout>
+              </div>
+            ) : diffPatch == null ? (
+              <div className="p-3 sm:p-4">
+                <Callout tone="warning" size="xs">
+                  No textual diff is available.
+                </Callout>
+              </div>
+            ) : (
+              <ShikiCodeBlock
+                code={diffPatch}
+                language="diff"
+                theme={theme}
+                flush
+                showLineNumbers={showLineNumbers}
+                highlightLine={null}
+                className="h-full"
+              />
+            )
           ) : null}
         </div>
       </Card>

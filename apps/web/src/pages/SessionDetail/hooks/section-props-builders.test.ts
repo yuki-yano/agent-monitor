@@ -190,6 +190,7 @@ describe("section props builders", () => {
     const onToggleFileModalLineNumbers = vi.fn();
     const onCopyFileModalPath = vi.fn(async () => undefined);
     const onSetFileModalMarkdownViewMode = vi.fn();
+    const onLoadFileModalDiff = vi.fn();
 
     const props = buildFileContentModalProps({
       fileModalOpen: true,
@@ -205,6 +206,11 @@ describe("section props builders", () => {
         content: "# hello",
       },
       fileModalMarkdownViewMode: "preview",
+      fileModalDiffAvailable: true,
+      fileModalDiffLoading: false,
+      fileModalDiffPatch: "@@ -1 +1 @@\n-old\n+new",
+      fileModalDiffBinary: false,
+      fileModalDiffError: null,
       fileModalShowLineNumbers: true,
       fileModalCopiedPath: false,
       fileModalCopyError: null,
@@ -214,10 +220,14 @@ describe("section props builders", () => {
       onToggleFileModalLineNumbers,
       onCopyFileModalPath,
       onSetFileModalMarkdownViewMode,
+      onLoadFileModalDiff,
     });
 
     expect(props.state.theme).toBe("latte");
+    expect(props.state.diffPatch).toContain("+new");
     expect(props.actions.onClose).toBe(onCloseFileModal);
+    props.actions.onLoadDiff("README.md");
+    expect(onLoadFileModalDiff).toHaveBeenCalledWith("README.md");
     await props.actions.onCopyPath();
     expect(onCopyFileModalPath).toHaveBeenCalledTimes(1);
   });

@@ -104,7 +104,12 @@ type BuildFileContentModalPropsArgs = {
   fileModalLoading: boolean;
   fileModalError: string | null;
   fileModalFile: RepoFileContent | null;
-  fileModalMarkdownViewMode: "code" | "preview";
+  fileModalMarkdownViewMode: "code" | "preview" | "diff";
+  fileModalDiffAvailable: boolean;
+  fileModalDiffLoading: boolean;
+  fileModalDiffPatch: string | null;
+  fileModalDiffBinary: boolean;
+  fileModalDiffError: string | null;
   fileModalShowLineNumbers: boolean;
   fileModalCopiedPath: boolean;
   fileModalCopyError: string | null;
@@ -113,7 +118,8 @@ type BuildFileContentModalPropsArgs = {
   onCloseFileModal: () => void;
   onToggleFileModalLineNumbers: () => void;
   onCopyFileModalPath: () => Promise<void>;
-  onSetFileModalMarkdownViewMode: (mode: "code" | "preview") => void;
+  onSetFileModalMarkdownViewMode: (mode: "code" | "preview" | "diff") => void;
+  onLoadFileModalDiff: (path: string) => void;
 };
 
 type BuildScreenPanelPropsArgs = {
@@ -421,6 +427,11 @@ export const buildFileContentModalProps = ({
   fileModalError,
   fileModalFile,
   fileModalMarkdownViewMode,
+  fileModalDiffAvailable,
+  fileModalDiffLoading,
+  fileModalDiffPatch,
+  fileModalDiffBinary,
+  fileModalDiffError,
   fileModalShowLineNumbers,
   fileModalCopiedPath,
   fileModalCopyError,
@@ -430,6 +441,7 @@ export const buildFileContentModalProps = ({
   onToggleFileModalLineNumbers,
   onCopyFileModalPath,
   onSetFileModalMarkdownViewMode,
+  onLoadFileModalDiff,
 }: BuildFileContentModalPropsArgs) => ({
   state: {
     open: fileModalOpen,
@@ -438,6 +450,11 @@ export const buildFileContentModalProps = ({
     error: fileModalError,
     file: fileModalFile,
     markdownViewMode: fileModalMarkdownViewMode,
+    diffAvailable: fileModalDiffAvailable,
+    diffLoading: fileModalDiffLoading,
+    diffPatch: fileModalDiffPatch,
+    diffBinary: fileModalDiffBinary,
+    diffError: fileModalDiffError,
     showLineNumbers: fileModalShowLineNumbers,
     copiedPath: fileModalCopiedPath,
     copyError: fileModalCopyError,
@@ -449,6 +466,7 @@ export const buildFileContentModalProps = ({
     onToggleLineNumbers: onToggleFileModalLineNumbers,
     onCopyPath: onCopyFileModalPath,
     onMarkdownViewModeChange: onSetFileModalMarkdownViewMode,
+    onLoadDiff: onLoadFileModalDiff,
   },
 });
 

@@ -157,6 +157,7 @@ const createViewProps = (overrides: SessionDetailViewOverrides = {}): SessionDet
       diffLoadingFiles: {},
       refreshDiff: vi.fn(),
       toggleDiff: vi.fn(),
+      ensureDiffFile: vi.fn(),
     },
     files: {
       unavailable: false,

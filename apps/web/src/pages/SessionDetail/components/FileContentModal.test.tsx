@@ -29,6 +29,11 @@ const createState = (overrides: Partial<FileContentModalState> = {}): FileConten
     content: "const value = 1;",
   },
   markdownViewMode: "code",
+  diffAvailable: false,
+  diffLoading: false,
+  diffPatch: null,
+  diffBinary: false,
+  diffError: null,
   showLineNumbers: false,
   copiedPath: false,
   copyError: null,
@@ -44,6 +49,7 @@ const createActions = (
   onToggleLineNumbers: vi.fn(),
   onCopyPath: vi.fn(async () => undefined),
   onMarkdownViewModeChange: vi.fn(),
+  onLoadDiff: vi.fn(),
   ...overrides,
 });
 
@@ -156,5 +162,58 @@ describe("FileContentModal", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Hide line numbers" }));
     expect(onToggleLineNumbers).toHaveBeenCalled();
+  });
+
+  it("shows diff tab when diff is available", () => {
+    render(
+      <FileContentModal
+        state={createState({
+          path: "README.md",
+          file: {
+            path: "README.md",
+            sizeBytes: 20,
+            isBinary: false,
+            truncated: false,
+            languageHint: "markdown",
+            content: "# Hello\n",
+          },
+          diffAvailable: true,
+        })}
+        actions={createActions()}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "Diff" })).toBeTruthy();
+  });
+
+  it("loads diff when diff tab is active", () => {
+    const onLoadDiff = vi.fn();
+    render(
+      <FileContentModal
+        state={createState({
+          path: "src/index.ts",
+          markdownViewMode: "diff",
+          diffAvailable: true,
+        })}
+        actions={createActions({ onLoadDiff })}
+      />,
+    );
+
+    expect(onLoadDiff).toHaveBeenCalledWith("src/index.ts");
+  });
+
+  it("renders diff patch when diff tab is selected", () => {
+    render(
+      <FileContentModal
+        state={createState({
+          markdownViewMode: "diff",
+          diffAvailable: true,
+          diffPatch: "@@ -1 +1 @@\n-old\n+new",
+        })}
+        actions={createActions()}
+      />,
+    );
+
+    expect(screen.getByText(/\+new/)).toBeTruthy();
   });
 });

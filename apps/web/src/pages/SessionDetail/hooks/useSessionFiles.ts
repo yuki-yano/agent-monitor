@@ -81,9 +81,9 @@ export const useSessionFiles = ({
   const [fileModalLoading, setFileModalLoading] = useState(false);
   const [fileModalError, setFileModalError] = useState<string | null>(null);
   const [fileModalFile, setFileModalFile] = useState<RepoFileContent | null>(null);
-  const [fileModalMarkdownViewMode, setFileModalMarkdownViewMode] = useState<"code" | "preview">(
-    "code",
-  );
+  const [fileModalMarkdownViewMode, setFileModalMarkdownViewMode] = useState<
+    "code" | "preview" | "diff"
+  >("code");
   const [fileModalShowLineNumbers, setFileModalShowLineNumbers] = useState(true);
   const [fileModalCopiedPath, setFileModalCopiedPath] = useState(false);
   const [fileModalCopyError, setFileModalCopyError] = useState<string | null>(null);

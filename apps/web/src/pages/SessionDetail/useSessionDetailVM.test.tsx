@@ -106,6 +106,7 @@ vi.mock("./hooks/useSessionDiffs", () => ({
     diffLoadingFiles: {},
     refreshDiff: vi.fn(),
     toggleDiff: vi.fn(),
+    ensureDiffFile: vi.fn(),
   }),
 }));
 

@@ -266,5 +266,6 @@ export const useSessionDiffs = ({
     diffLoadingFiles,
     refreshDiff: loadDiffSummary,
     toggleDiff,
+    ensureDiffFile: loadDiffFile,
   };
 };

@@ -39,7 +39,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
     scrollerRef,
     handleRefreshScreen,
   } = screen;
-  const { diffSummary } = diffs;
+  const { diffSummary, diffError, diffFiles, diffLoadingFiles, ensureDiffFile } = diffs;
   const { rawMode, allowDangerKeys } = controls;
   const {
     unavailable,
@@ -86,6 +86,24 @@ export const useSessionDetailViewExplorerSectionProps = ({
     onLoadMoreTreeRoot,
     onLoadMoreSearch,
   } = files;
+  const diffPathSet = useMemo(
+    () => new Set(diffSummary?.files.map((file) => file.path) ?? []),
+    [diffSummary],
+  );
+  const fileModalDiffAvailable = fileModalPath != null && diffPathSet.has(fileModalPath);
+  const fileModalDiffPatch = fileModalPath ? (diffFiles[fileModalPath]?.patch ?? null) : null;
+  const fileModalDiffBinary = fileModalPath ? Boolean(diffFiles[fileModalPath]?.binary) : false;
+  const fileModalDiffLoading = fileModalPath ? Boolean(diffLoadingFiles[fileModalPath]) : false;
+  const fileModalDiffError = fileModalDiffAvailable ? diffError : null;
+  const onLoadFileModalDiff = useCallback(
+    (path: string) => {
+      if (!diffPathSet.has(path)) {
+        return;
+      }
+      void ensureDiffFile(path);
+    },
+    [diffPathSet, ensureDiffFile],
+  );
   const promptGitContext = useMemo(() => {
     const totals = sumFileStats(diffSummary?.files);
     const fileChanges = diffSummary
@@ -172,6 +190,11 @@ export const useSessionDetailViewExplorerSectionProps = ({
         fileModalError,
         fileModalFile,
         fileModalMarkdownViewMode,
+        fileModalDiffAvailable,
+        fileModalDiffLoading,
+        fileModalDiffPatch,
+        fileModalDiffBinary,
+        fileModalDiffError,
         fileModalShowLineNumbers,
         fileModalCopiedPath,
         fileModalCopyError,
@@ -181,6 +204,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
         onToggleFileModalLineNumbers,
         onCopyFileModalPath,
         onSetFileModalMarkdownViewMode,
+        onLoadFileModalDiff,
       }),
     [
       fileModalOpen,
@@ -189,6 +213,11 @@ export const useSessionDetailViewExplorerSectionProps = ({
       fileModalError,
       fileModalFile,
       fileModalMarkdownViewMode,
+      fileModalDiffAvailable,
+      fileModalDiffLoading,
+      fileModalDiffPatch,
+      fileModalDiffBinary,
+      fileModalDiffError,
       fileModalShowLineNumbers,
       fileModalCopiedPath,
       fileModalCopyError,
@@ -198,6 +227,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
       onToggleFileModalLineNumbers,
       onCopyFileModalPath,
       onSetFileModalMarkdownViewMode,
+      onLoadFileModalDiff,
     ],
   );
 

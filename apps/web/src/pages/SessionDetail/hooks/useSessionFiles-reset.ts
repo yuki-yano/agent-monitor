@@ -35,7 +35,7 @@ export type ResetSessionFilesStateInput = {
   setFileModalLoading: SetState<boolean>;
   setFileModalError: SetState<string | null>;
   setFileModalFile: SetState<RepoFileContent | null>;
-  setFileModalMarkdownViewMode: SetState<"code" | "preview">;
+  setFileModalMarkdownViewMode: SetState<"code" | "preview" | "diff">;
   setFileModalShowLineNumbers: SetState<boolean>;
   setFileModalCopiedPath: SetState<boolean>;
   setFileModalCopyError: SetState<string | null>;

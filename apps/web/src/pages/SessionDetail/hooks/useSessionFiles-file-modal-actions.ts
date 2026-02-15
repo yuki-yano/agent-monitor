@@ -53,7 +53,7 @@ type UseSessionFilesFileModalActionsArgs = {
   setFileModalCopiedPath: Dispatch<SetStateAction<boolean>>;
   setFileModalFile: Dispatch<SetStateAction<RepoFileContent | null>>;
   setFileModalHighlightLine: Dispatch<SetStateAction<number | null>>;
-  setFileModalMarkdownViewMode: Dispatch<SetStateAction<"code" | "preview">>;
+  setFileModalMarkdownViewMode: Dispatch<SetStateAction<"code" | "preview" | "diff">>;
 };
 
 export const useSessionFilesFileModalActions = ({
@@ -189,7 +189,7 @@ export const useSessionFilesFileModalActions = ({
   ]);
 
   const onSetFileModalMarkdownViewMode = useCallback(
-    (mode: "code" | "preview") => {
+    (mode: "code" | "preview" | "diff") => {
       setFileModalMarkdownViewMode(mode);
     },
     [setFileModalMarkdownViewMode],

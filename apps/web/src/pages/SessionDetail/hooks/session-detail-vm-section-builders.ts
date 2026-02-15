@@ -138,7 +138,7 @@ type BuildFilesSectionArgs = {
   fileModalLoading: boolean;
   fileModalError: string | null;
   fileModalFile: RepoFileContent | null;
-  fileModalMarkdownViewMode: "code" | "preview";
+  fileModalMarkdownViewMode: "code" | "preview" | "diff";
   fileModalShowLineNumbers: boolean;
   fileModalCopiedPath: boolean;
   fileModalCopyError: string | null;
@@ -155,7 +155,7 @@ type BuildFilesSectionArgs = {
   onSelectFile: (targetPath: string) => void;
   onOpenFileModal: (targetPath: string) => void;
   onCloseFileModal: () => void;
-  onSetFileModalMarkdownViewMode: (mode: "code" | "preview") => void;
+  onSetFileModalMarkdownViewMode: (mode: "code" | "preview" | "diff") => void;
   onToggleFileModalLineNumbers: () => void;
   onCopyFileModalPath: () => Promise<void>;
   onResolveLogFileReference: (args: {
