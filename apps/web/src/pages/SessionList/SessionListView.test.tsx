@@ -55,6 +55,7 @@ vi.mock("@/pages/SessionDetail/components/QuickPanel", () => ({
     actions: {
       onOpenLogModal: (paneId: string) => void;
       onOpenSessionLink: (paneId: string) => void;
+      onOpenSessionLinkInNewWindow: (paneId: string) => void;
       onToggle: () => void;
     };
   }) => (
@@ -64,6 +65,12 @@ vi.mock("@/pages/SessionDetail/components/QuickPanel", () => ({
       </button>
       <button type="button" onClick={() => actions.onOpenSessionLink("pane-quick-link")}>
         open-link
+      </button>
+      <button
+        type="button"
+        onClick={() => actions.onOpenSessionLinkInNewWindow("pane-quick-link-new")}
+      >
+        open-link-new-window
       </button>
       <button type="button" onClick={actions.onToggle}>
         toggle-panel
@@ -174,6 +181,7 @@ const createViewProps = (overrides: Partial<SessionListViewProps> = {}): Session
     onToggleQuickPanel: vi.fn(),
     onCloseQuickPanel: vi.fn(),
     onOpenPaneHere: vi.fn(),
+    onOpenPaneInNewWindow: vi.fn(),
     onOpenHere: vi.fn(),
     onOpenNewTab: vi.fn(),
     onTouchRepoPin: vi.fn(),
@@ -511,20 +519,24 @@ describe("SessionListView", () => {
   it("wires QuickPanel handlers", () => {
     const onOpenLogModal = vi.fn();
     const onOpenPaneHere = vi.fn();
+    const onOpenPaneInNewWindow = vi.fn();
     const onToggleQuickPanel = vi.fn();
     const props = createViewProps({
       quickPanelOpen: true,
       onOpenLogModal,
       onOpenPaneHere,
+      onOpenPaneInNewWindow,
       onToggleQuickPanel,
     });
     renderWithRouter(<SessionListView {...props} />);
 
     fireEvent.click(screen.getByRole("button", { name: "open-log" }));
     fireEvent.click(screen.getByRole("button", { name: "open-link" }));
+    fireEvent.click(screen.getByRole("button", { name: "open-link-new-window" }));
     fireEvent.click(screen.getByRole("button", { name: "toggle-panel" }));
     expect(onOpenLogModal).toHaveBeenCalledWith("pane-quick");
     expect(onOpenPaneHere).toHaveBeenCalledWith("pane-quick-link");
+    expect(onOpenPaneInNewWindow).toHaveBeenCalledWith("pane-quick-link-new");
     expect(onToggleQuickPanel).toHaveBeenCalled();
   });
 });

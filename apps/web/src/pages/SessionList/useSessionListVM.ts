@@ -108,13 +108,20 @@ export const useSessionListVM = () => {
     highlightCorrections,
   });
 
+  const handleOpenPaneInNewWindow = useCallback(
+    (targetPaneId: string) => {
+      closeQuickPanel();
+      closeLogModal();
+      const encoded = encodeURIComponent(targetPaneId);
+      window.open(`/sessions/${encoded}`, "_blank", "noopener,noreferrer");
+    },
+    [closeLogModal, closeQuickPanel],
+  );
+
   const handleOpenInNewTab = useCallback(() => {
     if (!selectedPaneId) return;
-    closeQuickPanel();
-    closeLogModal();
-    const encoded = encodeURIComponent(selectedPaneId);
-    window.open(`/sessions/${encoded}`, "_blank", "noopener,noreferrer");
-  }, [closeLogModal, closeQuickPanel, selectedPaneId]);
+    handleOpenPaneInNewWindow(selectedPaneId);
+  }, [handleOpenPaneInNewWindow, selectedPaneId]);
 
   const handleOpenPaneHere = useCallback(
     (targetPaneId: string) => {
@@ -213,6 +220,7 @@ export const useSessionListVM = () => {
     onToggleQuickPanel: toggleQuickPanel,
     onCloseQuickPanel: closeQuickPanel,
     onOpenPaneHere: handleOpenPaneHere,
+    onOpenPaneInNewWindow: handleOpenPaneInNewWindow,
     onOpenHere: handleOpenHere,
     onOpenNewTab: handleOpenInNewTab,
     onTouchRepoPin: handleTouchRepoPin,

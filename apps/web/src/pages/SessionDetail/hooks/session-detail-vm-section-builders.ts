@@ -237,6 +237,7 @@ type BuildActionsSectionArgs = {
   handleTouchPaneWithRepoAnchor: (targetPaneId: string) => void;
   handleTouchRepoPin: (repoRoot: string | null) => void;
   handleOpenPaneHere: (targetPaneId: string) => void;
+  handleOpenPaneInNewWindow: (targetPaneId: string) => void;
   handleOpenHere: () => void;
   handleOpenInNewTab: () => void;
 };
@@ -610,6 +611,7 @@ export const buildActionsSection = ({
   handleTouchPaneWithRepoAnchor,
   handleTouchRepoPin,
   handleOpenPaneHere,
+  handleOpenPaneInNewWindow,
   handleOpenHere,
   handleOpenInNewTab,
 }: BuildActionsSectionArgs) => ({
@@ -617,6 +619,7 @@ export const buildActionsSection = ({
   handleTouchPane: handleTouchPaneWithRepoAnchor,
   handleTouchRepoPin,
   handleOpenPaneHere,
+  handleOpenPaneInNewWindow,
   handleOpenHere,
   handleOpenInNewTab,
 });

@@ -300,6 +300,7 @@ describe("section props builders", () => {
   it("builds quick/log/log-candidate props with flattened sessions", () => {
     const openLogModal = vi.fn();
     const handleOpenPaneHere = vi.fn();
+    const handleOpenPaneInNewWindow = vi.fn();
     const closeQuickPanel = vi.fn();
     const toggleQuickPanel = vi.fn();
     const closeLogModal = vi.fn();
@@ -341,11 +342,13 @@ describe("section props builders", () => {
       paneId: "%1",
       openLogModal,
       handleOpenPaneHere,
+      handleOpenPaneInNewWindow,
       closeQuickPanel,
       toggleQuickPanel,
     });
     expect(quickPanelProps.state.allSessions).toEqual([session]);
     expect(quickPanelProps.actions.onOpenLogModal).toBe(openLogModal);
+    expect(quickPanelProps.actions.onOpenSessionLinkInNewWindow).toBe(handleOpenPaneInNewWindow);
 
     const logModalProps = buildLogModalProps({
       logModalOpen: true,

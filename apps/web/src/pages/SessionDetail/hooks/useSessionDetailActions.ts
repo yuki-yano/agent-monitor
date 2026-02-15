@@ -25,13 +25,20 @@ export const useSessionDetailActions = ({
 }: UseSessionDetailActionsParams) => {
   const navigate = useNavigate();
 
+  const handleOpenPaneInNewWindow = useCallback(
+    (targetPaneId: string) => {
+      closeQuickPanel();
+      closeLogModal();
+      const encoded = encodeURIComponent(targetPaneId);
+      window.open(`/sessions/${encoded}`, "_blank", "noopener,noreferrer");
+    },
+    [closeLogModal, closeQuickPanel],
+  );
+
   const handleOpenInNewTab = useCallback(() => {
     if (!selectedPaneId) return;
-    closeQuickPanel();
-    closeLogModal();
-    const encoded = encodeURIComponent(selectedPaneId);
-    window.open(`/sessions/${encoded}`, "_blank", "noopener,noreferrer");
-  }, [closeLogModal, closeQuickPanel, selectedPaneId]);
+    handleOpenPaneInNewWindow(selectedPaneId);
+  }, [handleOpenPaneInNewWindow, selectedPaneId]);
 
   const handleTouchSession = useCallback(() => {
     void touchSession(paneId).catch(() => null);
@@ -69,6 +76,7 @@ export const useSessionDetailActions = ({
   }, [handleOpenPaneHere, selectedPaneId]);
 
   return {
+    handleOpenPaneInNewWindow,
     handleOpenInNewTab,
     handleTouchSession,
     handleTouchPane,

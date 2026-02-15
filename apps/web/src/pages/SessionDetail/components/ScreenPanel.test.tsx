@@ -227,6 +227,41 @@ describe("ScreenPanel", () => {
     expect(within(selectorPanel).queryByText(".")).toBeNull();
   });
 
+  it("uses leading truncation style for repo-root branch label", () => {
+    const repoRootBranch = "feature/very-long-repo-root-branch-name-for-leading-truncate-check";
+    const state = buildState({
+      worktreeSelectorEnabled: true,
+      worktreeRepoRoot: "/repo",
+      worktreeEntries: [
+        {
+          path: "/repo",
+          branch: repoRootBranch,
+          dirty: false,
+          locked: false,
+          lockOwner: null,
+          lockReason: null,
+          merged: false,
+          fileChanges: {
+            add: 0,
+            m: 0,
+            d: 0,
+          },
+          additions: 0,
+          deletions: 0,
+        },
+      ],
+      actualWorktreePath: "/repo",
+    });
+    const actions = buildActions();
+    render(<ScreenPanel state={state} actions={actions} controls={null} />);
+
+    fireEvent.click(screen.getByTestId("worktree-selector-trigger"));
+
+    const selectorPanel = screen.getByTestId("worktree-selector-panel");
+    const branchLabel = within(selectorPanel).getByTitle(repoRootBranch);
+    expect(branchLabel.className).toContain("[direction:rtl]");
+  });
+
   it("shows repo-root entry first", () => {
     const state = buildState({
       worktreeSelectorEnabled: true,
@@ -317,6 +352,40 @@ describe("ScreenPanel", () => {
 
     view.unmount();
     expect(document.body.dataset.vdeWorktreeSelectorOpen).toBeUndefined();
+  });
+
+  it("reloads worktrees from selector header", () => {
+    const onRefresh = vi.fn();
+    const state = buildState({
+      worktreeSelectorEnabled: true,
+      worktreeEntries: [
+        {
+          path: "/repo",
+          branch: "main",
+          dirty: false,
+          locked: false,
+          lockOwner: null,
+          lockReason: null,
+          merged: false,
+          fileChanges: {
+            add: 0,
+            m: 0,
+            d: 0,
+          },
+          additions: 0,
+          deletions: 0,
+        },
+      ],
+      actualWorktreePath: "/repo",
+    });
+    const actions = buildActions({ onRefresh });
+    render(<ScreenPanel state={state} actions={actions} controls={null} />);
+
+    fireEvent.click(screen.getByTestId("worktree-selector-trigger"));
+    const selectorPanel = screen.getByTestId("worktree-selector-panel");
+    fireEvent.click(within(selectorPanel).getByLabelText("Reload worktrees"));
+
+    expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
   it("renders virtual badge on the right of worktree name", () => {

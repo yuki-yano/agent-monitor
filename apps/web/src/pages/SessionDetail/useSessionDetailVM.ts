@@ -176,6 +176,7 @@ export const useSessionDetailVM = (paneId: string) => {
       closeQuickPanel,
     },
     actions: {
+      handleOpenPaneInNewWindow,
       handleOpenInNewTab,
       handleFocusPane,
       handleOpenPaneHere,
@@ -356,6 +357,7 @@ export const useSessionDetailVM = (paneId: string) => {
       handleFocusPane,
       handleTouchRepoPin,
       handleOpenPaneHere,
+      handleOpenPaneInNewWindow,
       handleOpenHere,
       handleOpenInNewTab,
       handleTouchPaneWithRepoAnchor,

@@ -150,6 +150,9 @@ const TestComponent = () => {
       <button type="button" onClick={vm.onOpenNewTab}>
         open-new-tab
       </button>
+      <button type="button" onClick={() => vm.onOpenPaneInNewWindow("pane direct/2")}>
+        open-pane-new-window
+      </button>
       <span data-testid="query">{vm.searchQuery}</span>
       <span data-testid="visible-count">{vm.visibleSessionCount}</span>
     </div>
@@ -342,6 +345,26 @@ describe("useSessionListVM", () => {
     }
     expect(closeQuickOrder).toBeLessThan(openOrder);
     expect(closeLogOrder).toBeLessThan(openOrder);
+    openSpy.mockRestore();
+  });
+
+  it("opens specified pane in new window from quick panel action", async () => {
+    const closeQuickPanel = vi.fn();
+    const closeLogModal = vi.fn();
+    mockUseSessionLogs.closeQuickPanel = closeQuickPanel;
+    mockUseSessionLogs.closeLogModal = closeLogModal;
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+
+    await renderWithRouter(["/"]);
+    fireEvent.click(screen.getByRole("button", { name: "open-pane-new-window" }));
+
+    expect(closeQuickPanel).toHaveBeenCalledTimes(1);
+    expect(closeLogModal).toHaveBeenCalledTimes(1);
+    expect(openSpy).toHaveBeenCalledWith(
+      "/sessions/pane%20direct%2F2",
+      "_blank",
+      "noopener,noreferrer",
+    );
     openSpy.mockRestore();
   });
 });

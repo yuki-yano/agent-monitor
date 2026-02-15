@@ -76,6 +76,7 @@ export const useSessionDetailTimelineLogsActions = ({
   });
 
   const {
+    handleOpenPaneInNewWindow,
     handleOpenInNewTab,
     handleTouchSession,
     handleTouchPane,
@@ -116,6 +117,7 @@ export const useSessionDetailTimelineLogsActions = ({
     timeline,
     logs,
     actions: {
+      handleOpenPaneInNewWindow,
       handleOpenInNewTab,
       handleFocusPane,
       handleOpenPaneHere,

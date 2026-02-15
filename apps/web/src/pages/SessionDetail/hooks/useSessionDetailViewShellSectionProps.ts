@@ -80,6 +80,7 @@ export const useSessionDetailViewShellSectionProps = ({
     handleTouchPane,
     handleTouchRepoPin,
     handleOpenPaneHere,
+    handleOpenPaneInNewWindow,
     handleOpenHere,
     handleOpenInNewTab,
   } = actions;
@@ -93,6 +94,7 @@ export const useSessionDetailViewShellSectionProps = ({
         paneId,
         openLogModal,
         handleOpenPaneHere,
+        handleOpenPaneInNewWindow,
         closeQuickPanel,
         toggleQuickPanel,
       }),
@@ -103,6 +105,7 @@ export const useSessionDetailViewShellSectionProps = ({
       paneId,
       openLogModal,
       handleOpenPaneHere,
+      handleOpenPaneInNewWindow,
       closeQuickPanel,
       toggleQuickPanel,
     ],

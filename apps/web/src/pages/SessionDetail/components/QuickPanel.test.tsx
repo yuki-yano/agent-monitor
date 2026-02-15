@@ -22,6 +22,7 @@ describe("QuickPanel", () => {
   const buildActions = (overrides: Partial<QuickPanelActions> = {}): QuickPanelActions => ({
     onOpenLogModal: vi.fn(),
     onOpenSessionLink: vi.fn(),
+    onOpenSessionLinkInNewWindow: vi.fn(),
     onClose: vi.fn(),
     onToggle: vi.fn(),
     ...overrides,
@@ -85,6 +86,27 @@ describe("QuickPanel", () => {
 
     fireEvent.click(screen.getByLabelText("Open session link"));
     expect(onOpenSessionLink).toHaveBeenCalledWith("pane-1");
+  });
+
+  it("opens session link in new window from row action", () => {
+    const session = createSessionDetail();
+    const onOpenSessionLinkInNewWindow = vi.fn();
+    const state = buildState({
+      open: true,
+      sessionGroups: [
+        {
+          repoRoot: session.repoRoot,
+          sessions: [session],
+          lastInputAt: session.lastInputAt,
+        },
+      ],
+      allSessions: [session],
+    });
+    const actions = buildActions({ onOpenSessionLinkInNewWindow });
+    render(<QuickPanel state={state} actions={actions} />);
+
+    fireEvent.click(screen.getByLabelText("Open session link in new window"));
+    expect(onOpenSessionLinkInNewWindow).toHaveBeenCalledWith("pane-1");
   });
 
   it("shows agent as icon only and displays branch on the right", () => {
@@ -189,6 +211,7 @@ describe("QuickPanel", () => {
 
     expect(screen.getByLabelText("Close quick panel").className).toContain("z-30");
     expect(screen.getByLabelText("Open session link").className).toContain("z-10");
+    expect(screen.getByLabelText("Open session link in new window").className).toContain("z-10");
   });
 
   it("closes when clicking outside quick panel", () => {

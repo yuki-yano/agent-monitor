@@ -40,6 +40,7 @@ describe("session detail vm section builders", () => {
     const handleTouchPaneWithRepoAnchor = vi.fn();
     const handleTouchRepoPin = vi.fn();
     const handleOpenPaneHere = vi.fn();
+    const handleOpenPaneInNewWindow = vi.fn();
     const handleOpenHere = vi.fn();
     const handleOpenInNewTab = vi.fn();
     const handleAtBottomChange = vi.fn();
@@ -302,10 +303,12 @@ describe("session detail vm section builders", () => {
       handleTouchPaneWithRepoAnchor,
       handleTouchRepoPin,
       handleOpenPaneHere,
+      handleOpenPaneInNewWindow,
       handleOpenHere,
       handleOpenInNewTab,
     });
     expect(actions.handleTouchPane).toBe(handleTouchPaneWithRepoAnchor);
+    expect(actions.handleOpenPaneInNewWindow).toBe(handleOpenPaneInNewWindow);
     expect(actions.handleOpenInNewTab).toBe(handleOpenInNewTab);
   });
 });

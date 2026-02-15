@@ -1,4 +1,4 @@
-import { ArrowRight, Clock, GitBranch, List, X } from "lucide-react";
+import { ArrowRight, Clock, ExternalLink, GitBranch, List, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { Card, IconButton, LastInputPill, SurfaceButton, TagPill } from "@/components/ui";
@@ -29,6 +29,7 @@ type QuickPanelState = {
 type QuickPanelActions = {
   onOpenLogModal: (paneId: string) => void;
   onOpenSessionLink: (paneId: string) => void;
+  onOpenSessionLinkInNewWindow: (paneId: string) => void;
   onClose: () => void;
   onToggle: () => void;
 };
@@ -40,7 +41,8 @@ type QuickPanelProps = {
 
 export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
   const { open, sessionGroups, allSessions, nowMs, currentPaneId } = state;
-  const { onOpenLogModal, onOpenSessionLink, onClose, onToggle } = actions;
+  const { onOpenLogModal, onOpenSessionLink, onOpenSessionLinkInNewWindow, onClose, onToggle } =
+    actions;
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const touchStartYRef = useRef<number | null>(null);
 
@@ -237,7 +239,7 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
                               const showWorktreeFlags = isVwManagedWorktreePath(item.worktreePath);
                               const isCurrent = currentPaneId === item.paneId;
                               return (
-                                <div key={item.paneId} className="relative pr-10">
+                                <div key={item.paneId} className="relative pr-11">
                                   <SurfaceButton
                                     type="button"
                                     onClick={() => onOpenLogModal(item.paneId)}
@@ -328,16 +330,28 @@ export const QuickPanel = ({ state, actions }: QuickPanelProps) => {
                                       />
                                     </div>
                                   </SurfaceButton>
-                                  <IconButton
-                                    type="button"
-                                    onClick={() => onOpenSessionLink(item.paneId)}
-                                    variant={isCurrent ? "lavenderStrong" : "lavender"}
-                                    size="sm"
-                                    aria-label="Open session link"
-                                    className="shadow-elev-3 absolute right-0 top-1/2 z-10 -translate-y-1/2"
-                                  >
-                                    <ArrowRight className="h-3.5 w-3.5" />
-                                  </IconButton>
+                                  <div className="absolute right-0 top-1/2 flex -translate-y-1/2 flex-col gap-1">
+                                    <IconButton
+                                      type="button"
+                                      onClick={() => onOpenSessionLink(item.paneId)}
+                                      variant={isCurrent ? "lavenderStrong" : "lavender"}
+                                      size="sm"
+                                      aria-label="Open session link"
+                                      className="shadow-elev-3 z-10"
+                                    >
+                                      <ArrowRight className="h-3.5 w-3.5" />
+                                    </IconButton>
+                                    <IconButton
+                                      type="button"
+                                      onClick={() => onOpenSessionLinkInNewWindow(item.paneId)}
+                                      variant={isCurrent ? "lavenderStrong" : "lavender"}
+                                      size="sm"
+                                      aria-label="Open session link in new window"
+                                      className="shadow-elev-3 z-10"
+                                    >
+                                      <ExternalLink className="h-3.5 w-3.5" />
+                                    </IconButton>
+                                  </div>
                                 </div>
                               );
                             })}

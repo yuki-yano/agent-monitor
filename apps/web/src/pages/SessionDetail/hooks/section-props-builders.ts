@@ -176,6 +176,7 @@ type BuildQuickPanelPropsArgs = {
   paneId: string;
   openLogModal: (paneId: string) => void;
   handleOpenPaneHere: (paneId: string) => void;
+  handleOpenPaneInNewWindow: (paneId: string) => void;
   closeQuickPanel: () => void;
   toggleQuickPanel: () => void;
 };
@@ -564,6 +565,7 @@ export const buildQuickPanelProps = ({
   paneId,
   openLogModal,
   handleOpenPaneHere,
+  handleOpenPaneInNewWindow,
   closeQuickPanel,
   toggleQuickPanel,
 }: BuildQuickPanelPropsArgs) => ({
@@ -577,6 +579,7 @@ export const buildQuickPanelProps = ({
   actions: {
     onOpenLogModal: openLogModal,
     onOpenSessionLink: handleOpenPaneHere,
+    onOpenSessionLinkInNewWindow: handleOpenPaneInNewWindow,
     onClose: closeQuickPanel,
     onToggle: toggleQuickPanel,
   },

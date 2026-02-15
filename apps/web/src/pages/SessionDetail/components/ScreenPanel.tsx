@@ -1006,20 +1006,33 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
                   data-testid="worktree-selector-panel"
                   className="border-latte-surface2/80 bg-latte-base/95 shadow-popover absolute left-0 top-[calc(100%+0.35rem)] z-[80] w-[min(88vw,420px)] rounded-xl border p-2 pt-9"
                 >
-                  <IconButton
-                    type="button"
-                    size="xs"
-                    variant="base"
-                    aria-label="Close worktree selector"
-                    title="Close worktree selector"
-                    className="absolute right-1.5 top-1.5"
-                    onClick={() => {
-                      setIsWorktreeSelectorOpen(false);
-                    }}
-                  >
-                    <X className="h-3 w-3" />
-                  </IconButton>
-                  <div className="pointer-events-none absolute inset-x-2 top-1.5 flex h-6 items-center gap-1.5 pr-7">
+                  <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
+                    <IconButton
+                      type="button"
+                      size="xs"
+                      variant="base"
+                      aria-label="Reload worktrees"
+                      title="Reload worktrees"
+                      onClick={onRefresh}
+                    >
+                      <RefreshCw
+                        className={`h-3 w-3 ${worktreeSelectorLoading ? "animate-spin" : ""}`}
+                      />
+                    </IconButton>
+                    <IconButton
+                      type="button"
+                      size="xs"
+                      variant="base"
+                      aria-label="Close worktree selector"
+                      title="Close worktree selector"
+                      onClick={() => {
+                        setIsWorktreeSelectorOpen(false);
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </IconButton>
+                  </div>
+                  <div className="pointer-events-none absolute inset-x-2 top-1.5 flex h-6 items-center gap-1.5 pr-14">
                     <GitBranch className="text-latte-subtext0 h-3 w-3 shrink-0" />
                     <span className="text-latte-subtext0 text-[10px] font-semibold uppercase leading-none tracking-[0.14em]">
                       Worktrees
@@ -1062,6 +1075,7 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
                           );
                           const entryAdditionsLabel = formatGitMetric(entry.additions ?? null);
                           const entryDeletionsLabel = formatGitMetric(entry.deletions ?? null);
+                          const entryBranchLabel = formatBranchLabel(entry.branch);
                           return (
                             <button
                               key={entry.path}
@@ -1080,15 +1094,20 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
                               }}
                               disabled={!onSelectVirtualWorktree}
                             >
-                              <span className="min-w-0">
-                                <span className="flex min-w-0 items-center gap-1.5">
-                                  <span className="text-latte-text min-w-0 truncate font-mono">
-                                    {formatBranchLabel(entry.branch)}
+                              <span className="min-w-0 flex-1">
+                                <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                                  <span
+                                    title={entryBranchLabel}
+                                    className={`text-latte-text min-w-0 flex-1 truncate font-mono ${
+                                      isRepoRootPath ? "text-left [direction:rtl]" : ""
+                                    }`}
+                                  >
+                                    {entryBranchLabel}
                                   </span>
                                   {isRepoRootPath ? (
                                     <TagPill
                                       tone="meta"
-                                      className="border-latte-blue/45 bg-latte-blue/10 text-latte-blue px-1.5 py-[2px] text-[9px] font-semibold uppercase tracking-[0.08em]"
+                                      className="border-latte-blue/45 bg-latte-blue/10 text-latte-blue shrink-0 whitespace-nowrap px-1.5 py-[2px] text-[9px] font-semibold uppercase tracking-[0.08em]"
                                     >
                                       Repo Root
                                     </TagPill>
