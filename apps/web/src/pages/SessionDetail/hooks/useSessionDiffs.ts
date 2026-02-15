@@ -260,9 +260,11 @@ export const useSessionDiffs = ({
     setDiffOpen({});
     setDiffError(null);
     diffSignatureRef.current = null;
-    queryClient.removeQueries({
-      queryKey: [DIFF_FILE_QUERY_KEY, paneId],
-    });
+    return () => {
+      queryClient.removeQueries({
+        queryKey: [DIFF_FILE_QUERY_KEY, paneId],
+      });
+    };
   }, [paneId, queryClient, setDiffError, setDiffFiles, setDiffOpen, setDiffSummary]);
 
   useEffect(() => {

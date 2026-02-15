@@ -198,6 +198,61 @@ describe("useSessionDiffs", () => {
     });
   });
 
+  it("clears previous pane diff-file cache on pane switch", async () => {
+    const pane1Summary = createDiffSummary({ rev: "rev-pane-1" });
+    const pane2Summary = createDiffSummary({ rev: "rev-pane-2" });
+    const requestDiffSummary = vi.fn((paneId: string) =>
+      Promise.resolve(paneId === "pane-1" ? pane1Summary : pane2Summary),
+    );
+    const requestDiffFile = vi.fn().mockResolvedValue(createDiffFile());
+
+    const wrapper = createWrapper();
+    const { result, rerender } = renderHook(
+      ({ paneId }) =>
+        useSessionDiffs({
+          paneId,
+          connected: true,
+          requestDiffSummary,
+          requestDiffFile,
+        }),
+      {
+        wrapper,
+        initialProps: { paneId: "pane-1" },
+      },
+    );
+
+    await waitFor(() => {
+      expect(result.current.diffSummary?.rev).toBe("rev-pane-1");
+    });
+
+    result.current.toggleDiff("src/index.ts");
+
+    await waitFor(() => {
+      expect(requestDiffFile).toHaveBeenCalledTimes(1);
+    });
+
+    rerender({ paneId: "pane-2" });
+
+    await waitFor(() => {
+      expect(result.current.diffSummary?.rev).toBe("rev-pane-2");
+    });
+
+    rerender({ paneId: "pane-1" });
+
+    await waitFor(() => {
+      expect(result.current.diffSummary?.rev).toBe("rev-pane-1");
+    });
+
+    result.current.toggleDiff("src/index.ts");
+
+    await waitFor(() => {
+      expect(requestDiffFile).toHaveBeenCalledTimes(2);
+    });
+    expect(requestDiffFile).toHaveBeenLastCalledWith("pane-1", "src/index.ts", "rev-pane-1", {
+      force: true,
+    });
+  });
+
   it("reuses cached open diff files when summary refresh keeps same rev", async () => {
     const diffSummary = createDiffSummary({
       rev: "HEAD",
