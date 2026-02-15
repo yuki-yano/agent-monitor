@@ -374,7 +374,6 @@ describe("section props builders", () => {
     const handleSendText = vi.fn(async () => undefined);
     const handleUploadImage = vi.fn(async () => undefined);
     const toggleAutoEnter = vi.fn();
-    const toggleControls = vi.fn();
     const toggleRawMode = vi.fn();
     const toggleAllowDangerKeys = vi.fn();
     const toggleShift = vi.fn();
@@ -472,7 +471,6 @@ describe("section props builders", () => {
       interactive: true,
       textInputRef: { current: null },
       autoEnter: true,
-      controlsOpen: false,
       rawMode: false,
       allowDangerKeys: false,
       isSendingText: false,
@@ -481,7 +479,6 @@ describe("section props builders", () => {
       handleSendText,
       handleUploadImage,
       toggleAutoEnter,
-      toggleControls,
       toggleRawMode,
       toggleAllowDangerKeys,
       toggleShift,

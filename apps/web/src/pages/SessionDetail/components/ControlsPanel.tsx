@@ -27,7 +27,6 @@ type ControlsPanelState = {
   isSendingText: boolean;
   textInputRef: RefObject<HTMLTextAreaElement | null>;
   autoEnter: boolean;
-  controlsOpen: boolean;
   rawMode: boolean;
   allowDangerKeys: boolean;
   shiftHeld: boolean;
@@ -38,7 +37,6 @@ type ControlsPanelActions = {
   onSendText: () => void;
   onPickImage: (file: File) => void | Promise<void>;
   onToggleAutoEnter: () => void;
-  onToggleControls: () => void;
   onToggleRawMode: () => void;
   onToggleAllowDangerKeys: () => void;
   onToggleShift: () => void;

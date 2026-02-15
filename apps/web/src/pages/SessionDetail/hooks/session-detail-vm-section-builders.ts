@@ -100,7 +100,6 @@ type BuildControlsSectionArgs = {
   autoEnter: boolean;
   shiftHeld: boolean;
   ctrlHeld: boolean;
-  controlsOpen: boolean;
   rawMode: boolean;
   allowDangerKeys: boolean;
   isSendingText: boolean;
@@ -113,7 +112,6 @@ type BuildControlsSectionArgs = {
   handleRawCompositionStart: (event: CompositionEvent<HTMLTextAreaElement>) => void;
   handleRawCompositionEnd: (event: CompositionEvent<HTMLTextAreaElement>) => void;
   toggleAutoEnter: () => void;
-  toggleControls: () => void;
   toggleShift: () => void;
   toggleCtrl: () => void;
   toggleRawMode: () => void;
@@ -352,7 +350,6 @@ export const buildControlsSection = ({
   autoEnter,
   shiftHeld,
   ctrlHeld,
-  controlsOpen,
   rawMode,
   allowDangerKeys,
   isSendingText,
@@ -365,7 +362,6 @@ export const buildControlsSection = ({
   handleRawCompositionStart,
   handleRawCompositionEnd,
   toggleAutoEnter,
-  toggleControls,
   toggleShift,
   toggleCtrl,
   toggleRawMode,
@@ -377,7 +373,6 @@ export const buildControlsSection = ({
   autoEnter,
   shiftHeld,
   ctrlHeld,
-  controlsOpen,
   rawMode,
   allowDangerKeys,
   isSendingText,
@@ -390,7 +385,6 @@ export const buildControlsSection = ({
   handleRawCompositionStart,
   handleRawCompositionEnd,
   toggleAutoEnter,
-  toggleControls,
   toggleShift,
   toggleCtrl,
   toggleRawMode,

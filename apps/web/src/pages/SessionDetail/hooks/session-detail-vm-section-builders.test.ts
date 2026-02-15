@@ -56,7 +56,6 @@ describe("session detail vm section builders", () => {
     const handleRawCompositionStart = vi.fn();
     const handleRawCompositionEnd = vi.fn();
     const toggleAutoEnter = vi.fn();
-    const toggleControls = vi.fn();
     const toggleShift = vi.fn();
     const toggleCtrl = vi.fn();
     const toggleRawMode = vi.fn();
@@ -177,7 +176,6 @@ describe("session detail vm section builders", () => {
       autoEnter: true,
       shiftHeld: false,
       ctrlHeld: false,
-      controlsOpen: false,
       rawMode: false,
       allowDangerKeys: false,
       isSendingText: false,
@@ -190,7 +188,6 @@ describe("session detail vm section builders", () => {
       handleRawCompositionStart,
       handleRawCompositionEnd,
       toggleAutoEnter,
-      toggleControls,
       toggleShift,
       toggleCtrl,
       toggleRawMode,

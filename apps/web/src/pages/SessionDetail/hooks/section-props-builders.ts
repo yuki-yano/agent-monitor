@@ -234,7 +234,6 @@ type BuildControlsPanelPropsArgs = {
   interactive: boolean;
   textInputRef: { current: HTMLTextAreaElement | null };
   autoEnter: boolean;
-  controlsOpen: boolean;
   rawMode: boolean;
   allowDangerKeys: boolean;
   isSendingText: boolean;
@@ -243,7 +242,6 @@ type BuildControlsPanelPropsArgs = {
   handleSendText: () => Promise<void>;
   handleUploadImage: (file: File) => Promise<void>;
   toggleAutoEnter: () => void;
-  toggleControls: () => void;
   toggleRawMode: () => void;
   toggleAllowDangerKeys: () => void;
   toggleShift: () => void;
@@ -655,7 +653,6 @@ export const buildControlsPanelProps = ({
   interactive,
   textInputRef,
   autoEnter,
-  controlsOpen,
   rawMode,
   allowDangerKeys,
   isSendingText,
@@ -664,7 +661,6 @@ export const buildControlsPanelProps = ({
   handleSendText,
   handleUploadImage,
   toggleAutoEnter,
-  toggleControls,
   toggleRawMode,
   toggleAllowDangerKeys,
   toggleShift,
@@ -680,7 +676,6 @@ export const buildControlsPanelProps = ({
     interactive,
     textInputRef,
     autoEnter,
-    controlsOpen,
     rawMode,
     allowDangerKeys,
     isSendingText,
@@ -691,7 +686,6 @@ export const buildControlsPanelProps = ({
     onSendText: handleSendText,
     onPickImage: handleUploadImage,
     onToggleAutoEnter: toggleAutoEnter,
-    onToggleControls: toggleControls,
     onToggleRawMode: toggleRawMode,
     onToggleAllowDangerKeys: toggleAllowDangerKeys,
     onToggleShift: toggleShift,

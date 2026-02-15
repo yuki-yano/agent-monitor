@@ -11,7 +11,6 @@ import {
   controlsAllowDangerKeysAtom,
   controlsAutoEnterAtom,
   controlsCtrlHeldAtom,
-  controlsOpenAtom,
   controlsRawModeAtom,
   controlsShiftHeldAtom,
 } from "../atoms/controlAtoms";
@@ -28,7 +27,6 @@ describe("useSessionControls", () => {
     store.set(controlsAutoEnterAtom, true);
     store.set(controlsShiftHeldAtom, false);
     store.set(controlsCtrlHeldAtom, false);
-    store.set(controlsOpenAtom, false);
     store.set(controlsRawModeAtom, false);
     store.set(controlsAllowDangerKeysAtom, false);
     return ({ children }: { children: ReactNode }) => (
@@ -785,7 +783,6 @@ describe("useSessionControls", () => {
 
     act(() => {
       result.current.toggleAutoEnter();
-      result.current.toggleControls();
       result.current.toggleShift();
       result.current.toggleCtrl();
       result.current.toggleRawMode();
@@ -793,7 +790,6 @@ describe("useSessionControls", () => {
     });
 
     expect(result.current.autoEnter).toBe(false);
-    expect(result.current.controlsOpen).toBe(true);
     expect(result.current.shiftHeld).toBe(true);
     expect(result.current.ctrlHeld).toBe(true);
     expect(result.current.rawMode).toBe(true);
@@ -804,7 +800,6 @@ describe("useSessionControls", () => {
     });
 
     expect(result.current.autoEnter).toBe(true);
-    expect(result.current.controlsOpen).toBe(false);
     expect(result.current.shiftHeld).toBe(false);
     expect(result.current.ctrlHeld).toBe(false);
     expect(result.current.rawMode).toBe(false);

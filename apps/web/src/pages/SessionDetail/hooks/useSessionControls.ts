@@ -15,7 +15,6 @@ import {
   controlsAllowDangerKeysAtom,
   controlsAutoEnterAtom,
   controlsCtrlHeldAtom,
-  controlsOpenAtom,
   controlsRawModeAtom,
   controlsShiftHeldAtom,
 } from "../atoms/controlAtoms";
@@ -131,7 +130,6 @@ export const useSessionControls = ({
   const [autoEnter, setAutoEnter] = useAtom(controlsAutoEnterAtom);
   const [shiftHeld, setShiftHeld] = useAtom(controlsShiftHeldAtom);
   const [ctrlHeld, setCtrlHeld] = useAtom(controlsCtrlHeldAtom);
-  const [controlsOpen, setControlsOpen] = useAtom(controlsOpenAtom);
   const [rawMode, setRawMode] = useAtom(controlsRawModeAtom);
   const [allowDangerKeys, setAllowDangerKeys] = useAtom(controlsAllowDangerKeysAtom);
 
@@ -143,18 +141,9 @@ export const useSessionControls = ({
     setAutoEnter(true);
     setShiftHeld(false);
     setCtrlHeld(false);
-    setControlsOpen(false);
     setRawMode(false);
     setAllowDangerKeys(false);
-  }, [
-    paneId,
-    setAllowDangerKeys,
-    setAutoEnter,
-    setControlsOpen,
-    setCtrlHeld,
-    setRawMode,
-    setShiftHeld,
-  ]);
+  }, [paneId, setAllowDangerKeys, setAutoEnter, setCtrlHeld, setRawMode, setShiftHeld]);
 
   useEffect(() => {
     if (!rawMode && prevAutoEnterRef.current != null) {
@@ -247,10 +236,6 @@ export const useSessionControls = ({
     setAutoEnter((prev) => !prev);
   }, [setAutoEnter]);
 
-  const toggleControls = useCallback(() => {
-    setControlsOpen((prev) => !prev);
-  }, [setControlsOpen]);
-
   const toggleShift = useCallback(() => {
     setShiftHeld((prev) => !prev);
   }, [setShiftHeld]);
@@ -297,7 +282,6 @@ export const useSessionControls = ({
     autoEnter,
     shiftHeld,
     ctrlHeld,
-    controlsOpen,
     rawMode,
     allowDangerKeys,
     isSendingText,
@@ -310,7 +294,6 @@ export const useSessionControls = ({
     handleRawCompositionStart,
     handleRawCompositionEnd,
     toggleAutoEnter,
-    toggleControls,
     toggleShift,
     toggleCtrl,
     toggleRawMode,

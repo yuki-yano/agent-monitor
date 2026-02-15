@@ -13,7 +13,6 @@ describe("ControlsPanel", () => {
     isSendingText: false,
     textInputRef: { current: null },
     autoEnter: true,
-    controlsOpen: false,
     rawMode: false,
     allowDangerKeys: false,
     shiftHeld: false,
@@ -25,7 +24,6 @@ describe("ControlsPanel", () => {
     onSendText: vi.fn(),
     onPickImage: vi.fn(),
     onToggleAutoEnter: vi.fn(),
-    onToggleControls: vi.fn(),
     onToggleRawMode: vi.fn(),
     onToggleAllowDangerKeys: vi.fn(),
     onToggleShift: vi.fn(),
@@ -87,11 +85,11 @@ describe("ControlsPanel", () => {
     expect((screen.getByLabelText("Send") as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("sends keys when controls are open", () => {
+  it("sends keys", () => {
     const onSendKey = vi.fn();
     const onToggleShift = vi.fn();
     const onToggleCtrl = vi.fn();
-    const state = buildState({ controlsOpen: true });
+    const state = buildState();
     const actions = buildActions({
       onSendKey,
       onToggleShift,
