@@ -94,6 +94,7 @@ export const useSessionVirtualWorktree = ({
   const [error, setError] = useState<string | null>(null);
   const [virtualWorktreePath, setVirtualWorktreePath] = useState<string | null>(null);
   const latestRequestIdRef = useRef(0);
+  const hasLoadedWorktreeListRef = useRef(false);
 
   const actualWorktreePath = useMemo(
     () => normalizePath(session?.worktreePath ?? null),
@@ -103,6 +104,7 @@ export const useSessionVirtualWorktree = ({
 
   useEffect(() => {
     latestRequestIdRef.current += 1;
+    hasLoadedWorktreeListRef.current = false;
     setWorktreeList(null);
     setVirtualWorktreePath(null);
     setError(null);
@@ -113,10 +115,15 @@ export const useSessionVirtualWorktree = ({
     async (options?: { resetEntries?: boolean }) => {
       const requestId = latestRequestIdRef.current + 1;
       latestRequestIdRef.current = requestId;
-      if (options?.resetEntries) {
+      const shouldResetEntries = options?.resetEntries === true;
+      const shouldShowLoading = shouldResetEntries || !hasLoadedWorktreeListRef.current;
+      if (shouldResetEntries) {
+        hasLoadedWorktreeListRef.current = false;
         setWorktreeList(null);
       }
-      setLoading(true);
+      if (shouldShowLoading) {
+        setLoading(true);
+      }
       setError(null);
       try {
         const next = await requestWorktrees(paneId);
@@ -124,14 +131,17 @@ export const useSessionVirtualWorktree = ({
           return;
         }
         setWorktreeList(next);
+        hasLoadedWorktreeListRef.current = true;
       } catch (nextError) {
         if (latestRequestIdRef.current !== requestId) {
           return;
         }
-        setWorktreeList(null);
+        if (shouldShowLoading) {
+          setWorktreeList(null);
+        }
         setError(nextError instanceof Error ? nextError.message : "Failed to load worktrees");
       } finally {
-        if (latestRequestIdRef.current === requestId) {
+        if (latestRequestIdRef.current === requestId && shouldShowLoading) {
           setLoading(false);
         }
       }

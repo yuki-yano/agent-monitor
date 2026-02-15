@@ -512,6 +512,7 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     });
     return [...repoRootEntries, ...otherEntries];
   }, [worktreeEntries, worktreeRepoRoot]);
+  const showBlockingWorktreeLoading = worktreeSelectorLoading && worktreeEntries.length === 0;
   const visibleFileChangeCategoriesKey = useMemo(
     () => visibleFileChangeCategories.map((item) => `${item.key}:${item.value}`).join("|"),
     [visibleFileChangeCategories],
@@ -1051,9 +1052,7 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
                       title="Reload worktrees"
                       onClick={onRefreshWorktrees ?? onRefresh}
                     >
-                      <RefreshCw
-                        className={`h-3 w-3 ${worktreeSelectorLoading ? "animate-spin" : ""}`}
-                      />
+                      <RefreshCw className="h-3 w-3" />
                     </IconButton>
                     <IconButton
                       type="button"
@@ -1075,20 +1074,20 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
                     </span>
                   </div>
                   <div>
-                    {worktreeSelectorLoading ? (
+                    {showBlockingWorktreeLoading ? (
                       <p className="text-latte-subtext0 px-1 py-2 text-xs">Loading worktrees...</p>
                     ) : null}
                     {worktreeSelectorError ? (
                       <p className="text-latte-red px-1 py-2 text-xs">{worktreeSelectorError}</p>
                     ) : null}
-                    {!worktreeSelectorLoading &&
+                    {!showBlockingWorktreeLoading &&
                     !worktreeSelectorError &&
                     worktreeEntries.length === 0 ? (
                       <p className="text-latte-subtext0 px-1 py-2 text-xs">
                         No worktrees available.
                       </p>
                     ) : null}
-                    {!worktreeSelectorLoading && !worktreeSelectorError ? (
+                    {!showBlockingWorktreeLoading && !worktreeSelectorError ? (
                       <div className="custom-scrollbar max-h-[280px] space-y-1 overflow-y-auto pr-0.5">
                         {displayedWorktreeEntries.map((entry) => {
                           const isVirtualSelected = entry.path === virtualWorktreePath;

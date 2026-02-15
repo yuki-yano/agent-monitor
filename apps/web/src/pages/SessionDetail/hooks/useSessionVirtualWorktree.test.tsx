@@ -41,6 +41,19 @@ const createEmptyWorktreeList = (repoRoot: string): WorktreeList => ({
   entries: [],
 });
 
+type Deferred<T> = {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+};
+
+const createDeferred = <T,>(): Deferred<T> => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+};
+
 describe("useSessionVirtualWorktree", () => {
   it("hydrates virtual selection from pane-scoped storage on initial load", async () => {
     const repoRoot = "/tmp/repo-a";
@@ -266,6 +279,48 @@ describe("useSessionVirtualWorktree", () => {
     });
 
     expect(requestWorktrees).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps previous entries visible during background refresh", async () => {
+    const repoRoot = "/tmp/repo-background-refresh";
+    const paneId = "pane-background-refresh";
+    const deferred = createDeferred<WorktreeList>();
+    const requestWorktrees = vi
+      .fn(async () => createWorktreeList(repoRoot))
+      .mockResolvedValueOnce(createWorktreeList(repoRoot))
+      .mockImplementationOnce(async () => deferred.promise);
+    const { result } = renderHook(() =>
+      useSessionVirtualWorktree({
+        paneId,
+        session: createSessionDetail({
+          paneId,
+          repoRoot,
+          worktreePath: `${repoRoot}/main`,
+          branch: "main",
+        }),
+        requestWorktrees,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.entries.length).toBe(2);
+    });
+
+    act(() => {
+      void result.current.refreshWorktrees();
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.entries.length).toBe(2);
+
+    await act(async () => {
+      deferred.resolve(createEmptyWorktreeList(repoRoot));
+      await deferred.promise;
+    });
+
+    await waitFor(() => {
+      expect(result.current.entries).toEqual([]);
+    });
   });
 
   it("does not auto-refresh worktrees without explicit trigger", async () => {

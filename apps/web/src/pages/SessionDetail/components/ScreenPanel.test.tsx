@@ -404,6 +404,74 @@ describe("ScreenPanel", () => {
     expect(onRefresh).not.toHaveBeenCalled();
   });
 
+  it("keeps showing existing worktree entries while loading", () => {
+    const state = buildState({
+      worktreeSelectorEnabled: true,
+      worktreeSelectorLoading: true,
+      worktreeRepoRoot: "/repo",
+      worktreeEntries: [
+        {
+          path: "/repo/feature-a",
+          branch: "feature/a",
+          dirty: false,
+          locked: false,
+          lockOwner: null,
+          lockReason: null,
+          merged: false,
+          fileChanges: {
+            add: 0,
+            m: 0,
+            d: 0,
+          },
+          additions: 0,
+          deletions: 0,
+        },
+      ],
+      actualWorktreePath: "/repo/feature-a",
+    });
+    const actions = buildActions();
+    render(<ScreenPanel state={state} actions={actions} controls={null} />);
+
+    fireEvent.click(screen.getByTestId("worktree-selector-trigger"));
+    const selectorPanel = screen.getByTestId("worktree-selector-panel");
+    expect(within(selectorPanel).getByText("feature/a")).toBeTruthy();
+    expect(within(selectorPanel).queryByText("Loading worktrees...")).toBeNull();
+  });
+
+  it("does not spin reload icon while loading", () => {
+    const state = buildState({
+      worktreeSelectorEnabled: true,
+      worktreeSelectorLoading: true,
+      worktreeEntries: [
+        {
+          path: "/repo",
+          branch: "main",
+          dirty: false,
+          locked: false,
+          lockOwner: null,
+          lockReason: null,
+          merged: false,
+          fileChanges: {
+            add: 0,
+            m: 0,
+            d: 0,
+          },
+          additions: 0,
+          deletions: 0,
+        },
+      ],
+      actualWorktreePath: "/repo",
+    });
+    const actions = buildActions();
+    render(<ScreenPanel state={state} actions={actions} controls={null} />);
+
+    fireEvent.click(screen.getByTestId("worktree-selector-trigger"));
+    const selectorPanel = screen.getByTestId("worktree-selector-panel");
+    const reloadButton = within(selectorPanel).getByLabelText("Reload worktrees");
+    const iconClassName = reloadButton.querySelector("svg")?.getAttribute("class") ?? "";
+    expect(iconClassName).not.toContain("animate-spin");
+  });
+
   it("auto-refreshes worktrees every 10 seconds only while selector is open", async () => {
     vi.useFakeTimers();
     try {
