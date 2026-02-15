@@ -495,6 +495,7 @@ export const DiffSection = memo(({ state, actions }: DiffSectionProps) => {
           <Button
             variant="ghost"
             size="sm"
+            className="text-latte-subtext0 hover:text-latte-text h-[30px] w-[30px] p-0"
             onClick={onRefresh}
             disabled={diffLoading}
             aria-label="Refresh changes"

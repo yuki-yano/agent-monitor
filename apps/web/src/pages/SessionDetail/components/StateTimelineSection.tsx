@@ -249,6 +249,7 @@ export const StateTimelineSection = ({ state, actions }: StateTimelineSectionPro
                 type="button"
                 variant="ghost"
                 size="sm"
+                className="h-7 w-7 p-0"
                 onClick={onTimelineRefresh}
                 aria-label="Refresh timeline"
               >
@@ -259,6 +260,7 @@ export const StateTimelineSection = ({ state, actions }: StateTimelineSectionPro
                   type="button"
                   variant="ghost"
                   size="sm"
+                  className="h-7 w-7 p-0"
                   onClick={onToggleTimelineExpanded}
                   aria-label={timelineExpanded ? "Collapse timeline" : "Expand timeline"}
                 >

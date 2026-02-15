@@ -320,7 +320,7 @@ export const SessionHeader = ({ state, actions }: SessionHeaderProps) => {
               aria-expanded={detailsOpen}
               aria-controls={detailsOpen ? detailsSectionId : undefined}
               aria-label={detailsOpen ? "Hide header details" : "Show header details"}
-              className="text-latte-subtext0 ml-auto flex h-7 items-center gap-1.5 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] sm:h-8 sm:px-2.5"
+              className="text-latte-subtext0 ml-auto flex h-7 w-7 items-center gap-1.5 p-0 text-[10px] uppercase tracking-[0.18em] sm:h-8 sm:w-8"
             >
               {detailsOpen ? (
                 <ChevronUp className="h-4 w-4" />

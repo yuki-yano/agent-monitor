@@ -47,7 +47,13 @@ export const SessionListHeader = ({
         <div className="flex flex-col items-end gap-3">
           <div className="flex items-center gap-3">
             <ConnectionStatusPill status={connectionStatus} />
-            <Button variant="ghost" size="sm" onClick={onRefresh} aria-label="Refresh">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={onRefresh}
+              aria-label="Refresh"
+            >
               <RefreshCw className="h-4 w-4" />
               <span className="sr-only">Refresh</span>
             </Button>
@@ -68,7 +74,7 @@ export const SessionListHeader = ({
             type="button"
             variant="ghost"
             size="sm"
-            className="absolute right-1.5 top-1/2 h-7 -translate-y-1/2 px-2"
+            className="absolute right-1.5 top-1/2 h-7 w-7 -translate-y-1/2 p-0"
             onClick={() => onSearchQueryChange("")}
             aria-label="Clear search"
             title="Clear search"

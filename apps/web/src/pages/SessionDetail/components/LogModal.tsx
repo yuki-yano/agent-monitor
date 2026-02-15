@@ -187,7 +187,7 @@ export const LogModal = ({ state, actions }: LogModalProps) => {
                 size="sm"
                 onClick={onOpenHere}
                 aria-label="Open here"
-                className="border-latte-lavender/40 text-latte-lavender hover:border-latte-lavender/60 hover:bg-latte-lavender/10"
+                className="border-latte-lavender/40 text-latte-lavender hover:border-latte-lavender/60 hover:bg-latte-lavender/10 h-7 w-7 p-0"
               >
                 <ArrowRight className="h-4 w-4" />
               </Button>
@@ -196,7 +196,7 @@ export const LogModal = ({ state, actions }: LogModalProps) => {
                 size="sm"
                 onClick={onOpenNewTab}
                 aria-label="Open in new tab"
-                className="border-latte-lavender/40 text-latte-lavender hover:border-latte-lavender/60 hover:bg-latte-lavender/10"
+                className="border-latte-lavender/40 text-latte-lavender hover:border-latte-lavender/60 hover:bg-latte-lavender/10 h-7 w-7 p-0"
               >
                 <ExternalLink className="h-4 w-4" />
               </Button>

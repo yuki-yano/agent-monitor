@@ -934,7 +934,13 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
         <div className="flex items-center gap-2">{screenModeTabs(mode, onModeChange)}</div>
         <div className="flex items-center gap-2">
           <RawModeIndicator rawMode={rawMode} allowDangerKeys={allowDangerKeys} />
-          <Button variant="ghost" size="sm" onClick={onRefresh} aria-label="Refresh screen">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-latte-subtext0 hover:text-latte-text h-[30px] w-[30px] p-0"
+            onClick={onRefresh}
+            aria-label="Refresh screen"
+          >
             <RefreshCw className="h-4 w-4" />
             <span className="sr-only">Refresh</span>
           </Button>
