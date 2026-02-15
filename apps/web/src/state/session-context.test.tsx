@@ -1,36 +1,16 @@
 // @vitest-environment happy-dom
-import { act, render } from "@testing-library/react";
+import { act, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { http, HttpResponse, server } from "@/test/msw/server";
 
 import { SessionProvider, useSessions } from "./session-context";
 
-const apiMock = {
-  refreshSessions: vi.fn(async () => ({ ok: true, authError: false, rateLimited: false })),
-  requestDiffSummary: vi.fn(),
-  requestDiffFile: vi.fn(),
-  requestCommitLog: vi.fn(),
-  requestCommitDetail: vi.fn(),
-  requestCommitFile: vi.fn(),
-  requestStateTimeline: vi.fn(),
-  requestRepoFileTree: vi.fn(),
-  requestRepoFileSearch: vi.fn(),
-  requestRepoFileContent: vi.fn(),
-  requestScreen: vi.fn(),
-  focusPane: vi.fn(),
-  uploadImageAttachment: vi.fn(),
-  sendText: vi.fn(),
-  sendKeys: vi.fn(),
-  sendRaw: vi.fn(),
-  updateSessionTitle: vi.fn(),
-  touchSession: vi.fn(),
-};
-
-vi.mock("./use-session-api", () => ({
-  useSessionApi: () => apiMock,
-}));
+const API_BASE_URL = "http://127.0.0.1:11081/api";
+const pathToUrl = (path: string) => `${API_BASE_URL}${path}`;
 
 vi.mock("./use-session-token", () => ({
-  useSessionToken: () => ({ token: "token", setToken: vi.fn(), apiBaseUrl: null }),
+  useSessionToken: () => ({ token: "token", setToken: vi.fn(), apiBaseUrl: API_BASE_URL }),
 }));
 
 const ConnectionStatusProbe = () => {
@@ -40,12 +20,6 @@ const ConnectionStatusProbe = () => {
 
 describe("SessionProvider", () => {
   afterEach(() => {
-    apiMock.refreshSessions.mockReset();
-    apiMock.refreshSessions.mockImplementation(async () => ({
-      ok: true,
-      authError: false,
-      rateLimited: false,
-    }));
     vi.restoreAllMocks();
     vi.useRealTimers();
     Object.defineProperty(document, "hidden", { value: false, configurable: true });
@@ -55,6 +29,11 @@ describe("SessionProvider", () => {
   it("polls sessions every 1000ms by default", () => {
     vi.useFakeTimers();
     const setIntervalSpy = vi.spyOn(window, "setInterval");
+    server.use(
+      http.get(pathToUrl("/sessions"), () => {
+        return HttpResponse.json({ sessions: [] });
+      }),
+    );
 
     render(
       <SessionProvider>
@@ -71,7 +50,13 @@ describe("SessionProvider", () => {
     Object.defineProperty(document, "hidden", { value: true, configurable: true });
     const setIntervalSpy = vi.spyOn(window, "setInterval");
     const addListenerSpy = vi.spyOn(window, "addEventListener");
-    apiMock.refreshSessions.mockClear();
+    let requestCount = 0;
+    server.use(
+      http.get(pathToUrl("/sessions"), () => {
+        requestCount += 1;
+        return HttpResponse.json({ sessions: [] });
+      }),
+    );
 
     render(
       <SessionProvider>
@@ -82,7 +67,7 @@ describe("SessionProvider", () => {
     await act(async () => {
       await Promise.resolve();
     });
-    expect(apiMock.refreshSessions).toHaveBeenCalledTimes(1);
+    expect(requestCount).toBe(1);
     expect(setIntervalSpy).not.toHaveBeenCalled();
 
     Object.defineProperty(document, "hidden", { value: false, configurable: true });
@@ -93,7 +78,10 @@ describe("SessionProvider", () => {
       visibilityListener(new Event("visibilitychange"));
     });
 
-    expect(apiMock.refreshSessions).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(requestCount).toBe(2);
     expect(setIntervalSpy).toHaveBeenCalled();
   });
 
@@ -104,6 +92,11 @@ describe("SessionProvider", () => {
     const setIntervalSpy = vi.spyOn(window, "setInterval");
     const clearIntervalSpy = vi.spyOn(window, "clearInterval");
     const addListenerSpy = vi.spyOn(window, "addEventListener");
+    server.use(
+      http.get(pathToUrl("/sessions"), () => {
+        return HttpResponse.json({ sessions: [] });
+      }),
+    );
 
     render(
       <SessionProvider>
@@ -128,11 +121,16 @@ describe("SessionProvider", () => {
   });
 
   it("sets disconnected status after auth error response", async () => {
-    apiMock.refreshSessions.mockResolvedValueOnce({
-      ok: false,
-      authError: true,
-      rateLimited: false,
-    });
+    let requestCount = 0;
+    server.use(
+      http.get(pathToUrl("/sessions"), () => {
+        requestCount += 1;
+        return HttpResponse.json(
+          { error: { code: "INVALID_PAYLOAD", message: "unauthorized" } },
+          { status: 401 },
+        );
+      }),
+    );
 
     const { getByTestId } = render(
       <SessionProvider>
@@ -140,11 +138,9 @@ describe("SessionProvider", () => {
       </SessionProvider>,
     );
 
-    await act(async () => {
-      await Promise.resolve();
+    await waitFor(() => {
+      expect(getByTestId("connection-status").textContent).toBe("disconnected");
     });
-
-    expect(getByTestId("connection-status").textContent).toBe("disconnected");
-    expect(apiMock.refreshSessions).toHaveBeenCalledTimes(1);
+    expect(requestCount).toBe(1);
   });
 });

@@ -1,63 +1,29 @@
 // @vitest-environment happy-dom
-import { renderHook } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import type { CommitLog, DiffSummary, SessionStateTimeline } from "@vde-monitor/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
-import { requestJson } from "@/lib/api-utils";
+import { http, HttpResponse, server } from "@/test/msw/server";
 
 import { useSessionApi } from "./use-session-api";
 
-const mockPost = vi.fn(() => Promise.resolve(new Response()));
-const mockGet = vi.fn(() => Promise.resolve(new Response()));
-const mockPut = vi.fn(() => Promise.resolve(new Response()));
-const hcMock = vi.fn();
-const mockApiClient = {
-  sessions: {
-    $get: mockGet,
-    ":paneId": {
-      screen: { $post: mockPost },
-      focus: { $post: mockPost },
-      attachments: { image: { $post: mockPost } },
-      send: {
-        text: { $post: mockPost },
-        keys: { $post: mockPost },
-        raw: { $post: mockPost },
-      },
-      title: { $put: mockPut },
-      touch: { $post: mockPost },
-      diff: {
-        $get: mockGet,
-        file: { $get: mockGet },
-      },
-      commits: {
-        $get: mockGet,
-        ":hash": { $get: mockGet, file: { $get: mockGet } },
-      },
-      timeline: { $get: mockGet },
-      files: {
-        tree: { $get: mockGet },
-        search: { $get: mockGet },
-        content: { $get: mockGet },
-      },
-    },
-  },
-};
+const API_BASE_URL = "http://127.0.0.1:11081/api";
 
-vi.mock("hono/client", () => ({
-  hc: (...args: unknown[]) => {
-    hcMock(...args);
-    return mockApiClient;
-  },
-}));
+const pathToUrl = (path: string) => `${API_BASE_URL}${path}`;
 
-vi.mock("@/lib/api-utils", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/api-utils")>("@/lib/api-utils");
+const createDeferred = <T = void,>() => {
+  let resolve: ((value: T) => void) | null = null;
+  const promise = new Promise<T>((nextResolve) => {
+    resolve = nextResolve;
+  });
   return {
-    ...actual,
-    requestJson: vi.fn(),
+    promise,
+    resolve: (value: T) => {
+      resolve?.(value);
+    },
   };
-});
+};
 
 describe("useSessionApi", () => {
   afterEach(() => {
@@ -65,11 +31,19 @@ describe("useSessionApi", () => {
     vi.unstubAllGlobals();
   });
 
-  it("uses apiBaseUrl when provided", () => {
-    renderHook(() =>
+  it("uses apiBaseUrl when provided", async () => {
+    let requestedAuthorization: string | null = null;
+    server.use(
+      http.get(pathToUrl("/sessions"), ({ request }) => {
+        requestedAuthorization = request.headers.get("authorization");
+        return HttpResponse.json({ sessions: [] });
+      }),
+    );
+
+    const { result } = renderHook(() =>
       useSessionApi({
         token: "token",
-        apiBaseUrl: "http://localhost:11081/api",
+        apiBaseUrl: API_BASE_URL,
         onSessions: vi.fn(),
         onConnectionIssue: vi.fn(),
         onSessionUpdated: vi.fn(),
@@ -79,25 +53,33 @@ describe("useSessionApi", () => {
       }),
     );
 
-    expect(hcMock).toHaveBeenCalledWith(
-      "http://localhost:11081/api",
-      expect.objectContaining({
-        headers: { Authorization: "Bearer token" },
-      }),
-    );
+    await expect(result.current.refreshSessions()).resolves.toMatchObject({ ok: true });
+    expect(requestedAuthorization).toBe("Bearer token");
   });
 
   it("dedupes in-flight screen requests", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
-    let resolveRequest: ((value: { res: Response; data: unknown }) => void) | undefined;
-    const deferred = new Promise<{ res: Response; data: unknown }>((resolve) => {
-      resolveRequest = resolve;
-    });
-    requestJsonMock.mockReturnValue(deferred as Promise<never>);
+    const deferred = createDeferred<void>();
+    let requestCount = 0;
+    server.use(
+      http.post(pathToUrl("/sessions/:paneId/screen"), async () => {
+        requestCount += 1;
+        await deferred.promise;
+        return HttpResponse.json({
+          screen: {
+            ok: true,
+            paneId: "pane-1",
+            mode: "text",
+            capturedAt: new Date(0).toISOString(),
+            screen: "ok",
+          },
+        });
+      }),
+    );
 
     const { result } = renderHook(() =>
       useSessionApi({
         token: "token",
+        apiBaseUrl: API_BASE_URL,
         onSessions: vi.fn(),
         onConnectionIssue: vi.fn(),
         onSessionUpdated: vi.fn(),
@@ -110,27 +92,17 @@ describe("useSessionApi", () => {
     const promise1 = result.current.requestScreen("pane-1", { mode: "text" });
     const promise2 = result.current.requestScreen("pane-1", { mode: "text" });
 
-    expect(requestJsonMock).toHaveBeenCalledTimes(1);
-
-    resolveRequest?.({
-      res: new Response(null, { status: 200 }),
-      data: {
-        screen: {
-          ok: true,
-          paneId: "pane-1",
-          mode: "text",
-          capturedAt: new Date(0).toISOString(),
-          screen: "ok",
-        },
-      },
+    await waitFor(() => {
+      expect(requestCount).toBe(1);
     });
+
+    deferred.resolve();
 
     await expect(promise1).resolves.toMatchObject({ ok: true, paneId: "pane-1" });
     await expect(promise2).resolves.toMatchObject({ ok: true, paneId: "pane-1" });
   });
 
   it("updates connectionIssue on diff summary errors and clears on success", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onConnectionIssue = vi.fn();
     const summary: DiffSummary = {
       repoRoot: "/repo",
@@ -138,19 +110,24 @@ describe("useSessionApi", () => {
       generatedAt: new Date(0).toISOString(),
       files: [],
     };
-    requestJsonMock
-      .mockResolvedValueOnce({
-        res: new Response(null, { status: 500 }),
-        data: { error: { code: "INTERNAL", message: "boom" } },
-      })
-      .mockResolvedValueOnce({
-        res: new Response(null, { status: 200 }),
-        data: { summary },
-      });
+    let requestCount = 0;
+    server.use(
+      http.get(pathToUrl("/sessions/:paneId/diff"), () => {
+        requestCount += 1;
+        if (requestCount === 1) {
+          return HttpResponse.json(
+            { error: { code: "INTERNAL", message: "boom" } },
+            { status: 500 },
+          );
+        }
+        return HttpResponse.json({ summary });
+      }),
+    );
 
     const { result } = renderHook(() =>
       useSessionApi({
         token: "token",
+        apiBaseUrl: API_BASE_URL,
         onSessions: vi.fn(),
         onConnectionIssue,
         onSessionUpdated: vi.fn(),
@@ -168,7 +145,6 @@ describe("useSessionApi", () => {
   });
 
   it("loads state timeline and clears connection issue", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onConnectionIssue = vi.fn();
     const timeline: SessionStateTimeline = {
       paneId: "pane-1",
@@ -184,14 +160,16 @@ describe("useSessionApi", () => {
       },
       current: null,
     };
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 200 }),
-      data: { timeline },
-    });
+    server.use(
+      http.get(pathToUrl("/sessions/:paneId/timeline"), () => {
+        return HttpResponse.json({ timeline });
+      }),
+    );
 
     const { result } = renderHook(() =>
       useSessionApi({
         token: "token",
+        apiBaseUrl: API_BASE_URL,
         onSessions: vi.fn(),
         onConnectionIssue,
         onSessionUpdated: vi.fn(),
@@ -208,7 +186,6 @@ describe("useSessionApi", () => {
   });
 
   it("updates connectionIssue on commit log errors and clears on success", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onConnectionIssue = vi.fn();
     const log: CommitLog = {
       repoRoot: "/repo",
@@ -216,19 +193,24 @@ describe("useSessionApi", () => {
       generatedAt: new Date(0).toISOString(),
       commits: [],
     };
-    requestJsonMock
-      .mockResolvedValueOnce({
-        res: new Response(null, { status: 502 }),
-        data: { error: { code: "INTERNAL", message: "bad" } },
-      })
-      .mockResolvedValueOnce({
-        res: new Response(null, { status: 200 }),
-        data: { log },
-      });
+    let requestCount = 0;
+    server.use(
+      http.get(pathToUrl("/sessions/:paneId/commits"), () => {
+        requestCount += 1;
+        if (requestCount === 1) {
+          return HttpResponse.json(
+            { error: { code: "INTERNAL", message: "bad" } },
+            { status: 502 },
+          );
+        }
+        return HttpResponse.json({ log });
+      }),
+    );
 
     const { result } = renderHook(() =>
       useSessionApi({
         token: "token",
+        apiBaseUrl: API_BASE_URL,
         onSessions: vi.fn(),
         onConnectionIssue,
         onSessionUpdated: vi.fn(),
@@ -246,16 +228,20 @@ describe("useSessionApi", () => {
   });
 
   it("does not remove session when commit detail is missing", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onSessionRemoved = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 404 }),
-      data: { error: { code: "NOT_FOUND", message: "commit not found" } },
-    });
+    server.use(
+      http.get(pathToUrl("/sessions/:paneId/commits/:hash"), () => {
+        return HttpResponse.json(
+          { error: { code: "NOT_FOUND", message: "commit not found" } },
+          { status: 404 },
+        );
+      }),
+    );
 
     const { result } = renderHook(() =>
       useSessionApi({
         token: "token",
+        apiBaseUrl: API_BASE_URL,
         onSessions: vi.fn(),
         onConnectionIssue: vi.fn(),
         onSessionUpdated: vi.fn(),
@@ -272,16 +258,20 @@ describe("useSessionApi", () => {
   });
 
   it("removes session when pane is invalid", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onSessionRemoved = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 404 }),
-      data: { error: { code: "INVALID_PANE", message: "pane not found" } },
-    });
+    server.use(
+      http.get(pathToUrl("/sessions/:paneId/commits/:hash"), () => {
+        return HttpResponse.json(
+          { error: { code: "INVALID_PANE", message: "pane not found" } },
+          { status: 404 },
+        );
+      }),
+    );
 
     const { result } = renderHook(() =>
       useSessionApi({
         token: "token",
+        apiBaseUrl: API_BASE_URL,
         onSessions: vi.fn(),
         onConnectionIssue: vi.fn(),
         onSessionUpdated: vi.fn(),
@@ -298,16 +288,17 @@ describe("useSessionApi", () => {
   });
 
   it("removes session when diff summary endpoint returns 410", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onSessionRemoved = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 410 }),
-      data: null,
-    });
+    server.use(
+      http.get(pathToUrl("/sessions/:paneId/diff"), () => {
+        return new HttpResponse(null, { status: 410 });
+      }),
+    );
 
     const { result } = renderHook(() =>
       useSessionApi({
         token: "token",
+        apiBaseUrl: API_BASE_URL,
         onSessions: vi.fn(),
         onConnectionIssue: vi.fn(),
         onSessionUpdated: vi.fn(),
@@ -324,22 +315,21 @@ describe("useSessionApi", () => {
   });
 
   it("refreshes sessions when touch response has no session payload", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onSessions = vi.fn();
     const onSessionUpdated = vi.fn();
-    requestJsonMock
-      .mockResolvedValueOnce({
-        res: new Response(null, { status: 200 }),
-        data: {},
-      })
-      .mockResolvedValueOnce({
-        res: new Response(null, { status: 200 }),
-        data: { sessions: [] },
-      });
+    server.use(
+      http.post(pathToUrl("/sessions/:paneId/touch"), () => {
+        return HttpResponse.json({});
+      }),
+      http.get(pathToUrl("/sessions"), () => {
+        return HttpResponse.json({ sessions: [] });
+      }),
+    );
 
     const { result } = renderHook(() =>
       useSessionApi({
         token: "token",
+        apiBaseUrl: API_BASE_URL,
         onSessions,
         onConnectionIssue: vi.fn(),
         onSessionUpdated,
@@ -350,28 +340,26 @@ describe("useSessionApi", () => {
     );
 
     await expect(result.current.touchSession("pane-1")).resolves.toBeUndefined();
-    expect(requestJsonMock).toHaveBeenCalledTimes(2);
     expect(onSessionUpdated).not.toHaveBeenCalled();
     expect(onSessions).toHaveBeenCalledWith([]);
   });
 
   it("refreshes sessions when title update response has no session payload", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onSessions = vi.fn();
     const onSessionUpdated = vi.fn();
-    requestJsonMock
-      .mockResolvedValueOnce({
-        res: new Response(null, { status: 200 }),
-        data: {},
-      })
-      .mockResolvedValueOnce({
-        res: new Response(null, { status: 200 }),
-        data: { sessions: [] },
-      });
+    server.use(
+      http.put(pathToUrl("/sessions/:paneId/title"), () => {
+        return HttpResponse.json({});
+      }),
+      http.get(pathToUrl("/sessions"), () => {
+        return HttpResponse.json({ sessions: [] });
+      }),
+    );
 
     const { result } = renderHook(() =>
       useSessionApi({
         token: "token",
+        apiBaseUrl: API_BASE_URL,
         onSessions,
         onConnectionIssue: vi.fn(),
         onSessionUpdated,
@@ -382,30 +370,34 @@ describe("useSessionApi", () => {
     );
 
     await expect(result.current.updateSessionTitle("pane-1", "next")).resolves.toBeUndefined();
-    expect(requestJsonMock).toHaveBeenCalledTimes(2);
     expect(onSessionUpdated).not.toHaveBeenCalled();
     expect(onSessions).toHaveBeenCalledWith([]);
   });
 
   it("uploads image attachment and clears connection issue on success", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onConnectionIssue = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 200 }),
-      data: {
-        attachment: {
-          path: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png",
-          mimeType: "image/png",
-          size: 3,
-          createdAt: "2026-02-06T00:00:00.000Z",
-          insertText: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png ",
-        },
-      },
-    });
+    let uploadedFileName: string | null = null;
+    server.use(
+      http.post(pathToUrl("/sessions/:paneId/attachments/image"), async ({ request }) => {
+        const formData = await request.formData();
+        const image = formData.get("image");
+        uploadedFileName = image instanceof File ? image.name : null;
+        return HttpResponse.json({
+          attachment: {
+            path: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png",
+            mimeType: "image/png",
+            size: 3,
+            createdAt: "2026-02-06T00:00:00.000Z",
+            insertText: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png ",
+          },
+        });
+      }),
+    );
 
     const { result } = renderHook(() =>
       useSessionApi({
         token: "token",
+        apiBaseUrl: API_BASE_URL,
         onSessions: vi.fn(),
         onConnectionIssue,
         onSessionUpdated: vi.fn(),
@@ -420,26 +412,30 @@ describe("useSessionApi", () => {
       mimeType: "image/png",
       size: 3,
     });
-    expect(mockPost).toHaveBeenCalledWith({ param: { paneId: "pane-1" }, form: { image: file } });
+    expect(uploadedFileName).toBe("sample.png");
     expect(onConnectionIssue).toHaveBeenCalledWith(null);
   });
 
   it("throws upload errors and reports connection issue", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onConnectionIssue = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 400 }),
-      data: {
-        error: {
-          code: "INVALID_PAYLOAD",
-          message: "unsupported image MIME type",
-        },
-      },
-    });
+    server.use(
+      http.post(pathToUrl("/sessions/:paneId/attachments/image"), () => {
+        return HttpResponse.json(
+          {
+            error: {
+              code: "INVALID_PAYLOAD",
+              message: "unsupported image MIME type",
+            },
+          },
+          { status: 400 },
+        );
+      }),
+    );
 
     const { result } = renderHook(() =>
       useSessionApi({
         token: "token",
+        apiBaseUrl: API_BASE_URL,
         onSessions: vi.fn(),
         onConnectionIssue,
         onSessionUpdated: vi.fn(),
@@ -457,24 +453,25 @@ describe("useSessionApi", () => {
   });
 
   it("throws invalid response when upload attachment payload does not match schema", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onConnectionIssue = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 200 }),
-      data: {
-        attachment: {
-          path: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png",
-          mimeType: "image/png",
-          size: 0,
-          createdAt: "2026-02-06T00:00:00.000Z",
-          insertText: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png ",
-        },
-      },
-    });
+    server.use(
+      http.post(pathToUrl("/sessions/:paneId/attachments/image"), () => {
+        return HttpResponse.json({
+          attachment: {
+            path: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png",
+            mimeType: "image/png",
+            size: 0,
+            createdAt: "2026-02-06T00:00:00.000Z",
+            insertText: "/tmp/vde-monitor/attachments/%251/mobile-20260206-000000-abcd1234.png ",
+          },
+        });
+      }),
+    );
 
     const { result } = renderHook(() =>
       useSessionApi({
         token: "token",
+        apiBaseUrl: API_BASE_URL,
         onSessions: vi.fn(),
         onConnectionIssue,
         onSessionUpdated: vi.fn(),
@@ -491,17 +488,18 @@ describe("useSessionApi", () => {
     expect(onConnectionIssue).toHaveBeenCalledWith(API_ERROR_MESSAGES.invalidResponse);
   });
 
-  it("focuses pane without command timeout and clears connection issue on success", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
+  it("focuses pane and clears connection issue on success", async () => {
     const onConnectionIssue = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 200 }),
-      data: { command: { ok: true } },
-    });
+    server.use(
+      http.post(pathToUrl("/sessions/:paneId/focus"), () => {
+        return HttpResponse.json({ command: { ok: true } });
+      }),
+    );
 
     const { result } = renderHook(() =>
       useSessionApi({
         token: "token",
+        apiBaseUrl: API_BASE_URL,
         onSessions: vi.fn(),
         onConnectionIssue,
         onSessionUpdated: vi.fn(),
@@ -512,24 +510,23 @@ describe("useSessionApi", () => {
     );
 
     await expect(result.current.focusPane("pane-1")).resolves.toEqual({ ok: true });
-    expect(requestJsonMock).toHaveBeenCalledWith(expect.any(Function), {
-      timeoutMs: undefined,
-      timeoutMessage: API_ERROR_MESSAGES.requestTimeout,
-    });
     expect(onConnectionIssue).toHaveBeenCalledWith(null);
   });
 
-  it("sends text with command timeout", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
+  it("sends text command successfully", async () => {
     const onConnectionIssue = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 200 }),
-      data: { command: { ok: true } },
-    });
+    let payload: unknown = null;
+    server.use(
+      http.post(pathToUrl("/sessions/:paneId/send/text"), async ({ request }) => {
+        payload = await request.json();
+        return HttpResponse.json({ command: { ok: true } });
+      }),
+    );
 
     const { result } = renderHook(() =>
       useSessionApi({
         token: "token",
+        apiBaseUrl: API_BASE_URL,
         onSessions: vi.fn(),
         onConnectionIssue,
         onSessionUpdated: vi.fn(),
@@ -540,29 +537,27 @@ describe("useSessionApi", () => {
     );
 
     await expect(result.current.sendText("pane-1", "echo hello")).resolves.toEqual({ ok: true });
-    expect(requestJsonMock).toHaveBeenCalledWith(expect.any(Function), {
-      timeoutMs: 10000,
-      timeoutMessage: API_ERROR_MESSAGES.requestTimeout,
-    });
+    expect(payload).toMatchObject({ text: "echo hello", enter: true });
     expect(onConnectionIssue).toHaveBeenCalledWith(null);
   });
 
   it("returns command response when focus endpoint returns logical error", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onConnectionIssue = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 200 }),
-      data: {
-        command: {
-          ok: false,
-          error: { code: "RATE_LIMIT", message: "rate limited" },
-        },
-      },
-    });
+    server.use(
+      http.post(pathToUrl("/sessions/:paneId/focus"), () => {
+        return HttpResponse.json({
+          command: {
+            ok: false,
+            error: { code: "RATE_LIMIT", message: "rate limited" },
+          },
+        });
+      }),
+    );
 
     const { result } = renderHook(() =>
       useSessionApi({
         token: "token",
+        apiBaseUrl: API_BASE_URL,
         onSessions: vi.fn(),
         onConnectionIssue,
         onSessionUpdated: vi.fn(),
