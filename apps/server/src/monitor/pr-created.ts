@@ -4,10 +4,17 @@ import { setMapEntryWithLimit } from "../cache";
 
 const prCreatedCacheTtlMs = 60_000;
 const PR_CREATED_CACHE_MAX_ENTRIES = 1000;
-const prCreatedCache = new Map<string, { value: boolean | null; at: number }>();
-const inflight = new Map<string, Promise<boolean | null>>();
+const PR_CREATED_BATCH_LIMIT = "1000";
 
-const parsePrCreated = (stdout: string): boolean | null => {
+type PrCreatedSnapshot = {
+  at: number;
+  branches: Set<string> | null;
+};
+
+const prCreatedCache = new Map<string, PrCreatedSnapshot>();
+const inflight = new Map<string, Promise<PrCreatedSnapshot>>();
+
+const parsePrCreatedBranches = (stdout: string): Set<string> | null => {
   if (!stdout.trim()) {
     return null;
   }
@@ -16,17 +23,28 @@ const parsePrCreated = (stdout: string): boolean | null => {
     if (!Array.isArray(parsed)) {
       return null;
     }
-    return parsed.length > 0;
+    const branches = new Set<string>();
+    parsed.forEach((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return;
+      }
+      const headRefName = (entry as { headRefName?: unknown }).headRefName;
+      if (typeof headRefName !== "string" || headRefName.length === 0) {
+        return;
+      }
+      branches.add(headRefName);
+    });
+    return branches;
   } catch {
     return null;
   }
 };
 
-const fetchPrCreated = async (repoRoot: string, branch: string): Promise<boolean | null> => {
+const fetchPrCreatedSnapshot = async (repoRoot: string): Promise<Set<string> | null> => {
   try {
     const result = await execa(
       "gh",
-      ["pr", "list", "--head", branch, "--state", "all", "--limit", "1", "--json", "number"],
+      ["pr", "list", "--state", "all", "--limit", PR_CREATED_BATCH_LIMIT, "--json", "headRefName"],
       {
         cwd: repoRoot,
         reject: false,
@@ -37,10 +55,20 @@ const fetchPrCreated = async (repoRoot: string, branch: string): Promise<boolean
     if (result.exitCode !== 0) {
       return null;
     }
-    return parsePrCreated(result.stdout);
+    return parsePrCreatedBranches(result.stdout);
   } catch {
     return null;
   }
+};
+
+const resolvePrCreatedFromSnapshot = (
+  snapshot: PrCreatedSnapshot,
+  branch: string,
+): boolean | null => {
+  if (!snapshot.branches) {
+    return null;
+  }
+  return snapshot.branches.has(branch);
 };
 
 export const resolvePrCreatedCached = async (
@@ -50,26 +78,21 @@ export const resolvePrCreatedCached = async (
   if (!repoRoot || !branch) {
     return null;
   }
-  const key = `${repoRoot}:${branch}`;
   const nowMs = Date.now();
-  const cached = prCreatedCache.get(key);
+  const cached = prCreatedCache.get(repoRoot);
   if (cached && nowMs - cached.at < prCreatedCacheTtlMs) {
-    return cached.value;
+    return resolvePrCreatedFromSnapshot(cached, branch);
   }
-  const existing = inflight.get(key);
+  const existing = inflight.get(repoRoot);
   if (existing) {
-    return existing;
+    return existing.then((snapshot) => resolvePrCreatedFromSnapshot(snapshot, branch));
   }
-  const request = fetchPrCreated(repoRoot, branch).then((value) => {
-    setMapEntryWithLimit(
-      prCreatedCache,
-      key,
-      { value, at: Date.now() },
-      PR_CREATED_CACHE_MAX_ENTRIES,
-    );
-    inflight.delete(key);
-    return value;
+  const request = fetchPrCreatedSnapshot(repoRoot).then((branches) => {
+    const snapshot: PrCreatedSnapshot = { at: Date.now(), branches };
+    setMapEntryWithLimit(prCreatedCache, repoRoot, snapshot, PR_CREATED_CACHE_MAX_ENTRIES);
+    inflight.delete(repoRoot);
+    return snapshot;
   });
-  inflight.set(key, request);
-  return request;
+  inflight.set(repoRoot, request);
+  return request.then((snapshot) => resolvePrCreatedFromSnapshot(snapshot, branch));
 };

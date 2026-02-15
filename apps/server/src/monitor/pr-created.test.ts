@@ -20,25 +20,30 @@ describe("resolvePrCreatedCached", () => {
     expect(execaMock).not.toHaveBeenCalled();
   });
 
-  it("returns true when gh finds PR", async () => {
+  it("returns true when gh finds PR for branch", async () => {
     const { resolvePrCreatedCached } = await loadModule();
     execaMock.mockResolvedValueOnce({
       exitCode: 0,
-      stdout: JSON.stringify([{ number: 123 }]),
+      stdout: JSON.stringify([{ headRefName: "feature/foo", number: 123 }]),
     });
     const result = await resolvePrCreatedCached("/repo", "feature/foo");
     expect(result).toBe(true);
+    expect(execaMock).toHaveBeenCalledWith(
+      "gh",
+      ["pr", "list", "--state", "all", "--limit", "1000", "--json", "headRefName"],
+      expect.objectContaining({ cwd: "/repo" }),
+    );
   });
 
-  it("caches per branch", async () => {
+  it("reuses repo snapshot across branches", async () => {
     const { resolvePrCreatedCached } = await loadModule();
     execaMock.mockResolvedValueOnce({
       exitCode: 0,
-      stdout: JSON.stringify([]),
+      stdout: JSON.stringify([{ headRefName: "feature/bar", number: 101 }]),
     });
     const first = await resolvePrCreatedCached("/repo", "feature/bar");
-    const second = await resolvePrCreatedCached("/repo", "feature/bar");
-    expect(first).toBe(false);
+    const second = await resolvePrCreatedCached("/repo", "feature/baz");
+    expect(first).toBe(true);
     expect(second).toBe(false);
     expect(execaMock).toHaveBeenCalledTimes(1);
   });
