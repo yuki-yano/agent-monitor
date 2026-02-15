@@ -12,10 +12,20 @@ const backgroundColorPattern = /background-color:\s*([^;"']+)/i;
 const backgroundColorPatternGlobal = /background-color:\s*([^;"']+)/gi;
 const unicodeTableBorderPattern = /^(\s*)([┌├└]).*([┐┤┘])\s*$/;
 const unicodeTableRowPattern = /^(\s*)│(.*)│\s*$/;
+const markdownTableRowPattern = /^(\s*)\|(.+)\|\s*$/;
+const markdownTableListPrefixPattern = /^(\s*(?:[-*+•]|\d+\.)\s+)(\|.+\|\s*)$/;
+const markdownTableDelimiterCellPattern = /^:?-{3,}:?$/;
 const tableHtmlLinePrefix = "__VDE_TABLE_HTML__:";
 type UnicodeTableCell = {
   text: string;
   align: "left" | "center" | "right";
+};
+type MarkdownTableCellAlign = "left" | "center" | "right";
+
+type MarkdownTableRow = {
+  indent: string;
+  cells: string[];
+  prefix: string;
 };
 
 export const stripAnsi = (value: string) => value.replace(ansiEscapePattern, "");
@@ -162,6 +172,97 @@ const parseUnicodeTableRow = (plainLine: string) => {
   return { indent, cells };
 };
 
+const splitMarkdownTableRowCells = (body: string) => {
+  const cells: string[] = [];
+  let current = "";
+  let escaping = false;
+
+  for (const char of body) {
+    if (escaping) {
+      if (char !== "|") {
+        current += "\\";
+      }
+      current += char;
+      escaping = false;
+      continue;
+    }
+    if (char === "\\") {
+      escaping = true;
+      continue;
+    }
+    if (char === "|") {
+      cells.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  if (escaping) {
+    current += "\\";
+  }
+  cells.push(current.trim());
+  return cells;
+};
+
+const parseMarkdownTableRow = (
+  plainLine: string,
+  options?: { allowListPrefix?: boolean },
+): MarkdownTableRow | null => {
+  const parseCandidate = (candidate: string, prefix: string): MarkdownTableRow | null => {
+    const match = candidate.match(markdownTableRowPattern);
+    if (!match) return null;
+    const indent = match[1] ?? "";
+    const body = match[2] ?? "";
+    const cells = splitMarkdownTableRowCells(body);
+    if (cells.length < 2) return null;
+    return { indent, cells, prefix };
+  };
+
+  const direct = parseCandidate(plainLine, "");
+  if (direct) {
+    return direct;
+  }
+  if (!options?.allowListPrefix) {
+    return null;
+  }
+  const listPrefixMatch = plainLine.match(markdownTableListPrefixPattern);
+  if (!listPrefixMatch) {
+    return null;
+  }
+  const prefix = listPrefixMatch[1] ?? "";
+  const rowSource = listPrefixMatch[2] ?? "";
+  return parseCandidate(rowSource, prefix);
+};
+
+const parseMarkdownTableDelimiterRow = (plainLine: string, expectedColumns: number) => {
+  const row = parseMarkdownTableRow(plainLine);
+  if (!row || row.cells.length !== expectedColumns) {
+    return null;
+  }
+  const alignments = row.cells.map((cell): MarkdownTableCellAlign | null => {
+    const trimmed = cell.trim();
+    if (!markdownTableDelimiterCellPattern.test(trimmed)) {
+      return null;
+    }
+    const startsWithColon = trimmed.startsWith(":");
+    const endsWithColon = trimmed.endsWith(":");
+    if (startsWithColon && endsWithColon) {
+      return "center";
+    }
+    if (endsWithColon) {
+      return "right";
+    }
+    return "left";
+  });
+  if (alignments.some((alignment) => alignment == null)) {
+    return null;
+  }
+  return {
+    indent: row.indent,
+    alignments: alignments as MarkdownTableCellAlign[],
+  };
+};
+
 const isUnicodeTableCandidateLine = (plainLine: string) =>
   parseUnicodeTableBorder(plainLine) != null || parseUnicodeTableRow(plainLine) != null;
 
@@ -247,6 +348,38 @@ const buildUnicodeTableHtml = (rows: UnicodeTableCell[][], indent: string) => {
   return `${indent}<span class="vde-unicode-table-wrap"><table class="vde-unicode-table" style="width:${totalWidthCh}ch;"><colgroup>${colgroup}</colgroup><tbody>${rowsHtml}</tbody></table></span>`;
 };
 
+const buildMarkdownPipeTableHtml = (
+  headerCells: string[],
+  alignments: MarkdownTableCellAlign[],
+  bodyRows: string[][],
+  indent: string,
+  prefix: string,
+) => {
+  const headerHtml = headerCells
+    .map((cell, index) => {
+      const escaped = escapeHtml(stripAnsi(cell));
+      const content = escaped.length > 0 ? escaped : "&nbsp;";
+      const alignClass = `vde-markdown-pipe-table-cell-${alignments[index] ?? "left"}`;
+      return `<th class="vde-markdown-pipe-table-cell ${alignClass}">${content}</th>`;
+    })
+    .join("");
+  const bodyHtml = bodyRows
+    .map((row) => {
+      const cellsHtml = row
+        .map((cell, index) => {
+          const escaped = escapeHtml(stripAnsi(cell));
+          const content = escaped.length > 0 ? escaped : "&nbsp;";
+          const alignClass = `vde-markdown-pipe-table-cell-${alignments[index] ?? "left"}`;
+          return `<td class="vde-markdown-pipe-table-cell ${alignClass}">${content}</td>`;
+        })
+        .join("");
+      return `<tr>${cellsHtml}</tr>`;
+    })
+    .join("");
+  const escapedPrefix = prefix.length > 0 ? escapeHtml(prefix) : "";
+  return `${escapedPrefix}${indent}<span class="vde-markdown-pipe-table-wrap"><table class="vde-markdown-pipe-table"><thead><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody></table></span>`;
+};
+
 export const isUnicodeTableHtmlLine = (line: string) => line.startsWith(tableHtmlLinePrefix);
 
 export const unwrapUnicodeTableHtmlLine = (line: string) => line.slice(tableHtmlLinePrefix.length);
@@ -303,6 +436,62 @@ export const normalizeUnicodeTableLines = (lines: string[]): string[] => {
     const html = buildUnicodeTableHtml(
       parsedRows.map((row) => row.cells),
       indent,
+    );
+    normalized.push(`${tableHtmlLinePrefix}${html}`);
+    index = cursor;
+  }
+
+  return normalized;
+};
+
+export const normalizeMarkdownPipeTableLines = (lines: string[]): string[] => {
+  const normalized: string[] = [];
+  let index = 0;
+
+  while (index < lines.length) {
+    const headerLine = lines[index] ?? "";
+    const headerRow = parseMarkdownTableRow(stripAnsi(headerLine), { allowListPrefix: true });
+    if (!headerRow) {
+      normalized.push(headerLine);
+      index += 1;
+      continue;
+    }
+
+    const delimiterLine = lines[index + 1] ?? "";
+    if (delimiterLine.length === 0) {
+      normalized.push(headerLine);
+      index += 1;
+      continue;
+    }
+    const delimiterRow = parseMarkdownTableDelimiterRow(
+      stripAnsi(delimiterLine),
+      headerRow.cells.length,
+    );
+    if (!delimiterRow) {
+      normalized.push(headerLine);
+      index += 1;
+      continue;
+    }
+
+    const bodyRows: string[][] = [];
+    let cursor = index + 2;
+    while (cursor < lines.length) {
+      const bodyLine = lines[cursor] ?? "";
+      const bodyRow = parseMarkdownTableRow(stripAnsi(bodyLine));
+      if (!bodyRow || bodyRow.cells.length !== headerRow.cells.length) {
+        break;
+      }
+      bodyRows.push(bodyRow.cells);
+      cursor += 1;
+    }
+
+    const indent = headerRow.prefix.length > 0 ? "" : headerRow.indent || delimiterRow.indent;
+    const html = buildMarkdownPipeTableHtml(
+      headerRow.cells,
+      delimiterRow.alignments,
+      bodyRows,
+      indent,
+      headerRow.prefix,
     );
     normalized.push(`${tableHtmlLinePrefix}${html}`);
     index = cursor;

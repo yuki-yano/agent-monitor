@@ -222,6 +222,49 @@ body::before {
   font-weight: 600;
 }
 
+.vde-markdown-pipe-table-wrap {
+  display: inline-block;
+  vertical-align: top;
+}
+
+.vde-markdown-pipe-table {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: max-content;
+  border: 1px solid rgb(var(--ctp-surface2));
+  font-family:
+    ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+}
+
+.vde-markdown-pipe-table th,
+.vde-markdown-pipe-table td {
+  border: 1px solid rgb(var(--ctp-surface2));
+  padding: 0.125rem 0.5rem;
+  white-space: pre;
+}
+
+.vde-markdown-pipe-table thead th {
+  background: rgb(var(--ctp-surface0) / 0.7);
+  font-weight: 600;
+}
+
+.vde-markdown-pipe-table tbody tr:nth-child(even) td {
+  background: rgb(var(--ctp-crust) / 0.25);
+}
+
+.vde-markdown-pipe-table-cell-left {
+  text-align: left;
+}
+
+.vde-markdown-pipe-table-cell-center {
+  text-align: center;
+}
+
+.vde-markdown-pipe-table-cell-right {
+  text-align: right;
+}
+
 @keyframes pulse-soft {
   0%,
   100% {

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ensureLineContent,
   isUnicodeTableHtmlLine,
+  normalizeMarkdownPipeTableLines,
   normalizeUnicodeTableLines,
   replaceBackgroundColors,
   sanitizeAnsiForHtml,
@@ -126,5 +127,47 @@ describe("ansi-text-utils", () => {
     const normalized = normalizeUnicodeTableLines(lines);
     const html = unwrapUnicodeTableHtmlLine(normalized[0] ?? "");
     expect(html).toMatch(/left {10,}right/);
+  });
+
+  it("normalizes markdown pipe table rows into html table", () => {
+    const lines = [
+      "| Method | Path | Request | Response | 備考 |",
+      "|---|---|---|---|---|",
+      "| GET | /sessions/:paneId/notes | なし | { repoRoot, notes } | repo単位一覧 |",
+      "| POST | /sessions/:paneId/notes | { title?: string \\| null, body: string } | { note } | 新規作成 |",
+    ];
+    const normalized = normalizeMarkdownPipeTableLines(lines);
+
+    expect(normalized).toHaveLength(1);
+    const line = normalized[0] ?? "";
+    expect(isUnicodeTableHtmlLine(line)).toBe(true);
+    const html = unwrapUnicodeTableHtmlLine(line);
+    expect(html).toContain('class="vde-markdown-pipe-table"');
+    expect(html).toContain("<thead>");
+    expect(html).toContain("<tbody>");
+    expect(html).toContain("/sessions/:paneId/notes");
+    expect(html).toContain("{ title?: string | null, body: string }");
+  });
+
+  it("does not normalize markdown rows without a delimiter line", () => {
+    const lines = ["| Method | Path |", "| GET | /sessions/:paneId/notes |"];
+    expect(normalizeMarkdownPipeTableLines(lines)).toEqual(lines);
+  });
+
+  it("normalizes markdown pipe table rows with a bullet-prefixed header", () => {
+    const lines = [
+      "• | ID | 項目 | 状態 | メモ |",
+      "  |---:|---|---|---|",
+      "  | 1 | APIサーバー | 稼働中 | レイテンシ低め |",
+      "  | 2 | Webフロント | 稼働中 | 軽微な警告あり |",
+    ];
+    const normalized = normalizeMarkdownPipeTableLines(lines);
+
+    expect(normalized).toHaveLength(1);
+    const html = unwrapUnicodeTableHtmlLine(normalized[0] ?? "");
+    expect(html).toContain("• ");
+    expect(html).toContain('class="vde-markdown-pipe-table"');
+    expect(html).toContain('vde-markdown-pipe-table-cell-right">1</td>');
+    expect(html).toContain("APIサーバー");
   });
 });

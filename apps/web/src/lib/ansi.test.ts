@@ -48,6 +48,29 @@ describe("renderAnsiLines", () => {
     expect(lines[0]).not.toContain('class="vde-unicode-table"');
   });
 
+  it("normalizes markdown pipe tables for codex agent", () => {
+    const text = [
+      "• | ID | 項目 | 状態 | メモ |",
+      "  |---:|---|---|---|",
+      "  | 1 | APIサーバー | 稼働中 | レイテンシ低め |",
+      "  | 2 | Webフロント | 稼働中 | 軽微な警告あり |",
+    ].join("\n");
+    const lines = renderAnsiLines(text, "latte", { agent: "codex" });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain("• ");
+    expect(lines[0]).toContain('class="vde-markdown-pipe-table"');
+    expect(lines[0]).toContain("<thead>");
+    expect(lines[0]).toContain("<tbody>");
+    expect(lines[0]).toContain("APIサーバー");
+  });
+
+  it("does not normalize markdown pipe tables for non-codex agents", () => {
+    const text = ["| Method | Path |", "|---|---|", "| GET | /sessions/:paneId/notes |"].join("\n");
+    const lines = renderAnsiLines(text, "latte", { agent: "claude" });
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).not.toContain('class="vde-markdown-pipe-table"');
+  });
+
   it("normalizes unicode table lines for unknown agent", () => {
     const text = ["┌──┬──┐", "│A │B │", "├──┼──┤", "│1 │2 │", "└──┴──┘"].join("\n");
     const lines = renderAnsiLines(text, "latte", { agent: "unknown" });

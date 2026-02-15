@@ -11,6 +11,7 @@ import {
   ensureLineContent,
   extractBackgroundColor,
   isUnicodeTableHtmlLine,
+  normalizeMarkdownPipeTableLines,
   normalizeUnicodeTableLines,
   replaceBackgroundColors,
   sanitizeAnsiForHtml,
@@ -360,7 +361,13 @@ export const renderAnsiLines = (
   const converter = buildAnsiToHtml(theme, { stream: false });
   const lines = splitLines(sanitizeAnsiForHtml(text));
   const shouldNormalizeUnicodeTable = options?.agent === "claude" || options?.agent === "unknown";
-  const normalizedLines = shouldNormalizeUnicodeTable ? normalizeUnicodeTableLines(lines) : lines;
+  const unicodeNormalizedLines = shouldNormalizeUnicodeTable
+    ? normalizeUnicodeTableLines(lines)
+    : lines;
+  const shouldNormalizeMarkdownPipeTable = options?.agent === "codex";
+  const normalizedLines = shouldNormalizeMarkdownPipeTable
+    ? normalizeMarkdownPipeTableLines(unicodeNormalizedLines)
+    : unicodeNormalizedLines;
   const shouldApplyCodexHighlight = shouldApplyHighlight(options, "codex");
   const shouldApplyClaudeHighlight = shouldApplyHighlight(options, "claude");
   if (!shouldApplyClaudeHighlight) {
