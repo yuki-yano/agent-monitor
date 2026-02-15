@@ -2,7 +2,7 @@ import type { SessionSummary } from "@vde-monitor/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
-import { requestJson } from "@/lib/api-utils";
+import { http, HttpResponse, server } from "@/test/msw/server";
 
 import {
   mutateSession,
@@ -13,13 +13,24 @@ import {
   requestSessionField,
 } from "./session-api-request-executors";
 
-vi.mock("@/lib/api-utils", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/api-utils")>("@/lib/api-utils");
-  return {
-    ...actual,
-    requestJson: vi.fn(),
-  };
-});
+const API_BASE_URL = "http://127.0.0.1:11081/api";
+
+const pathToUrl = (path: string) => `${API_BASE_URL}${path}`;
+
+const getRequest = (path: string) => fetch(pathToUrl(path));
+
+const postRequest = (path: string, body?: unknown) =>
+  fetch(pathToUrl(path), {
+    method: "POST",
+    headers: body == null ? undefined : { "content-type": "application/json" },
+    body: body == null ? undefined : JSON.stringify(body),
+  });
+
+const postRequestWithSignal = (path: string) => (signal?: AbortSignal) =>
+  fetch(pathToUrl(path), {
+    method: "POST",
+    signal,
+  });
 
 const createSession = (
   paneId: string,
@@ -57,18 +68,18 @@ describe("session-api-request-executors", () => {
   });
 
   it("requestSessionField returns requested field on success", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const ensureToken = vi.fn();
     const onConnectionIssue = vi.fn();
     const handleSessionMissing = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 200 }),
-      data: { summary: { rev: "main" } },
-    });
+    server.use(
+      http.get(pathToUrl("/tests/session-field-success"), () => {
+        return HttpResponse.json({ summary: { rev: "main" } });
+      }),
+    );
 
     const summary = await requestSessionField<{ summary?: { rev: string } }, "summary">({
       paneId: "pane-1",
-      request: Promise.resolve(new Response()),
+      request: getRequest("/tests/session-field-success"),
       field: "summary",
       fallbackMessage: "failed",
       ensureToken,
@@ -83,19 +94,22 @@ describe("session-api-request-executors", () => {
   });
 
   it("requestSessionField propagates API errors and marks missing panes", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const ensureToken = vi.fn();
     const onConnectionIssue = vi.fn();
     const handleSessionMissing = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 404 }),
-      data: { error: { code: "INVALID_PANE", message: "pane not found" } },
-    });
+    server.use(
+      http.get(pathToUrl("/tests/session-field-error"), () => {
+        return HttpResponse.json(
+          { error: { code: "INVALID_PANE", message: "pane not found" } },
+          { status: 404 },
+        );
+      }),
+    );
 
     await expect(
       requestSessionField<{ summary?: { rev: string } }, "summary">({
         paneId: "pane-1",
-        request: Promise.resolve(new Response()),
+        request: getRequest("/tests/session-field-error"),
         field: "summary",
         fallbackMessage: "failed",
         ensureToken,
@@ -110,77 +124,77 @@ describe("session-api-request-executors", () => {
   });
 
   it("mutateSession updates session when payload contains session", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const ensureToken = vi.fn();
     const onConnectionIssue = vi.fn();
     const handleSessionMissing = vi.fn();
     const onSessionUpdated = vi.fn();
-    const refreshSessions = vi.fn(async () => ({ ok: true }));
+    const refreshSessionsMock = vi.fn(async () => ({ ok: true }));
     const session = createSession("pane-1", { title: "updated" });
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 200 }),
-      data: { session },
-    });
+    server.use(
+      http.post(pathToUrl("/tests/mutate-session-success"), () => {
+        return HttpResponse.json({ session });
+      }),
+    );
 
     const updated = await mutateSession({
       paneId: "pane-1",
-      request: Promise.resolve(new Response()),
+      request: postRequest("/tests/mutate-session-success"),
       fallbackMessage: "failed",
       ensureToken,
       onConnectionIssue,
       handleSessionMissing,
       onSessionUpdated,
-      refreshSessions,
+      refreshSessions: refreshSessionsMock,
     });
 
     expect(updated).toEqual(session);
     expect(onSessionUpdated).toHaveBeenCalledWith(session);
     expect(onConnectionIssue).toHaveBeenCalledWith(null);
-    expect(refreshSessions).not.toHaveBeenCalled();
+    expect(refreshSessionsMock).not.toHaveBeenCalled();
   });
 
   it("mutateSession refreshes sessions when payload omits session", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const ensureToken = vi.fn();
     const onConnectionIssue = vi.fn();
     const handleSessionMissing = vi.fn();
     const onSessionUpdated = vi.fn();
-    const refreshSessions = vi.fn(async () => ({ ok: true }));
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 200 }),
-      data: {},
-    });
+    const refreshSessionsMock = vi.fn(async () => ({ ok: true }));
+    server.use(
+      http.post(pathToUrl("/tests/mutate-session-refresh"), () => {
+        return HttpResponse.json({});
+      }),
+    );
 
     const updated = await mutateSession({
       paneId: "pane-1",
-      request: Promise.resolve(new Response()),
+      request: postRequest("/tests/mutate-session-refresh"),
       fallbackMessage: "failed",
       ensureToken,
       onConnectionIssue,
       handleSessionMissing,
       onSessionUpdated,
-      refreshSessions,
+      refreshSessions: refreshSessionsMock,
     });
 
     expect(updated).toBeNull();
     expect(onSessionUpdated).not.toHaveBeenCalled();
-    expect(refreshSessions).toHaveBeenCalledTimes(1);
+    expect(refreshSessionsMock).toHaveBeenCalledTimes(1);
   });
 
   it("requestCommand returns command payload and clears connection issue", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const ensureToken = vi.fn();
     const onConnectionIssue = vi.fn();
     const handleSessionMissing = vi.fn();
     const onSessionRemoved = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 200 }),
-      data: { command: { ok: true } },
-    });
+    server.use(
+      http.post(pathToUrl("/tests/command-success"), () => {
+        return HttpResponse.json({ command: { ok: true } });
+      }),
+    );
 
     const response = await requestCommand({
       paneId: "pane-1",
-      request: vi.fn(async () => new Response()),
+      request: postRequestWithSignal("/tests/command-success"),
       fallbackMessage: "failed",
       ensureToken,
       onConnectionIssue,
@@ -197,19 +211,22 @@ describe("session-api-request-executors", () => {
   });
 
   it("requestCommand returns api error response when request fails", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const ensureToken = vi.fn();
     const onConnectionIssue = vi.fn();
     const handleSessionMissing = vi.fn();
     const onSessionRemoved = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 404 }),
-      data: { error: { code: "INVALID_PANE", message: "pane not found" } },
-    });
+    server.use(
+      http.post(pathToUrl("/tests/command-http-error"), () => {
+        return HttpResponse.json(
+          { error: { code: "INVALID_PANE", message: "pane not found" } },
+          { status: 404 },
+        );
+      }),
+    );
 
     const response = await requestCommand({
       paneId: "pane-1",
-      request: vi.fn(async () => new Response()),
+      request: postRequestWithSignal("/tests/command-http-error"),
       fallbackMessage: "failed",
       ensureToken,
       onConnectionIssue,
@@ -229,16 +246,19 @@ describe("session-api-request-executors", () => {
   });
 
   it("requestCommand handles thrown errors as INTERNAL", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const ensureToken = vi.fn();
     const onConnectionIssue = vi.fn();
     const handleSessionMissing = vi.fn();
     const onSessionRemoved = vi.fn();
-    requestJsonMock.mockRejectedValueOnce(new Error("network down"));
+    server.use(
+      http.post(pathToUrl("/tests/command-network-error"), () => {
+        return HttpResponse.error();
+      }),
+    );
 
     const response = await requestCommand({
       paneId: "pane-1",
-      request: vi.fn(async () => new Response()),
+      request: postRequestWithSignal("/tests/command-network-error"),
       fallbackMessage: "failed",
       ensureToken,
       onConnectionIssue,
@@ -248,37 +268,36 @@ describe("session-api-request-executors", () => {
       onSessionRemoved,
     });
 
-    expect(response).toEqual({
-      ok: false,
-      error: { code: "INTERNAL", message: "network down" },
-    });
-    expect(onConnectionIssue).toHaveBeenCalledWith("network down");
+    expect(response.ok).toBe(false);
+    expect(response.error?.code).toBe("INTERNAL");
+    expect(response.error?.message).toEqual(expect.any(String));
+    expect(onConnectionIssue).toHaveBeenCalledWith(response.error?.message);
     expect(handleSessionMissing).not.toHaveBeenCalled();
     expect(onSessionRemoved).not.toHaveBeenCalled();
   });
 
   it("requestScreenResponse returns screen payload on success", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onConnectionIssue = vi.fn();
     const handleSessionMissing = vi.fn();
     const onSessionRemoved = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 200 }),
-      data: {
-        screen: {
-          ok: true,
-          paneId: "pane-1",
-          mode: "text",
-          capturedAt: new Date(0).toISOString(),
-          screen: "ok",
-        },
-      },
-    });
+    server.use(
+      http.post(pathToUrl("/tests/screen-success"), () => {
+        return HttpResponse.json({
+          screen: {
+            ok: true,
+            paneId: "pane-1",
+            mode: "text",
+            capturedAt: new Date(0).toISOString(),
+            screen: "ok",
+          },
+        });
+      }),
+    );
 
     const response = await requestScreenResponse({
       paneId: "pane-1",
       mode: "text",
-      request: Promise.resolve(new Response()),
+      request: postRequest("/tests/screen-success"),
       fallbackMessage: "screen failed",
       onConnectionIssue,
       handleSessionMissing,
@@ -294,21 +313,22 @@ describe("session-api-request-executors", () => {
   });
 
   it("requestScreenResponse returns error screen on http errors", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onConnectionIssue = vi.fn();
     const handleSessionMissing = vi.fn();
     const onSessionRemoved = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 429 }),
-      data: {
-        error: { code: "RATE_LIMIT", message: "too many requests" },
-      },
-    });
+    server.use(
+      http.post(pathToUrl("/tests/screen-http-error"), () => {
+        return HttpResponse.json(
+          { error: { code: "RATE_LIMIT", message: "too many requests" } },
+          { status: 429 },
+        );
+      }),
+    );
 
     const response = await requestScreenResponse({
       paneId: "pane-1",
       mode: "image",
-      request: Promise.resolve(new Response()),
+      request: postRequest("/tests/screen-http-error"),
       fallbackMessage: "screen failed",
       onConnectionIssue,
       handleSessionMissing,
@@ -325,16 +345,19 @@ describe("session-api-request-executors", () => {
   });
 
   it("requestScreenResponse returns INTERNAL screen on thrown errors", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onConnectionIssue = vi.fn();
     const handleSessionMissing = vi.fn();
     const onSessionRemoved = vi.fn();
-    requestJsonMock.mockRejectedValueOnce(new Error("network down"));
+    server.use(
+      http.post(pathToUrl("/tests/screen-network-error"), () => {
+        return HttpResponse.error();
+      }),
+    );
 
     const response = await requestScreenResponse({
       paneId: "pane-1",
       mode: "text",
-      request: Promise.resolve(new Response()),
+      request: postRequest("/tests/screen-network-error"),
       fallbackMessage: "screen failed",
       onConnectionIssue,
       handleSessionMissing,
@@ -344,33 +367,34 @@ describe("session-api-request-executors", () => {
     });
 
     expect(response.ok).toBe(false);
-    expect(response.error).toEqual({ code: "INTERNAL", message: "network down" });
-    expect(onConnectionIssue).toHaveBeenCalledWith("network down");
+    expect(response.error?.code).toBe("INTERNAL");
+    expect(response.error?.message).toEqual(expect.any(String));
+    expect(onConnectionIssue).toHaveBeenCalledWith(response.error?.message);
     expect(handleSessionMissing).not.toHaveBeenCalled();
     expect(onSessionRemoved).not.toHaveBeenCalled();
   });
 
   it("requestImageAttachment returns parsed attachment payload", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const ensureToken = vi.fn();
     const onConnectionIssue = vi.fn();
     const handleSessionMissing = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 200 }),
-      data: {
-        attachment: {
-          path: "/tmp/vde-monitor/attachments/%251/mobile-20260208-000000-abcd1234.png",
-          mimeType: "image/png",
-          size: 3,
-          createdAt: "2026-02-08T00:00:00.000Z",
-          insertText: "/tmp/vde-monitor/attachments/%251/mobile-20260208-000000-abcd1234.png ",
-        },
-      },
-    });
+    server.use(
+      http.post(pathToUrl("/tests/attachment-success"), () => {
+        return HttpResponse.json({
+          attachment: {
+            path: "/tmp/vde-monitor/attachments/%251/mobile-20260208-000000-abcd1234.png",
+            mimeType: "image/png",
+            size: 3,
+            createdAt: "2026-02-08T00:00:00.000Z",
+            insertText: "/tmp/vde-monitor/attachments/%251/mobile-20260208-000000-abcd1234.png ",
+          },
+        });
+      }),
+    );
 
     const attachment = await requestImageAttachment({
       paneId: "pane-1",
-      request: Promise.resolve(new Response()),
+      request: postRequest("/tests/attachment-success"),
       ensureToken,
       onConnectionIssue,
       handleSessionMissing,
@@ -383,27 +407,27 @@ describe("session-api-request-executors", () => {
   });
 
   it("requestImageAttachment throws invalid response when schema validation fails", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const ensureToken = vi.fn();
     const onConnectionIssue = vi.fn();
     const handleSessionMissing = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 200 }),
-      data: {
-        attachment: {
-          path: "/tmp/vde-monitor/attachments/%251/mobile-20260208-000000-abcd1234.png",
-          mimeType: "image/png",
-          size: 0,
-          createdAt: "2026-02-08T00:00:00.000Z",
-          insertText: "/tmp/vde-monitor/attachments/%251/mobile-20260208-000000-abcd1234.png ",
-        },
-      },
-    });
+    server.use(
+      http.post(pathToUrl("/tests/attachment-invalid-schema"), () => {
+        return HttpResponse.json({
+          attachment: {
+            path: "/tmp/vde-monitor/attachments/%251/mobile-20260208-000000-abcd1234.png",
+            mimeType: "image/png",
+            size: 0,
+            createdAt: "2026-02-08T00:00:00.000Z",
+            insertText: "/tmp/vde-monitor/attachments/%251/mobile-20260208-000000-abcd1234.png ",
+          },
+        });
+      }),
+    );
 
     await expect(
       requestImageAttachment({
         paneId: "pane-1",
-        request: Promise.resolve(new Response()),
+        request: postRequest("/tests/attachment-invalid-schema"),
         ensureToken,
         onConnectionIssue,
         handleSessionMissing,
@@ -415,7 +439,6 @@ describe("session-api-request-executors", () => {
   });
 
   it("refreshSessions returns auth error without request when token is missing", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onSessions = vi.fn();
     const onConnectionIssue = vi.fn();
     const onHighlightCorrections = vi.fn();
@@ -423,7 +446,7 @@ describe("session-api-request-executors", () => {
 
     const result = await refreshSessions({
       token: null,
-      request: Promise.resolve(new Response()),
+      request: Promise.resolve(new Response(null, { status: 200 })),
       onSessions,
       onConnectionIssue,
       onHighlightCorrections,
@@ -431,7 +454,6 @@ describe("session-api-request-executors", () => {
     });
 
     expect(result).toEqual({ ok: false, authError: true });
-    expect(requestJsonMock).not.toHaveBeenCalled();
     expect(onSessions).not.toHaveBeenCalled();
     expect(onConnectionIssue).not.toHaveBeenCalled();
     expect(onHighlightCorrections).not.toHaveBeenCalled();
@@ -439,20 +461,20 @@ describe("session-api-request-executors", () => {
   });
 
   it("refreshSessions applies sessions snapshot on success", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onSessions = vi.fn();
     const onConnectionIssue = vi.fn();
     const onHighlightCorrections = vi.fn();
     const onFileNavigatorConfig = vi.fn();
     const sessions = [createSession("pane-1")];
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 200 }),
-      data: { sessions },
-    });
+    server.use(
+      http.get(pathToUrl("/sessions"), () => {
+        return HttpResponse.json({ sessions });
+      }),
+    );
 
     const result = await refreshSessions({
       token: "token",
-      request: Promise.resolve(new Response()),
+      request: getRequest("/sessions"),
       onSessions,
       onConnectionIssue,
       onHighlightCorrections,
@@ -466,19 +488,22 @@ describe("session-api-request-executors", () => {
   });
 
   it("refreshSessions marks auth failures from response status", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onSessions = vi.fn();
     const onConnectionIssue = vi.fn();
     const onHighlightCorrections = vi.fn();
     const onFileNavigatorConfig = vi.fn();
-    requestJsonMock.mockResolvedValueOnce({
-      res: new Response(null, { status: 401 }),
-      data: { error: { code: "INVALID_PAYLOAD", message: "unauthorized" } },
-    });
+    server.use(
+      http.get(pathToUrl("/sessions"), () => {
+        return HttpResponse.json(
+          { error: { code: "INVALID_PAYLOAD", message: "unauthorized" } },
+          { status: 401 },
+        );
+      }),
+    );
 
     const result = await refreshSessions({
       token: "token",
-      request: Promise.resolve(new Response()),
+      request: getRequest("/sessions"),
       onSessions,
       onConnectionIssue,
       onHighlightCorrections,
@@ -497,16 +522,19 @@ describe("session-api-request-executors", () => {
   });
 
   it("refreshSessions reports network fallback error", async () => {
-    const requestJsonMock = vi.mocked(requestJson);
     const onSessions = vi.fn();
     const onConnectionIssue = vi.fn();
     const onHighlightCorrections = vi.fn();
     const onFileNavigatorConfig = vi.fn();
-    requestJsonMock.mockRejectedValueOnce(new Error("offline"));
+    server.use(
+      http.get(pathToUrl("/sessions"), () => {
+        return HttpResponse.error();
+      }),
+    );
 
     const result = await refreshSessions({
       token: "token",
-      request: Promise.resolve(new Response()),
+      request: getRequest("/sessions"),
       onSessions,
       onConnectionIssue,
       onHighlightCorrections,
@@ -515,7 +543,7 @@ describe("session-api-request-executors", () => {
 
     expect(result).toEqual({ ok: false });
     expect(onSessions).not.toHaveBeenCalled();
-    expect(onConnectionIssue).toHaveBeenCalledWith("offline");
+    expect(onConnectionIssue).toHaveBeenCalledWith(expect.any(String));
     expect(onFileNavigatorConfig).not.toHaveBeenCalled();
   });
 });

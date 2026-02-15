@@ -1,8 +1,11 @@
 // @vitest-environment happy-dom
+import { QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import { createStore, Provider as JotaiProvider } from "jotai";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+
+import { createQueryClient } from "@/state/query-client";
 
 import {
   diffErrorAtom,
@@ -17,6 +20,7 @@ import { useSessionDiffs } from "./useSessionDiffs";
 
 describe("useSessionDiffs", () => {
   const createWrapper = () => {
+    const queryClient = createQueryClient();
     const store = createStore();
     store.set(diffSummaryAtom, null);
     store.set(diffErrorAtom, null);
@@ -25,7 +29,9 @@ describe("useSessionDiffs", () => {
     store.set(diffOpenAtom, {});
     store.set(diffLoadingFilesAtom, {});
     return ({ children }: { children: ReactNode }) => (
-      <JotaiProvider store={store}>{children}</JotaiProvider>
+      <QueryClientProvider client={queryClient}>
+        <JotaiProvider store={store}>{children}</JotaiProvider>
+      </QueryClientProvider>
     );
   };
 

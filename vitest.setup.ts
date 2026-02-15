@@ -1,5 +1,7 @@
 import { cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterAll, afterEach, beforeAll } from "vitest";
+
+import { server } from "./apps/web/src/test/msw/server";
 
 const createMemoryStorage = (): Storage => {
   const store = new Map<string, string>();
@@ -43,6 +45,15 @@ if (typeof window !== "undefined") {
   defineStorage(globalThis, "sessionStorage");
 }
 
+beforeAll(() => {
+  server.listen({ onUnhandledRequest: "bypass" });
+});
+
 afterEach(() => {
+  server.resetHandlers();
   cleanup();
+});
+
+afterAll(() => {
+  server.close();
 });
