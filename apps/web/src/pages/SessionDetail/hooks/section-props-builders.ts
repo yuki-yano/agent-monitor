@@ -160,6 +160,7 @@ type BuildScreenPanelPropsArgs = {
   virtualWorktreePath?: string | null;
   handleModeChange: (mode: ScreenMode) => void;
   handleRefreshScreen: () => void;
+  handleRefreshWorktrees?: () => void | Promise<void>;
   handleAtBottomChange: (value: boolean) => void;
   scrollToBottom: (behavior: "auto" | "smooth") => void;
   handleUserScrollStateChange: (value: boolean) => void;
@@ -510,6 +511,7 @@ export const buildScreenPanelProps = ({
   virtualWorktreePath = null,
   handleModeChange,
   handleRefreshScreen,
+  handleRefreshWorktrees,
   handleAtBottomChange,
   scrollToBottom,
   handleUserScrollStateChange,
@@ -548,6 +550,9 @@ export const buildScreenPanelProps = ({
   actions: {
     onModeChange: handleModeChange,
     onRefresh: handleRefreshScreen,
+    onRefreshWorktrees: () => {
+      void (handleRefreshWorktrees ?? handleRefreshScreen)();
+    },
     onAtBottomChange: handleAtBottomChange,
     onScrollToBottom: scrollToBottom,
     onUserScrollStateChange: handleUserScrollStateChange,

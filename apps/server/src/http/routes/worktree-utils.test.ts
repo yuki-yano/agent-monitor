@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { fetchDiffSummary } from "../../git-diff";
+import { runGit } from "../../git-utils";
 import { resolveRepoBranchCached } from "../../monitor/repo-branch";
 import { resolveVwWorktreeSnapshotCached } from "../../monitor/vw-worktree";
 import {
@@ -11,6 +12,10 @@ import {
 
 vi.mock("../../git-diff", () => ({
   fetchDiffSummary: vi.fn(),
+}));
+
+vi.mock("../../git-utils", () => ({
+  runGit: vi.fn(),
 }));
 
 vi.mock("../../monitor/vw-worktree", () => ({
@@ -25,6 +30,7 @@ describe("worktree-utils", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(resolveRepoBranchCached).mockResolvedValue(null);
+    vi.mocked(runGit).mockResolvedValue("0\t0");
   });
 
   it("returns empty entries when vw snapshot is unavailable", async () => {
@@ -59,6 +65,7 @@ describe("worktree-utils", () => {
         },
       ],
     });
+    vi.mocked(runGit).mockResolvedValueOnce("1\t3");
     vi.mocked(fetchDiffSummary).mockImplementation(async (cwd: string | null) => {
       if (cwd === "/repo/worktree-a") {
         return {
@@ -96,6 +103,8 @@ describe("worktree-utils", () => {
         lockOwner: null,
         lockReason: null,
         merged: false,
+        ahead: 3,
+        behind: 1,
         fileChanges: { add: 2, m: 1, d: 1 },
         additions: 9,
         deletions: 3,
@@ -108,6 +117,8 @@ describe("worktree-utils", () => {
         lockOwner: null,
         lockReason: null,
         merged: null,
+        ahead: null,
+        behind: null,
         fileChanges: { add: 0, m: 0, d: 0 },
         additions: 0,
         deletions: 0,
@@ -117,6 +128,12 @@ describe("worktree-utils", () => {
     expect(fetchDiffSummary).toHaveBeenCalledTimes(2);
     expect(fetchDiffSummary).toHaveBeenNthCalledWith(1, "/repo/worktree-a");
     expect(fetchDiffSummary).toHaveBeenNthCalledWith(2, "/repo");
+    expect(runGit).toHaveBeenCalledTimes(1);
+    expect(runGit).toHaveBeenCalledWith(
+      "/repo/worktree-a",
+      ["rev-list", "--left-right", "--count", "main...HEAD"],
+      { timeoutMs: 2000, maxBuffer: 1_000_000, allowStdoutOnError: false },
+    );
     expect(resolveRepoBranchCached).toHaveBeenCalledWith("/repo");
   });
 
@@ -188,6 +205,8 @@ describe("worktree-utils", () => {
         lockOwner: null,
         lockReason: null,
         merged: false,
+        ahead: null,
+        behind: null,
       },
       {
         path: "/repo",
@@ -197,9 +216,12 @@ describe("worktree-utils", () => {
         lockOwner: null,
         lockReason: null,
         merged: null,
+        ahead: null,
+        behind: null,
       },
     ]);
     expect(fetchDiffSummary).not.toHaveBeenCalled();
+    expect(runGit).not.toHaveBeenCalled();
     expect(resolveRepoBranchCached).not.toHaveBeenCalled();
   });
 });

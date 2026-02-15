@@ -290,6 +290,7 @@ export const useSessionDetailVM = (paneId: string) => {
       virtuosoRef,
       scrollerRef,
       handleRefreshScreen,
+      handleRefreshWorktrees: virtualWorktree.refreshWorktrees,
       effectiveBranch: virtualWorktree.effectiveBranch,
       effectiveWorktreePath: virtualWorktree.effectiveWorktreePath,
       worktreeRepoRoot: virtualWorktree.repoRoot,

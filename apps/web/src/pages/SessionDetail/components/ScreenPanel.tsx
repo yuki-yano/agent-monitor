@@ -87,6 +87,7 @@ type ScreenPanelState = {
 type ScreenPanelActions = {
   onModeChange: (mode: ScreenMode) => void;
   onRefresh: () => void;
+  onRefreshWorktrees?: () => void;
   onAtBottomChange: (value: boolean) => void;
   onScrollToBottom: (behavior: "auto" | "smooth") => void;
   onUserScrollStateChange: (value: boolean) => void;
@@ -171,6 +172,9 @@ const formatWorktreeFlag = (value: boolean | null) => {
   return value ? "Yes" : "No";
 };
 
+const hasWorktreeUpstreamDelta = (value: number | null | undefined) =>
+  typeof value === "number" && value > 0;
+
 const normalizeSlashPath = (value: string) => {
   const normalized = value.replace(/\\/g, "/").replace(/\/+$/, "");
   if (normalized.length > 0) {
@@ -245,6 +249,7 @@ const BRANCH_LABEL_WIDTH_GUARD_PX = 2;
 const WORKTREE_SELECTOR_BRANCH_CHROME_PX = 48;
 const BRANCH_PILL_CHROME_PX = 34;
 const WORKTREE_SELECTOR_OPEN_BODY_DATASET_KEY = "vdeWorktreeSelectorOpen";
+const WORKTREE_SELECTOR_REFRESH_INTERVAL_MS = 10_000;
 
 const parseGapPx = (value: string) => {
   const parsed = Number.parseFloat(value);
@@ -461,6 +466,7 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
   const {
     onModeChange,
     onRefresh,
+    onRefreshWorktrees,
     onAtBottomChange,
     onScrollToBottom,
     onUserScrollStateChange,
@@ -477,6 +483,7 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
   const gitDeletionsLabel = formatGitMetric(promptGitContext?.deletions ?? null);
   const isVirtualActive = Boolean(virtualWorktreePath);
   const [isWorktreeSelectorOpen, setIsWorktreeSelectorOpen] = useState(false);
+  const lastWorktreeSelectorClosedAtRef = useRef(Date.now());
   const [isContextInStatusRow, setIsContextInStatusRow] = useState(false);
   const [displayGitBranchLabel, setDisplayGitBranchLabel] = useState(gitBranchLabel);
   const [isBranchLabelConstrained, setIsBranchLabelConstrained] = useState(false);
@@ -563,11 +570,40 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     () => new Set(referenceCandidateTokens),
     [referenceCandidateTokens],
   );
+  const refreshWorktrees = useCallback(() => {
+    if (onRefreshWorktrees) {
+      onRefreshWorktrees();
+      return;
+    }
+    onRefresh();
+  }, [onRefresh, onRefreshWorktrees]);
+
   useEffect(() => {
     if (!worktreeSelectorEnabled && isWorktreeSelectorOpen) {
       setIsWorktreeSelectorOpen(false);
     }
   }, [isWorktreeSelectorOpen, worktreeSelectorEnabled]);
+
+  useEffect(() => {
+    if (!worktreeSelectorEnabled) {
+      return;
+    }
+    if (!isWorktreeSelectorOpen) {
+      lastWorktreeSelectorClosedAtRef.current = Date.now();
+      return;
+    }
+    const elapsedSinceCloseMs = Date.now() - lastWorktreeSelectorClosedAtRef.current;
+    if (elapsedSinceCloseMs >= WORKTREE_SELECTOR_REFRESH_INTERVAL_MS) {
+      refreshWorktrees();
+    }
+    const timerId = window.setInterval(() => {
+      refreshWorktrees();
+    }, WORKTREE_SELECTOR_REFRESH_INTERVAL_MS);
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [isWorktreeSelectorOpen, refreshWorktrees, worktreeSelectorEnabled]);
+
   useEffect(() => {
     if (typeof document === "undefined") {
       return;
@@ -1013,7 +1049,7 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
                       variant="base"
                       aria-label="Reload worktrees"
                       title="Reload worktrees"
-                      onClick={onRefresh}
+                      onClick={onRefreshWorktrees ?? onRefresh}
                     >
                       <RefreshCw
                         className={`h-3 w-3 ${worktreeSelectorLoading ? "animate-spin" : ""}`}
@@ -1075,6 +1111,9 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
                           );
                           const entryAdditionsLabel = formatGitMetric(entry.additions ?? null);
                           const entryDeletionsLabel = formatGitMetric(entry.deletions ?? null);
+                          const hasAhead = hasWorktreeUpstreamDelta(entry.ahead);
+                          const hasBehind = hasWorktreeUpstreamDelta(entry.behind);
+                          const shouldShowAheadBehind = !isRepoRootPath && (hasAhead || hasBehind);
                           const entryBranchLabel = formatBranchLabel(entry.branch);
                           return (
                             <button
@@ -1136,6 +1175,20 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
                                     title={entry.path}
                                   >
                                     {relativePath}
+                                  </span>
+                                ) : null}
+                                {shouldShowAheadBehind ? (
+                                  <span className="mt-1 flex flex-wrap items-center gap-1">
+                                    {hasAhead ? (
+                                      <span className="border-latte-green/45 bg-latte-green/10 text-latte-green inline-flex items-center rounded-full border px-1.5 py-0.5 font-mono text-[9px]">
+                                        Ahead {entry.ahead}
+                                      </span>
+                                    ) : null}
+                                    {hasBehind ? (
+                                      <span className="border-latte-yellow/45 bg-latte-yellow/12 text-latte-yellow inline-flex items-center rounded-full border px-1.5 py-0.5 font-mono text-[9px]">
+                                        Behind {entry.behind}
+                                      </span>
+                                    ) : null}
                                   </span>
                                 ) : null}
                                 <span className="mt-1 flex flex-wrap items-center gap-1">

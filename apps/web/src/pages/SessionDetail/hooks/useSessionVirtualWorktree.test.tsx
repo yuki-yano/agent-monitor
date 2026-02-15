@@ -239,4 +239,75 @@ describe("useSessionVirtualWorktree", () => {
     expect(result.current.virtualWorktreePath).toBe(`${repoRoot}/feature-a`);
     expect(window.localStorage.getItem(buildStorageKey(paneId))).toContain(`${repoRoot}/feature-a`);
   });
+
+  it("refreshes worktrees when refreshWorktrees is called", async () => {
+    const repoRoot = "/tmp/repo-refresh";
+    const paneId = "pane-refresh";
+    const requestWorktrees = vi.fn(async () => createWorktreeList(repoRoot));
+    const { result } = renderHook(() =>
+      useSessionVirtualWorktree({
+        paneId,
+        session: createSessionDetail({
+          paneId,
+          repoRoot,
+          worktreePath: `${repoRoot}/main`,
+          branch: "main",
+        }),
+        requestWorktrees,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(requestWorktrees).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      await result.current.refreshWorktrees();
+    });
+
+    expect(requestWorktrees).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not auto-refresh worktrees without explicit trigger", async () => {
+    vi.useFakeTimers();
+    try {
+      const repoRoot = "/tmp/repo-auto-refresh";
+      const paneId = "pane-auto-refresh";
+      const requestWorktrees = vi.fn(async () => createWorktreeList(repoRoot));
+      const { unmount } = renderHook(() =>
+        useSessionVirtualWorktree({
+          paneId,
+          session: createSessionDetail({
+            paneId,
+            repoRoot,
+            worktreePath: `${repoRoot}/main`,
+            branch: "main",
+          }),
+          requestWorktrees,
+        }),
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(requestWorktrees).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+      });
+
+      expect(requestWorktrees).toHaveBeenCalledTimes(1);
+
+      unmount();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+      });
+
+      expect(requestWorktrees).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

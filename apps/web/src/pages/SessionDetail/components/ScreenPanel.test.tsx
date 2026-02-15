@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -160,6 +160,8 @@ describe("ScreenPanel", () => {
           lockOwner: null,
           lockReason: null,
           merged: false,
+          ahead: 2,
+          behind: 1,
           fileChanges: {
             add: 2,
             m: 3,
@@ -184,7 +186,15 @@ describe("ScreenPanel", () => {
     expect(within(selectorPanel).getByText("D 1")).toBeTruthy();
     expect(within(selectorPanel).getByText("+27")).toBeTruthy();
     expect(within(selectorPanel).getByText("-4")).toBeTruthy();
-    expect(within(selectorPanel).getByText("Dirty Yes")).toBeTruthy();
+    const aheadBadge = within(selectorPanel).getByText("Ahead 2");
+    const behindBadge = within(selectorPanel).getByText("Behind 1");
+    const dirtyBadge = within(selectorPanel).getByText("Dirty Yes");
+    expect(aheadBadge).toBeTruthy();
+    expect(behindBadge).toBeTruthy();
+    expect(dirtyBadge).toBeTruthy();
+    expect(
+      aheadBadge.compareDocumentPosition(dirtyBadge) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
     expect(within(selectorPanel).getByText("Locked No")).toBeTruthy();
     expect(within(selectorPanel).getByText("Merged No")).toBeTruthy();
     expect(within(selectorPanel).getByText("Current")).toBeTruthy();
@@ -204,6 +214,8 @@ describe("ScreenPanel", () => {
           lockOwner: null,
           lockReason: null,
           merged: false,
+          ahead: 4,
+          behind: 2,
           fileChanges: {
             add: 0,
             m: 1,
@@ -222,6 +234,8 @@ describe("ScreenPanel", () => {
 
     const selectorPanel = screen.getByTestId("worktree-selector-panel");
     expect(within(selectorPanel).getByText("Repo Root")).toBeTruthy();
+    expect(within(selectorPanel).queryByText("Ahead 4")).toBeNull();
+    expect(within(selectorPanel).queryByText("Behind 2")).toBeNull();
     expect(within(selectorPanel).queryByText("Locked No")).toBeNull();
     expect(within(selectorPanel).queryByText("Merged No")).toBeNull();
     expect(within(selectorPanel).queryByText(".")).toBeNull();
@@ -356,6 +370,7 @@ describe("ScreenPanel", () => {
 
   it("reloads worktrees from selector header", () => {
     const onRefresh = vi.fn();
+    const onRefreshWorktrees = vi.fn();
     const state = buildState({
       worktreeSelectorEnabled: true,
       worktreeEntries: [
@@ -378,14 +393,106 @@ describe("ScreenPanel", () => {
       ],
       actualWorktreePath: "/repo",
     });
-    const actions = buildActions({ onRefresh });
+    const actions = buildActions({ onRefresh, onRefreshWorktrees });
     render(<ScreenPanel state={state} actions={actions} controls={null} />);
 
     fireEvent.click(screen.getByTestId("worktree-selector-trigger"));
     const selectorPanel = screen.getByTestId("worktree-selector-panel");
     fireEvent.click(within(selectorPanel).getByLabelText("Reload worktrees"));
 
-    expect(onRefresh).toHaveBeenCalledTimes(1);
+    expect(onRefreshWorktrees).toHaveBeenCalledTimes(1);
+    expect(onRefresh).not.toHaveBeenCalled();
+  });
+
+  it("auto-refreshes worktrees every 10 seconds only while selector is open", async () => {
+    vi.useFakeTimers();
+    try {
+      const onRefreshWorktrees = vi.fn();
+      const state = buildState({
+        worktreeSelectorEnabled: true,
+        worktreeEntries: [
+          {
+            path: "/repo",
+            branch: "main",
+            dirty: false,
+            locked: false,
+            lockOwner: null,
+            lockReason: null,
+            merged: false,
+            fileChanges: {
+              add: 0,
+              m: 0,
+              d: 0,
+            },
+            additions: 0,
+            deletions: 0,
+          },
+        ],
+        actualWorktreePath: "/repo",
+      });
+      const actions = buildActions({ onRefreshWorktrees });
+      render(<ScreenPanel state={state} actions={actions} controls={null} />);
+
+      fireEvent.click(screen.getByTestId("worktree-selector-trigger"));
+      expect(onRefreshWorktrees).toHaveBeenCalledTimes(0);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+      });
+      expect(onRefreshWorktrees).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(screen.getByLabelText("Close worktree selector"));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(20_000);
+      });
+      expect(onRefreshWorktrees).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("refreshes worktrees immediately when reopened after being closed for 10 seconds", async () => {
+    vi.useFakeTimers();
+    try {
+      const onRefreshWorktrees = vi.fn();
+      const state = buildState({
+        worktreeSelectorEnabled: true,
+        worktreeEntries: [
+          {
+            path: "/repo",
+            branch: "main",
+            dirty: false,
+            locked: false,
+            lockOwner: null,
+            lockReason: null,
+            merged: false,
+            fileChanges: {
+              add: 0,
+              m: 0,
+              d: 0,
+            },
+            additions: 0,
+            deletions: 0,
+          },
+        ],
+        actualWorktreePath: "/repo",
+      });
+      const actions = buildActions({ onRefreshWorktrees });
+      render(<ScreenPanel state={state} actions={actions} controls={null} />);
+
+      fireEvent.click(screen.getByTestId("worktree-selector-trigger"));
+      fireEvent.click(screen.getByLabelText("Close worktree selector"));
+      expect(onRefreshWorktrees).toHaveBeenCalledTimes(0);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+      });
+
+      fireEvent.click(screen.getByTestId("worktree-selector-trigger"));
+      expect(onRefreshWorktrees).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("renders virtual badge on the right of worktree name", () => {

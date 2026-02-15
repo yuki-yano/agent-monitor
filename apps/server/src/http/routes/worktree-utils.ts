@@ -3,6 +3,7 @@ import path from "node:path";
 import type { SessionDetail, WorktreeList, WorktreeListEntry } from "@vde-monitor/shared";
 
 import { fetchDiffSummary } from "../../git-diff";
+import { runGit } from "../../git-utils";
 import { resolveRepoBranchCached } from "../../monitor/repo-branch";
 import { resolveVwWorktreeSnapshotCached } from "../../monitor/vw-worktree";
 
@@ -12,6 +13,7 @@ type WorktreePathValidationPayload = Pick<WorktreeListPayload, "entries">;
 type WorktreeSource = Pick<SessionDetail, "repoRoot" | "currentPath">;
 type WorktreeListEntryBase = Omit<WorktreeListEntry, "fileChanges" | "additions" | "deletions">;
 type WorktreeDiffStats = Pick<WorktreeListEntry, "fileChanges" | "additions" | "deletions">;
+type WorktreeAheadBehindStats = Pick<WorktreeListEntry, "ahead" | "behind">;
 type DiffSummaryResult = Awaited<ReturnType<typeof fetchDiffSummary>>;
 
 const normalizePath = (value: string | null | undefined): string | null => {
@@ -37,6 +39,8 @@ const buildRootFallbackEntry = (rootPath: string): WorktreeListEntryBase => ({
   lockOwner: null,
   lockReason: null,
   merged: null,
+  ahead: null,
+  behind: null,
 });
 
 const toEntry = (
@@ -51,6 +55,8 @@ const toEntry = (
   lockOwner: entry.locked.owner,
   lockReason: entry.locked.reason,
   merged: entry.merged.overall,
+  ahead: null,
+  behind: null,
 });
 
 const buildEmptyDiffStats = (): WorktreeDiffStats => ({
@@ -58,6 +64,21 @@ const buildEmptyDiffStats = (): WorktreeDiffStats => ({
   additions: null,
   deletions: null,
 });
+
+const buildEmptyAheadBehindStats = (): WorktreeAheadBehindStats => ({
+  ahead: null,
+  behind: null,
+});
+
+const parseAheadBehindOutput = (value: string): WorktreeAheadBehindStats => {
+  const [behindRaw, aheadRaw] = value.trim().split(/\s+/);
+  const behind = Number.parseInt(behindRaw ?? "", 10);
+  const ahead = Number.parseInt(aheadRaw ?? "", 10);
+  if (!Number.isInteger(behind) || behind < 0 || !Number.isInteger(ahead) || ahead < 0) {
+    return buildEmptyAheadBehindStats();
+  }
+  return { ahead, behind };
+};
 
 const resolveDiffStats = (summary: DiffSummaryResult): WorktreeDiffStats => {
   if (summary.reason) {
@@ -130,6 +151,35 @@ const resolveDiffStatsByWorktreePath = async (entries: WorktreeListEntryBase[]) 
   return new Map(resolved);
 };
 
+const resolveAheadBehindByWorktreePath = async (
+  entries: WorktreeListEntryBase[],
+  options: { baseBranch: string | null; repoRoot: string | null },
+) => {
+  const { baseBranch, repoRoot } = options;
+  const resolved = await Promise.all(
+    entries.map(async (entry) => {
+      if (!baseBranch || (repoRoot != null && entry.path === repoRoot)) {
+        return [entry.path, buildEmptyAheadBehindStats()] as const;
+      }
+      try {
+        const output = await runGit(
+          entry.path,
+          ["rev-list", "--left-right", "--count", `${baseBranch}...HEAD`],
+          {
+            timeoutMs: 2000,
+            maxBuffer: 1_000_000,
+            allowStdoutOnError: false,
+          },
+        );
+        return [entry.path, parseAheadBehindOutput(output)] as const;
+      } catch {
+        return [entry.path, buildEmptyAheadBehindStats()] as const;
+      }
+    }),
+  );
+  return new Map(resolved);
+};
+
 const resolveSnapshotEntries = (
   snapshot: NonNullable<Awaited<ReturnType<typeof resolveVwWorktreeSnapshotCached>>>,
   repoRoot: string | null,
@@ -174,18 +224,24 @@ export const resolveWorktreeListPayload = async (
   }
 
   const baseEntries = resolveSnapshotEntries(snapshot, repoRoot);
+  const baseBranch = snapshot.baseBranch ?? null;
   const repoRootBranch = repoRoot ? await resolveRepoBranchCached(repoRoot) : null;
   const diffStatsByPath = await resolveDiffStatsByWorktreePath(baseEntries);
+  const aheadBehindByPath = await resolveAheadBehindByWorktreePath(baseEntries, {
+    baseBranch,
+    repoRoot,
+  });
   const entries = baseEntries.map((entry) => ({
     ...entry,
     branch: repoRoot && entry.path === repoRoot ? (repoRootBranch ?? entry.branch) : entry.branch,
+    ...(aheadBehindByPath.get(entry.path) ?? buildEmptyAheadBehindStats()),
     ...(diffStatsByPath.get(entry.path) ?? buildEmptyDiffStats()),
   }));
 
   return {
     repoRoot,
     currentPath,
-    baseBranch: snapshot.baseBranch ?? null,
+    baseBranch,
     entries,
   };
 };

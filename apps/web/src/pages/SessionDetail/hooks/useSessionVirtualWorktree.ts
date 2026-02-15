@@ -1,5 +1,5 @@
 import type { SessionSummary, WorktreeList, WorktreeListEntry } from "@vde-monitor/shared";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const VIRTUAL_WORKTREE_STORAGE_KEY_PREFIX = "vde-monitor:virtual-worktree:v1";
 
@@ -93,6 +93,7 @@ export const useSessionVirtualWorktree = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [virtualWorktreePath, setVirtualWorktreePath] = useState<string | null>(null);
+  const latestRequestIdRef = useRef(0);
 
   const actualWorktreePath = useMemo(
     () => normalizePath(session?.worktreePath ?? null),
@@ -101,41 +102,50 @@ export const useSessionVirtualWorktree = ({
   const actualBranch = session?.branch ?? null;
 
   useEffect(() => {
+    latestRequestIdRef.current += 1;
     setWorktreeList(null);
     setVirtualWorktreePath(null);
     setError(null);
     setLoading(false);
   }, [paneId]);
 
-  useEffect(() => {
-    let cancelled = false;
-    setWorktreeList(null);
-    setLoading(true);
-    setError(null);
-    void requestWorktrees(paneId)
-      .then((next) => {
-        if (cancelled) {
+  const fetchWorktrees = useCallback(
+    async (options?: { resetEntries?: boolean }) => {
+      const requestId = latestRequestIdRef.current + 1;
+      latestRequestIdRef.current = requestId;
+      if (options?.resetEntries) {
+        setWorktreeList(null);
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const next = await requestWorktrees(paneId);
+        if (latestRequestIdRef.current !== requestId) {
           return;
         }
         setWorktreeList(next);
-      })
-      .catch((nextError) => {
-        if (cancelled) {
+      } catch (nextError) {
+        if (latestRequestIdRef.current !== requestId) {
           return;
         }
         setWorktreeList(null);
         setError(nextError instanceof Error ? nextError.message : "Failed to load worktrees");
-      })
-      .finally(() => {
-        if (cancelled) {
-          return;
+      } finally {
+        if (latestRequestIdRef.current === requestId) {
+          setLoading(false);
         }
-        setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [paneId, requestWorktrees, session?.repoRoot]);
+      }
+    },
+    [paneId, requestWorktrees],
+  );
+
+  useEffect(() => {
+    void fetchWorktrees({ resetEntries: true });
+  }, [fetchWorktrees, session?.repoRoot]);
+
+  const refreshWorktrees = useCallback(async () => {
+    await fetchWorktrees();
+  }, [fetchWorktrees]);
 
   const entries = useMemo(() => worktreeList?.entries ?? [], [worktreeList]);
   const normalizedRepoRoot = normalizePath(worktreeList?.repoRoot ?? null);
@@ -240,6 +250,7 @@ export const useSessionVirtualWorktree = ({
     effectiveBranch: selectedVirtualEntry ? selectedVirtualEntry.branch : actualBranch,
     selectVirtualWorktree,
     clearVirtualWorktree,
+    refreshWorktrees,
   };
 };
 
@@ -256,4 +267,5 @@ export type SessionVirtualWorktreeState = {
   effectiveBranch: string | null;
   selectVirtualWorktree: (path: string) => void;
   clearVirtualWorktree: () => void;
+  refreshWorktrees: () => Promise<void>;
 };

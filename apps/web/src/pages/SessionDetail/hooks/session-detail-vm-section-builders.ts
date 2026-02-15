@@ -93,6 +93,7 @@ type BuildScreenSectionArgs = {
   virtuosoRef: RefObject<VirtuosoHandle | null>;
   scrollerRef: RefObject<HTMLDivElement | null>;
   handleRefreshScreen: () => void;
+  handleRefreshWorktrees?: () => void | Promise<void>;
   effectiveBranch?: string | null;
   effectiveWorktreePath?: string | null;
   worktreeRepoRoot?: string | null;
@@ -338,6 +339,7 @@ export const buildScreenSection = ({
   virtuosoRef,
   scrollerRef,
   handleRefreshScreen,
+  handleRefreshWorktrees,
   effectiveBranch = null,
   effectiveWorktreePath = null,
   worktreeRepoRoot = null,
@@ -368,6 +370,7 @@ export const buildScreenSection = ({
   virtuosoRef,
   scrollerRef,
   handleRefreshScreen,
+  handleRefreshWorktrees,
   effectiveBranch,
   effectiveWorktreePath,
   worktreeRepoRoot,
