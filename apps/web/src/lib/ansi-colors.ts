@@ -1,4 +1,4 @@
-export type Rgb = [number, number, number];
+type Rgb = [number, number, number];
 
 const parseHexPair = (value: string, fallback: string) => Number.parseInt(value || fallback, 16);
 

@@ -1,7 +1,7 @@
 export type Theme = "latte" | "mocha";
 export type ThemePreference = "system" | Theme;
 
-export const themePreferences = ["system", "latte", "mocha"] as const;
+const themePreferences = ["system", "latte", "mocha"] as const;
 
 export const isThemePreference = (value: string | null | undefined): value is ThemePreference =>
   themePreferences.includes(value as ThemePreference);

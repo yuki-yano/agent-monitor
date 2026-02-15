@@ -1,4 +1,4 @@
-export type BuildSearchExpandPlanInput = {
+type BuildSearchExpandPlanInput = {
   matchedPaths: string[];
   activeIndex: number;
   autoExpandMatchLimit: number;
@@ -6,7 +6,7 @@ export type BuildSearchExpandPlanInput = {
   totalMatchedCount: number;
 };
 
-export type BuildSearchExpandPlanResult = {
+type BuildSearchExpandPlanResult = {
   expandedDirSet: Set<string>;
   mode: "all-matches" | "active-only";
 };

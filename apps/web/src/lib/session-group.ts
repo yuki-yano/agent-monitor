@@ -6,7 +6,7 @@ export type SessionGroup = {
   lastInputAt: string | null;
 };
 
-export type BuildSessionGroupOptions = {
+type BuildSessionGroupOptions = {
   getRepoSortAnchorAt?: (repoRoot: string | null) => number | null;
 };
 

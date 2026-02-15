@@ -92,7 +92,7 @@ export type SessionApi = {
   updateSessionTitle: (paneId: string, title: string | null) => Promise<void>;
 };
 
-export type ConnectionStatus = "healthy" | "degraded" | "disconnected";
+type ConnectionStatus = "healthy" | "degraded" | "disconnected";
 
 export const paneIdAtom = atom<string | null>(null);
 export const sessionsAtom = atom<SessionSummary[]>([]);

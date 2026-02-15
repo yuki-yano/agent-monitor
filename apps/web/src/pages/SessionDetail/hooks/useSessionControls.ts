@@ -89,7 +89,7 @@ const shouldSkipTextSend = ({ rawMode, value }: { rawMode: boolean; value: strin
 const buildSendTextRequestId = () =>
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
-export const insertIntoTextarea = (textarea: HTMLTextAreaElement, insertText: string) => {
+const insertIntoTextarea = (textarea: HTMLTextAreaElement, insertText: string) => {
   const start = textarea.selectionStart ?? textarea.value.length;
   const end = textarea.selectionEnd ?? start;
   const current = textarea.value;
@@ -102,10 +102,7 @@ export const insertIntoTextarea = (textarea: HTMLTextAreaElement, insertText: st
 
 const isWhitespace = (char: string) => /\s/u.test(char);
 
-export const buildImagePathInsertText = (
-  textarea: HTMLTextAreaElement,
-  imagePath: string,
-): string => {
+const buildImagePathInsertText = (textarea: HTMLTextAreaElement, imagePath: string): string => {
   const start = textarea.selectionStart ?? textarea.value.length;
   const previousChar = start > 0 ? (textarea.value[start - 1] ?? "") : "";
   const prefix = start > 0 && !isWhitespace(previousChar) ? "\n" : "";

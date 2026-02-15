@@ -19,7 +19,7 @@ const resolveErrorMessage = (error: unknown) => {
   return "unknown error";
 };
 
-export type PaneOutputSnapshot = {
+type PaneOutputSnapshot = {
   paneId: string;
   paneActivity: number | null;
   windowActivity: number | null;

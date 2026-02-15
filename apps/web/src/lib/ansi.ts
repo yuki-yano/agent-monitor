@@ -79,11 +79,6 @@ const buildAnsiToHtml = (theme: Theme, options?: { stream?: boolean }) =>
     ...options,
   });
 
-const ansiToHtmlByTheme: Record<Theme, AnsiToHtml> = {
-  latte: buildAnsiToHtml("latte"),
-  mocha: buildAnsiToHtml("mocha"),
-};
-
 const fallbackByTheme: Record<Theme, { background: string; text: string }> = {
   latte: { background: "#e6e9ef", text: "#4c4f69" },
   mocha: { background: "#313244", text: "#cdd6f4" },
@@ -346,11 +341,6 @@ const normalizeClaudePromptBackgrounds = (renderedLines: string[], plainLines: s
     index = endExclusive;
   }
   return normalized;
-};
-
-export const renderAnsi = (text: string, theme: Theme = "latte"): string => {
-  const html = ansiToHtmlByTheme[theme].toHtml(sanitizeAnsiForHtml(text));
-  return adjustLowContrast(html, theme);
 };
 
 export const renderAnsiLines = (

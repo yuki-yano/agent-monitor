@@ -9,7 +9,7 @@ export type SearchWordMatch = {
   isIgnored: boolean;
 };
 
-export const tokenizeQuery = (query: string) => {
+const tokenizeQuery = (query: string) => {
   const rawTokens = query
     .split(/\s+/)
     .map((token) => token.trim().toLowerCase())
@@ -17,10 +17,7 @@ export const tokenizeQuery = (query: string) => {
   return Array.from(new Set(rawTokens));
 };
 
-export const buildWordSearchMatch = (
-  item: SearchIndexItem,
-  tokens: string[],
-): SearchWordMatch | null => {
+const buildWordSearchMatch = (item: SearchIndexItem, tokens: string[]): SearchWordMatch | null => {
   const lowerName = item.name.toLowerCase();
   const lowerPath = item.path.toLowerCase();
   const highlightSet = new Set<number>();

@@ -20,7 +20,7 @@ export type PaneSnapshot = {
   alternateOn: boolean;
 };
 
-export const resolveSessionTitle = (
+const resolveSessionTitle = (
   paneTitle: string | null,
   currentPath: string | null,
   paneId: string,

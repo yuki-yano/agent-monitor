@@ -29,7 +29,7 @@ export type PersistedTimelineEvent = {
   source: SessionStateTimelineSource;
 };
 
-export type PersistedTimelineRecord = Record<string, PersistedTimelineEvent[]>;
+type PersistedTimelineRecord = Record<string, PersistedTimelineEvent[]>;
 
 type PersistedState = {
   version: 2;
@@ -42,7 +42,7 @@ const getStatePath = () => {
   return path.join(os.homedir(), ".vde-monitor", "state.json");
 };
 
-export const loadState = (): PersistedState | null => {
+const loadState = (): PersistedState | null => {
   try {
     const raw = fs.readFileSync(getStatePath(), "utf8");
     const parsed = JSON.parse(raw) as unknown;

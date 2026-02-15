@@ -7,7 +7,6 @@ import {
 
 import { stripAnsi } from "@/lib/ansi-text-utils";
 
-export type { LastInputTone } from "@/lib/session-format";
 export {
   agentLabelFor,
   agentToneFor,

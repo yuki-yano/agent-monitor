@@ -1,6 +1,6 @@
 import type { ScreenMode } from "@/lib/screen-loading";
 
-export type ScreenFetchInFlight = {
+type ScreenFetchInFlight = {
   id: number;
   mode: ScreenMode;
 };
@@ -16,7 +16,7 @@ export type ScreenFetchLifecycleAttempt = {
   shouldShowLoading: boolean;
 };
 
-export type ScreenFetchLifecycleState = {
+type ScreenFetchLifecycleState = {
   inFlight: ScreenFetchInFlight | null;
   nextRequestId: number;
   latestAttempt: ScreenFetchLifecycleAttempt | null;

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import type { SidebarPreview } from "./useSidebarPreview";
 
-export type SessionSidebarPreviewPopoverModel = {
+type SessionSidebarPreviewPopoverModel = {
   frame: SidebarPreview["frame"];
   title: string;
   sessionName: string | null;

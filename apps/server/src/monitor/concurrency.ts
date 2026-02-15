@@ -1,4 +1,4 @@
-export type SettledMapResult<R> =
+type SettledMapResult<R> =
   | { status: "fulfilled"; value: R }
   | { status: "rejected"; reason: unknown };
 

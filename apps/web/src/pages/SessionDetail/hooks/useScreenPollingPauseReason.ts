@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 
-export type PollingPauseReason = "disconnected" | "unauthorized" | "offline" | "hidden" | null;
+type PollingPauseReason = "disconnected" | "unauthorized" | "offline" | "hidden" | null;
 
 const resolvePollingPauseReason = ({
   connected,

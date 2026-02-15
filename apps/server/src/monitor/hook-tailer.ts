@@ -7,7 +7,7 @@ export type HookEventContext = {
   hookState: HookStateSignal;
 };
 
-export type HookPaneSnapshot = {
+type HookPaneSnapshot = {
   paneId: string;
   paneTty: string | null;
   currentPath: string | null;

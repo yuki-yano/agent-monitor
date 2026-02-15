@@ -1,4 +1,4 @@
-import type { SessionSummary, WorktreeList, WorktreeListEntry } from "@vde-monitor/shared";
+import type { SessionSummary, WorktreeList } from "@vde-monitor/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const VIRTUAL_WORKTREE_STORAGE_KEY_PREFIX = "vde-monitor:virtual-worktree:v1";
@@ -262,20 +262,4 @@ export const useSessionVirtualWorktree = ({
     clearVirtualWorktree,
     refreshWorktrees,
   };
-};
-
-export type SessionVirtualWorktreeState = {
-  selectorEnabled: boolean;
-  loading: boolean;
-  error: string | null;
-  repoRoot: string | null;
-  baseBranch: string | null;
-  entries: WorktreeListEntry[];
-  actualWorktreePath: string | null;
-  virtualWorktreePath: string | null;
-  effectiveWorktreePath: string | null;
-  effectiveBranch: string | null;
-  selectVirtualWorktree: (path: string) => void;
-  clearVirtualWorktree: () => void;
-  refreshWorktrees: () => Promise<void>;
 };

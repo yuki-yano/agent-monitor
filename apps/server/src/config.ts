@@ -1,4 +1,4 @@
-import type { AgentMonitorConfig, AgentMonitorConfigFile } from "@vde-monitor/shared";
+import type { AgentMonitorConfigFile } from "@vde-monitor/shared";
 import { defaultConfig } from "@vde-monitor/shared";
 
 import {
@@ -12,14 +12,9 @@ import {
 import { ensureToken, generateToken, saveToken } from "./token-store";
 
 export {
-  getConfigDir,
-  getConfigPath,
-  loadConfig,
-  loadProjectConfigOverride,
   mergeConfigLayers,
   resolveProjectConfigPath,
   resolveProjectConfigSearchBoundary,
-  saveConfig,
 } from "./config-loader";
 
 export const ensureConfig = (overrides?: Partial<AgentMonitorConfigFile>) => {
@@ -55,11 +50,4 @@ export const rotateToken = () => {
   const token = generateToken();
   saveToken(token);
   return { ...config, token };
-};
-
-export const applyRuntimeOverrides = (
-  config: AgentMonitorConfig,
-  overrides: Partial<AgentMonitorConfig>,
-) => {
-  return { ...config, ...overrides };
 };

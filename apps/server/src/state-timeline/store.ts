@@ -14,21 +14,13 @@ const RANGE_MS: Record<SessionStateTimelineRange, number> = {
   "24h": 24 * 60 * 60 * 1000,
 };
 
-const ALL_STATES: SessionStateValue[] = [
-  "RUNNING",
-  "WAITING_INPUT",
-  "WAITING_PERMISSION",
-  "SHELL",
-  "UNKNOWN",
-];
-
 const DEFAULT_RETENTION_MS = RANGE_MS["24h"];
 const DEFAULT_LIMIT = 200;
 const DEFAULT_MAX_ITEMS_PER_PANE = 1000;
 
 type TimelineEvent = Omit<SessionStateTimelineItem, "durationMs">;
-export type SessionTimelinePersistedEvent = TimelineEvent;
-export type SessionTimelinePersistedEvents = Record<string, SessionTimelinePersistedEvent[]>;
+type SessionTimelinePersistedEvent = TimelineEvent;
+type SessionTimelinePersistedEvents = Record<string, SessionTimelinePersistedEvent[]>;
 
 type StoreOptions = {
   now?: () => Date;
@@ -553,6 +545,3 @@ export const createSessionTimelineStore = (options: StoreOptions = {}) => {
 
   return { record, closePane, getTimeline, getRepoTimeline, reset, serialize, restore };
 };
-
-export const timelineRangeMs = RANGE_MS;
-export const timelineAllStates = ALL_STATES;

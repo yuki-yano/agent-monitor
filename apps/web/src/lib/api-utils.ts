@@ -13,7 +13,7 @@ type RequestJsonOptions = {
   timeoutMessage?: string;
 };
 
-export const readJsonSafe = async <T>(res: Response): Promise<T | null> => {
+const readJsonSafe = async <T>(res: Response): Promise<T | null> => {
   try {
     return (await res.json()) as T;
   } catch {
@@ -110,7 +110,7 @@ export const extractErrorMessage = (
   return fallback;
 };
 
-export const ensureOk = <T>(
+const ensureOk = <T>(
   res: Response,
   data: ApiEnvelope<T> | null,
   fallback: string,

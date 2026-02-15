@@ -2,7 +2,7 @@ import type { AllowedKey, ApiError, PaneMeta, RawItem } from "@vde-monitor/share
 
 export type MultiplexerBackend = "tmux" | "wezterm";
 
-export type MultiplexerTextCaptureOptions = {
+type MultiplexerTextCaptureOptions = {
   paneId: string;
   lines: number;
   joinLines: boolean;
@@ -13,7 +13,7 @@ export type MultiplexerTextCaptureOptions = {
   currentCommand?: string | null;
 };
 
-export type MultiplexerTextCaptureResult = {
+type MultiplexerTextCaptureResult = {
   screen: string;
   truncated: boolean | null;
   alternateOn: boolean;

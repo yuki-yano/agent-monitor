@@ -1,6 +1,6 @@
 import { execa } from "execa";
 
-export type RunGitOptions = {
+type RunGitOptions = {
   timeoutMs?: number;
   maxBuffer?: number;
   allowStdoutOnError?: boolean;

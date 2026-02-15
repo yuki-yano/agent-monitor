@@ -7,7 +7,7 @@ import type { RefreshSessionsResult } from "./use-session-api";
 const RATE_LIMIT_BACKOFF_STEP_MS = 5000;
 const MAX_RATE_LIMIT_STEPS = 3;
 
-export type ConnectionStatus = "healthy" | "degraded" | "disconnected";
+type ConnectionStatus = "healthy" | "degraded" | "disconnected";
 
 export const useSessionConnectionState = (token: string | null) => {
   const [connectionIssue, setConnectionIssue] = useState<string | null>(null);

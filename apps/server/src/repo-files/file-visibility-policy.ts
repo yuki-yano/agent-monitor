@@ -16,7 +16,7 @@ export type FileVisibilityPolicy = {
   planDirectoryTraversal: (input: PlanDirectoryTraversalInput) => Set<string>;
 };
 
-export type FileVisibilityPolicyDeps = {
+type FileVisibilityPolicyDeps = {
   gitignorePatterns: string[];
   includeIgnoredPaths: string[];
 };

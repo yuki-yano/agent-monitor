@@ -75,7 +75,7 @@ export const formatWorktreeFlag = (value: boolean | null | undefined) => {
   return value ? "Y" : "N";
 };
 
-export type WorktreeFlagKind = "dirty" | "locked" | "pr" | "merged";
+type WorktreeFlagKind = "dirty" | "locked" | "pr" | "merged";
 
 const WORKTREE_FLAG_CLASS_MAP: Record<WorktreeFlagKind, string> = {
   dirty: "border-latte-red/45 bg-latte-red/10 text-latte-red font-mono",
@@ -114,7 +114,7 @@ export const formatRelativeTime = (value: string | null, nowMs: number) => {
   return `${diffDay}d ago`;
 };
 
-export type LastInputTone = {
+type LastInputTone = {
   pill: string;
   dot: string;
 };

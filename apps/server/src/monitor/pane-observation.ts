@@ -22,7 +22,7 @@ export type PaneObservationDeps = {
   estimateSessionState?: typeof estimateSessionState;
 };
 
-export type ObservePaneArgs = {
+type ObservePaneArgs = {
   pane: PaneMeta;
   config: AgentMonitorConfig;
   paneStates: PaneStateStore;

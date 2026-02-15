@@ -8,7 +8,7 @@ import type { createScreenCache } from "../../screen/screen-cache";
 
 export type Monitor = ReturnType<typeof createSessionMonitor>;
 export type CommandPayload = Parameters<typeof createCommandResponse>[0]["payload"];
-export type CommandResponseResult = ReturnType<typeof createCommandResponse>;
+type CommandResponseResult = ReturnType<typeof createCommandResponse>;
 export type CommandLimiter = ReturnType<typeof createRateLimiter>;
 export type ScreenCache = ReturnType<typeof createScreenCache>;
 
@@ -26,7 +26,7 @@ export type RouteContext = {
   json: (body: unknown, status?: number) => Response;
 };
 
-export type PaneResolution = {
+type PaneResolution = {
   paneId: string;
   detail: SessionDetail;
 };

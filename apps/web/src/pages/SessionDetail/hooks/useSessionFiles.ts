@@ -412,5 +412,3 @@ export const useSessionFiles = ({
     onLoadMoreSearch,
   };
 };
-
-export type SessionFilesViewModel = ReturnType<typeof useSessionFiles>;

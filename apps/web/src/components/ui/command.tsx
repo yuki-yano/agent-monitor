@@ -86,24 +86,4 @@ const CommandItem = forwardRef<
 ));
 CommandItem.displayName = CommandPrimitive.Item.displayName;
 
-const CommandSeparator = forwardRef<
-  ElementRef<typeof CommandPrimitive.Separator>,
-  ComponentPropsWithoutRef<typeof CommandPrimitive.Separator>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive.Separator
-    ref={ref}
-    className={cn("bg-latte-surface2/70 -mx-1 h-px", className)}
-    {...props}
-  />
-));
-CommandSeparator.displayName = CommandPrimitive.Separator.displayName;
-
-export {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-};
+export { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList };

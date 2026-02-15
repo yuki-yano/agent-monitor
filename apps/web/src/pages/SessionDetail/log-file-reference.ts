@@ -1,11 +1,11 @@
-export type NormalizedLogReference = {
+type NormalizedLogReference = {
   display: string;
   normalizedPath: string | null;
   filename: string | null;
   kind: "path" | "filename" | "unknown";
 };
 
-export type LogReferenceLocation = {
+type LogReferenceLocation = {
   line: number | null;
   column: number | null;
 };

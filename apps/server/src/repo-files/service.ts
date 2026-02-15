@@ -169,4 +169,4 @@ export const createRepoFileService = ({
   };
 };
 
-export type { RepoFileService, RepoFileServiceError };
+export type { RepoFileServiceError };

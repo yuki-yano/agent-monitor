@@ -44,7 +44,4 @@ export const isShellCommand = (command: string | null | undefined) => {
   return shellCommandNames.has(binary);
 };
 
-export const hasAgentHint = (value: string | null | undefined) =>
-  Boolean(value && agentHintPattern.test(value));
-
 export const normalizeTty = (tty: string) => tty.replace(/^\/dev\//, "");

@@ -7,7 +7,7 @@ import { runGit } from "../../git-utils";
 import { resolveRepoBranchCached } from "../../monitor/repo-branch";
 import { resolveVwWorktreeSnapshotCached } from "../../monitor/vw-worktree";
 
-export type WorktreeListPayload = WorktreeList;
+type WorktreeListPayload = WorktreeList;
 type WorktreePathValidationPayload = Pick<WorktreeListPayload, "entries">;
 
 type WorktreeSource = Pick<SessionDetail, "repoRoot" | "currentPath">;

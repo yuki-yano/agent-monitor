@@ -46,7 +46,7 @@ type DeltaSegment = {
   lengthBytes: number;
 };
 
-export type ExternalInputDetectArgs = {
+type ExternalInputDetectArgs = {
   paneId: string;
   isAgentPane: boolean;
   logPath: string | null;

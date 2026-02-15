@@ -36,7 +36,7 @@ type BuildTimelineDisplayOptions = {
   minVisibleDurationMs?: number;
 };
 
-export type TimelineDisplay = {
+type TimelineDisplay = {
   items: SessionStateTimelineItem[];
   totalsMs: Record<SessionStateValue, number>;
   current: SessionStateTimelineItem | null;

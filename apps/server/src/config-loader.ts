@@ -6,11 +6,11 @@ import { configOverrideSchema, configSchema, resolveConfigDir } from "@vde-monit
 
 const PROJECT_CONFIG_RELATIVE_PATH = path.join(".vde", "monitor", "config.json");
 
-export const getConfigDir = () => {
+const getConfigDir = () => {
   return resolveConfigDir();
 };
 
-export const getConfigPath = () => {
+const getConfigPath = () => {
   return path.join(getConfigDir(), "config.json");
 };
 

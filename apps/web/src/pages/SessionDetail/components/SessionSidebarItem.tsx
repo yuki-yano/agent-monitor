@@ -33,7 +33,7 @@ const sidebarSessionBorderClassByState: Record<SessionSummary["state"], string> 
 
 const sidebarEditorSessionBorderClass = "border-latte-maroon/55";
 
-export type SessionSidebarItemProps = {
+type SessionSidebarItemProps = {
   item: SessionSummary;
   nowMs: number;
   isCurrent: boolean;

@@ -1,7 +1,7 @@
 import type { SessionDetail, SessionSummary } from "@vde-monitor/shared";
 
-export type SessionChangeListener = (session: SessionSummary) => void;
-export type SessionRemovedListener = (paneId: string) => void;
+type SessionChangeListener = (session: SessionSummary) => void;
+type SessionRemovedListener = (paneId: string) => void;
 
 const toSummary = (detail: SessionDetail): SessionSummary => {
   const { startCommand: _startCommand, panePid: _panePid, ...summary } = detail;

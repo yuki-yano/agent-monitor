@@ -5,7 +5,7 @@ import path from "node:path";
 import { encodePaneId } from "@vde-monitor/shared";
 
 export const IMAGE_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
-export const IMAGE_ATTACHMENT_CONTENT_LENGTH_GRACE_BYTES = 64 * 1024;
+const IMAGE_ATTACHMENT_CONTENT_LENGTH_GRACE_BYTES = 64 * 1024;
 export const IMAGE_ATTACHMENT_MAX_CONTENT_LENGTH_BYTES =
   IMAGE_ATTACHMENT_MAX_BYTES + IMAGE_ATTACHMENT_CONTENT_LENGTH_GRACE_BYTES;
 const ATTACHMENT_TTL_MS = 24 * 60 * 60 * 1000;
@@ -189,14 +189,14 @@ export class ImageAttachmentError extends Error {
   }
 }
 
-export type SaveImageAttachmentInput = {
+type SaveImageAttachmentInput = {
   paneId: string;
   repoRoot: string | null;
   file: File;
   now?: Date;
 };
 
-export type SaveImageAttachmentResult = {
+type SaveImageAttachmentResult = {
   path: string;
   mimeType: AllowedImageMimeType;
   size: number;

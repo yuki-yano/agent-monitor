@@ -2,13 +2,13 @@ import { createHighlighter } from "shiki";
 
 type HighlightTheme = "latte" | "mocha";
 
-export type HighlightInput = {
+type HighlightInput = {
   code: string;
   lang: string | null;
   theme: HighlightTheme;
 };
 
-export type HighlightResult = {
+type HighlightResult = {
   html: string;
   language: string;
 };

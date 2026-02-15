@@ -126,7 +126,7 @@ export const ensureLineContent = (html: string): string => {
   return `${html}${placeholder}`;
 };
 
-export const normalizeLineBreaks = (text: string) => text.replace(/\r\n/g, "\n");
+const normalizeLineBreaks = (text: string) => text.replace(/\r\n/g, "\n");
 
 export const splitLines = (text: string) => normalizeLineBreaks(text).split("\n");
 
@@ -306,7 +306,7 @@ const getCharacterDisplayWidth = (char: string): number => {
   return isFullWidthCodePoint(codePoint) ? 2 : 1;
 };
 
-export const getTextDisplayWidth = (text: string): number =>
+const getTextDisplayWidth = (text: string): number =>
   Array.from(text).reduce((width, char) => width + getCharacterDisplayWidth(char), 0);
 const escapeHtml = (value: string) =>
   value
@@ -502,5 +502,3 @@ export const normalizeMarkdownPipeTableLines = (lines: string[]): string[] => {
 
 export const wrapLineBackground = (html: string, color: string): string =>
   `<span style="background-color:${color}; display:block; width:100%;">${html}</span>`;
-
-export const hasVisibleText = (line: string): boolean => stripAnsi(line).length > 0;

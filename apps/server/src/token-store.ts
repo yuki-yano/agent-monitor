@@ -28,7 +28,7 @@ export const generateToken = () => {
   return crypto.randomBytes(32).toString("hex");
 };
 
-export const loadToken = (): string | null => {
+const loadToken = (): string | null => {
   const tokenPath = getTokenPath();
   try {
     const raw = fs.readFileSync(tokenPath, "utf8");

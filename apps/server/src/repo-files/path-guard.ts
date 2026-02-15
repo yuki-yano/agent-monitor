@@ -19,7 +19,7 @@ const isOutsideRepoRoot = (repoRoot: string, targetPath: string) => {
   return relative.startsWith("..") || path.isAbsolute(relative);
 };
 
-export type PathGuardError = {
+type PathGuardError = {
   code: "INVALID_PATH" | "FORBIDDEN_PATH";
   message: string;
 };
@@ -74,12 +74,4 @@ export const resolveRepoAbsolutePath = (repoRoot: string, relativePath: string) 
     throwPathGuardError("FORBIDDEN_PATH", "path must stay within repo root");
   }
   return absoluteTarget;
-};
-
-export const toRepoRelativePath = (repoRoot: string, absolutePath: string) => {
-  const relative = path.relative(path.resolve(repoRoot), absolutePath);
-  if (!relative || relative === ".") {
-    return ".";
-  }
-  return toPosixSeparators(relative);
 };

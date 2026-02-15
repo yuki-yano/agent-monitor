@@ -1,4 +1,4 @@
-export type ScreenDelta = {
+type ScreenDelta = {
   start: number;
   deleteCount: number;
   insertLines: string[];

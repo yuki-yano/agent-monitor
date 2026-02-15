@@ -1,7 +1,7 @@
 import { AlertTriangle, Circle, Clock, Loader2, Sparkles, Zap } from "lucide-react";
 import type { ComponentType } from "react";
 
-export type IconMeta = {
+type IconMeta = {
   icon: ComponentType<{ className?: string }>;
   className: string;
   wrap: string;
