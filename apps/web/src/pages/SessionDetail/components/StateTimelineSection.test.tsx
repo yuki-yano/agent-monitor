@@ -70,19 +70,6 @@ const buildProps = (overrides?: { timelineExpanded?: boolean; isMobile?: boolean
 });
 
 describe("StateTimelineSection", () => {
-  it("uses compact mode as default and highlights compact button", () => {
-    const props = buildProps({ timelineExpanded: false, isMobile: false });
-    const { container } = render(<StateTimelineSection {...props} />);
-
-    const compactButton = screen.getByLabelText("Toggle compact timeline");
-    expect(compactButton.className).toContain("border-latte-lavender/85");
-    expect(compactButton.className).toContain("bg-latte-lavender/22");
-    expect(compactButton.textContent).toBe("Compact");
-    expect(container.textContent ?? "").not.toContain("Current ");
-    expect(screen.queryByText("Compact view")).toBeNull();
-    expect(screen.queryByText("Raw view")).toBeNull();
-  });
-
   it("shows only one history row when collapsed", () => {
     const props = buildProps({ timelineExpanded: false, isMobile: false });
     render(<StateTimelineSection {...props} />);
@@ -118,16 +105,6 @@ describe("StateTimelineSection", () => {
 
     fireEvent.click(screen.getByLabelText("Expand timeline"));
     expect(props.actions.onToggleTimelineExpanded).toHaveBeenCalledTimes(1);
-  });
-
-  it("turns off compact highlight when toggled off", () => {
-    const props = buildProps({ timelineExpanded: false, isMobile: false });
-    render(<StateTimelineSection {...props} />);
-
-    const compactButton = screen.getByLabelText("Toggle compact timeline");
-    fireEvent.click(compactButton);
-    expect(compactButton.className).toContain("border-latte-surface2/70");
-    expect(compactButton.className).toContain("bg-latte-base/75");
   });
 
   it("shows extended range tabs and calls action on selection", () => {

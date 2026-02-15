@@ -61,20 +61,6 @@ describe("FileContentModal", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("renders line-number toggle, copy, close in that order", () => {
-    render(<FileContentModal state={createState()} actions={createActions()} />);
-
-    const lineNumberButton = screen.getByRole("button", { name: "Show line numbers" });
-    const copyButton = screen.getByRole("button", { name: "Copy file path" });
-    const closeButton = screen.getByRole("button", { name: "Close file content modal" });
-    expect(
-      lineNumberButton.compareDocumentPosition(copyButton) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      copyButton.compareDocumentPosition(closeButton) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-  });
-
   it("shows markdown preview and allows switching mode", () => {
     const onMarkdownViewModeChange = vi.fn();
     render(

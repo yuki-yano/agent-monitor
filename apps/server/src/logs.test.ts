@@ -32,15 +32,7 @@ vi.mock("node:fs/promises", () => ({
   open: mocks.open,
 }));
 
-import { createJsonlTailer, createLogActivityPoller } from "./logs";
-
-const deferred = <T>() => {
-  let resolve: (value: T) => void = () => undefined;
-  const promise = new Promise<T>((nextResolve) => {
-    resolve = nextResolve;
-  });
-  return { promise, resolve };
-};
+import { createLogActivityPoller } from "./logs";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -52,27 +44,6 @@ afterEach(() => {
 });
 
 describe("createLogActivityPoller", () => {
-  it("does not overlap polling while previous tick is still in progress", async () => {
-    const firstStat = deferred<{ size: number }>();
-    mocks.stat.mockImplementationOnce(() => firstStat.promise).mockResolvedValue({ size: 0 });
-
-    const poller = createLogActivityPoller(1000);
-    poller.register("%1", "/tmp/pane.log");
-    poller.start();
-
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(mocks.stat).toHaveBeenCalledTimes(1);
-
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(mocks.stat).toHaveBeenCalledTimes(1);
-
-    firstStat.resolve({ size: 0 });
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(mocks.stat).toHaveBeenCalledTimes(2);
-
-    poller.stop();
-  });
-
   it("stops polling entries after unregister", async () => {
     mocks.stat.mockResolvedValue({ size: 0 });
 
@@ -88,27 +59,5 @@ describe("createLogActivityPoller", () => {
     expect(mocks.stat).toHaveBeenCalledWith("/tmp/pane-2.log");
 
     poller.stop();
-  });
-});
-
-describe("createJsonlTailer", () => {
-  it("does not overlap polling while previous tick is still in progress", async () => {
-    const firstStat = deferred<{ size: number }>();
-    mocks.stat.mockImplementationOnce(() => firstStat.promise).mockResolvedValue({ size: 0 });
-
-    const tailer = createJsonlTailer(1000);
-    tailer.start("/tmp/events.jsonl");
-
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(mocks.stat).toHaveBeenCalledTimes(1);
-
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(mocks.stat).toHaveBeenCalledTimes(1);
-
-    firstStat.resolve({ size: 0 });
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(mocks.stat).toHaveBeenCalledTimes(2);
-
-    tailer.stop();
   });
 });

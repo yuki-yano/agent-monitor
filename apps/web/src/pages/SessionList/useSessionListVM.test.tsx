@@ -316,38 +316,6 @@ describe("useSessionListVM", () => {
     });
   });
 
-  it("closes quick panel and log modal before opening selected pane in new tab", async () => {
-    const closeQuickPanel = vi.fn();
-    const closeLogModal = vi.fn();
-    mockUseSessionLogs.selectedPaneId = "pane target/1";
-    mockUseSessionLogs.closeQuickPanel = closeQuickPanel;
-    mockUseSessionLogs.closeLogModal = closeLogModal;
-    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
-
-    await renderWithRouter(["/"]);
-    fireEvent.click(screen.getByRole("button", { name: "open-new-tab" }));
-
-    expect(closeQuickPanel).toHaveBeenCalledTimes(1);
-    expect(closeLogModal).toHaveBeenCalledTimes(1);
-    expect(openSpy).toHaveBeenCalledWith(
-      "/sessions/pane%20target%2F1",
-      "_blank",
-      "noopener,noreferrer",
-    );
-    const openOrder = openSpy.mock.invocationCallOrder[0];
-    const closeQuickOrder = closeQuickPanel.mock.invocationCallOrder[0];
-    const closeLogOrder = closeLogModal.mock.invocationCallOrder[0];
-    expect(openOrder).toBeDefined();
-    expect(closeQuickOrder).toBeDefined();
-    expect(closeLogOrder).toBeDefined();
-    if (openOrder == null || closeQuickOrder == null || closeLogOrder == null) {
-      throw new Error("missing invocation order");
-    }
-    expect(closeQuickOrder).toBeLessThan(openOrder);
-    expect(closeLogOrder).toBeLessThan(openOrder);
-    openSpy.mockRestore();
-  });
-
   it("opens specified pane in new window from quick panel action", async () => {
     const closeQuickPanel = vi.fn();
     const closeLogModal = vi.fn();

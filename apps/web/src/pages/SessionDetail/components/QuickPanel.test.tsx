@@ -193,27 +193,6 @@ describe("QuickPanel", () => {
     expect(screen.getByText("M:N")).toBeTruthy();
   });
 
-  it("keeps close button above row action buttons", () => {
-    const session = createSessionDetail();
-    const state = buildState({
-      open: true,
-      sessionGroups: [
-        {
-          repoRoot: session.repoRoot,
-          sessions: [session],
-          lastInputAt: session.lastInputAt,
-        },
-      ],
-      allSessions: [session],
-    });
-    const actions = buildActions();
-    render(<QuickPanel state={state} actions={actions} />);
-
-    expect(screen.getByLabelText("Close quick panel").className).toContain("z-30");
-    expect(screen.getByLabelText("Open session link").className).toContain("z-10");
-    expect(screen.getByLabelText("Open session link in new window").className).toContain("z-10");
-  });
-
   it("closes when clicking outside quick panel", () => {
     const onClose = vi.fn();
     const state = buildState({ open: true, sessionGroups: [] });

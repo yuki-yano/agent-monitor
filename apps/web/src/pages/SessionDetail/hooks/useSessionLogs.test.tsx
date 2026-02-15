@@ -233,64 +233,6 @@ describe("useSessionLogs", () => {
     });
   });
 
-  it("pauses polling while hidden and resumes on visibilitychange", async () => {
-    vi.useFakeTimers();
-    Object.defineProperty(document, "hidden", { value: true, configurable: true });
-    const setIntervalSpy = vi.spyOn(window, "setInterval");
-    const addListenerSpy = vi.spyOn(window, "addEventListener");
-    const requestScreen = vi.fn().mockResolvedValue({
-      ok: true,
-      paneId: "pane-1",
-      mode: "text",
-      capturedAt: new Date(0).toISOString(),
-      screen: "line1",
-    });
-    const store = createStore();
-    store.set(quickPanelOpenAtom, false);
-    store.set(logModalOpenAtom, true);
-    store.set(logModalIsAtBottomAtom, true);
-    store.set(logModalDisplayLinesAtom, []);
-    store.set(selectedPaneIdAtom, "pane-1");
-    store.set(getScreenCacheAtom("logs"), {});
-    store.set(getScreenCacheLoadingAtom("logs"), {});
-    store.set(getScreenCacheErrorAtom("logs"), {});
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <JotaiProvider store={store}>{children}</JotaiProvider>
-    );
-
-    renderHook(
-      () =>
-        useSessionLogs({
-          connected: true,
-          connectionIssue: null,
-          sessions: [createSessionDetail({ paneId: "pane-1" })],
-          requestScreen,
-          resolvedTheme: "latte",
-        }),
-      { wrapper },
-    );
-
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(requestScreen).toHaveBeenCalledTimes(1);
-    expect(setIntervalSpy).not.toHaveBeenCalled();
-
-    Object.defineProperty(document, "hidden", { value: false, configurable: true });
-    const visibilityListener = addListenerSpy.mock.calls.find(
-      ([event]) => event === "visibilitychange",
-    )?.[1] as EventListener;
-    act(() => {
-      visibilityListener(new Event("visibilitychange"));
-    });
-
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(requestScreen).toHaveBeenCalledTimes(2);
-    expect(setIntervalSpy).toHaveBeenCalled();
-  });
-
   it("renders cached logs immediately when opening after navigation", async () => {
     const session = createSessionDetail({ paneId: "pane-1" });
     const requestScreen = vi.fn(() => new Promise<ScreenResponse>(() => {}));

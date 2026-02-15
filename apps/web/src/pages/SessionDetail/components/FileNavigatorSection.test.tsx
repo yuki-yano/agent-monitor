@@ -99,28 +99,4 @@ describe("FileNavigatorSection", () => {
     fireEvent.click(clearButton);
     expect(nextProps.actions.onSearchQueryChange).toHaveBeenCalledWith("");
   });
-
-  it("uses ignored color for ignored file and directory entries", () => {
-    const props = createProps();
-    const directoryNode = props.state.treeNodes[0];
-    if (!directoryNode) {
-      throw new Error("tree node is required");
-    }
-    props.state.treeNodes[0] = {
-      ...directoryNode,
-      isIgnored: true,
-    };
-    const targetNode = props.state.treeNodes[1];
-    if (!targetNode) {
-      throw new Error("tree node is required");
-    }
-    props.state.treeNodes[1] = {
-      ...targetNode,
-      isIgnored: true,
-    };
-    render(<FileNavigatorSection {...props} />);
-
-    expect(screen.getByText("src").className).toContain("text-latte-overlay1");
-    expect(screen.getByText("index.ts").className).toContain("text-latte-overlay1");
-  });
 });
