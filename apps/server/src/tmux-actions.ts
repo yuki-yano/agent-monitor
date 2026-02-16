@@ -1,5 +1,4 @@
 import { stat } from "node:fs/promises";
-import path from "node:path";
 
 import type {
   AgentMonitorConfig,
@@ -19,6 +18,7 @@ import { markPaneFocus } from "./activity-suppressor";
 import { setMapEntryWithLimit } from "./cache";
 import { buildError, toErrorMessage } from "./errors";
 import { resolveVwWorktreeSnapshotCached } from "./monitor/vw-worktree";
+import { normalizeAbsolutePath } from "./path-normalization";
 import { resolveBackendApp } from "./screen/macos-app";
 import { focusTerminalApp, isAppRunning } from "./screen/macos-applescript";
 import { focusTmuxPane } from "./screen/tmux-geometry";
@@ -420,9 +420,11 @@ export const createTmuxActions = (adapter: TmuxAdapter, config: AgentMonitorConf
   };
 
   const normalizePathValue = (value: string): string => {
-    const resolved = path.resolve(value);
-    const normalized = resolved.replace(/[\\/]+$/, "");
-    return normalized.length > 0 ? normalized : path.sep;
+    const normalized = normalizeAbsolutePath(value);
+    if (normalized) {
+      return normalized;
+    }
+    return normalizeAbsolutePath(process.cwd()) ?? process.cwd();
   };
 
   const resolveSessionSnapshotCwd = async (
