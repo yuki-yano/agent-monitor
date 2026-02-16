@@ -1,19 +1,5 @@
 import { useMemo } from "react";
 
-import {
-  buildActionsSection,
-  buildCommitsSection,
-  buildControlsSection,
-  buildFilesSection,
-  buildLayoutSection,
-  buildLogsSection,
-  buildMetaSection,
-  buildNotesSection,
-  buildScreenSection,
-  buildSidebarSection,
-  buildTimelineSection,
-  buildTitleSection,
-} from "./hooks/session-detail-vm-section-builders";
 import { useSessionCommits } from "./hooks/useSessionCommits";
 import { useSessionDetailLayoutState } from "./hooks/useSessionDetailLayoutState";
 import { useSessionDetailScreenControls } from "./hooks/useSessionDetailScreenControls";
@@ -272,14 +258,14 @@ export const useSessionDetailVM = (paneId: string) => {
   } = useSessionDetailLayoutState();
 
   return {
-    meta: buildMetaSection({
+    meta: {
       paneId,
       session,
       nowMs,
       connected,
       connectionIssue,
-    }),
-    sidebar: buildSidebarSection({
+    },
+    sidebar: {
       sessionGroups,
       getRepoSortAnchorAt,
       connected,
@@ -290,16 +276,16 @@ export const useSessionDetailVM = (paneId: string) => {
       requestScreen,
       highlightCorrections,
       resolvedTheme,
-    }),
-    layout: buildLayoutSection({
+    },
+    layout: {
       is2xlUp,
       sidebarWidth,
       handleSidebarPointerDown,
       detailSplitRatio,
       detailSplitRef,
       handleDetailSplitPointerDown,
-    }),
-    timeline: buildTimelineSection({
+    },
+    timeline: {
       timeline,
       timelineScope,
       timelineRange,
@@ -312,8 +298,8 @@ export const useSessionDetailVM = (paneId: string) => {
       setTimelineRange,
       toggleTimelineExpanded,
       refreshTimeline,
-    }),
-    screen: buildScreenSection({
+    },
+    screen: {
       mode,
       screenLines,
       imageBase64,
@@ -344,8 +330,8 @@ export const useSessionDetailVM = (paneId: string) => {
       virtualWorktreePath: virtualWorktree.virtualWorktreePath,
       selectVirtualWorktree: virtualWorktree.selectVirtualWorktree,
       clearVirtualWorktree: virtualWorktree.clearVirtualWorktree,
-    }),
-    controls: buildControlsSection({
+    },
+    controls: {
       interactive: connectionStatus !== "disconnected",
       textInputRef,
       autoEnter,
@@ -369,12 +355,12 @@ export const useSessionDetailVM = (paneId: string) => {
       toggleCtrl,
       toggleRawMode,
       toggleAllowDangerKeys,
-      handleTouchCurrentSession,
-    }),
+      handleTouchSession: handleTouchCurrentSession,
+    },
     diffs,
-    files: buildFilesSection(files),
-    commits: buildCommitsSection(commits),
-    notes: buildNotesSection({
+    files,
+    commits,
+    notes: {
       repoRoot: currentRepoRoot,
       notes,
       notesLoading,
@@ -386,8 +372,8 @@ export const useSessionDetailVM = (paneId: string) => {
       createNote,
       saveNote,
       removeNote,
-    }),
-    logs: buildLogsSection({
+    },
+    logs: {
       quickPanelOpen,
       logModalOpen,
       selectedSession,
@@ -398,8 +384,8 @@ export const useSessionDetailVM = (paneId: string) => {
       closeLogModal,
       toggleQuickPanel,
       closeQuickPanel,
-    }),
-    title: buildTitleSection({
+    },
+    title: {
       titleDraft,
       titleEditing,
       titleSaving,
@@ -409,8 +395,8 @@ export const useSessionDetailVM = (paneId: string) => {
       updateTitleDraft,
       saveTitle,
       resetTitle,
-    }),
-    actions: buildActionsSection({
+    },
+    actions: {
       handleFocusPane,
       handleTouchRepoPin,
       handleLaunchAgentInSession,
@@ -418,8 +404,8 @@ export const useSessionDetailVM = (paneId: string) => {
       handleOpenPaneInNewWindow,
       handleOpenHere,
       handleOpenInNewTab,
-      handleTouchPaneWithRepoAnchor,
-    }),
+      handleTouchPane: handleTouchPaneWithRepoAnchor,
+    },
   };
 };
 
