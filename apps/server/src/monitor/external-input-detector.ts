@@ -7,6 +7,8 @@ import {
   stripPromptStartMarker,
 } from "@vde-monitor/shared";
 
+import { toErrorMessage } from "../errors";
+
 const DEFAULT_MAX_READ_BYTES = 128 * 1024;
 const DEFAULT_MAX_PROMPT_LINES = 24;
 const CLAMP_OVERLAP_BYTES = 4;
@@ -66,16 +68,6 @@ export type ExternalInputDetectResult = {
   reason: ExternalInputDetectReason;
   reasonCode: ExternalInputDetectReasonCode;
   errorMessage: string | null;
-};
-
-const resolveErrorMessage = (error: unknown) => {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  if (typeof error === "string" && error.length > 0) {
-    return error;
-  }
-  return "unknown error";
 };
 
 const normalizeCursorBytes = (value: number | null) => {
@@ -428,7 +420,7 @@ export const detectExternalInputFromLogDelta = async ({
           reasonCode: "DELTA_READ_ERROR",
           nextCursorBytes: previousCursor,
           signature: prevSignature,
-          errorMessage: resolveErrorMessage(segmentResult.error),
+          errorMessage: toErrorMessage(segmentResult.error),
         });
       }
       if (!segmentResult.matched) {
@@ -467,7 +459,7 @@ export const detectExternalInputFromLogDelta = async ({
       reasonCode: "DETECTOR_EXCEPTION",
       nextCursorBytes: previousCursor,
       signature: prevSignature,
-      errorMessage: resolveErrorMessage(error),
+      errorMessage: toErrorMessage(error),
     });
   }
 };

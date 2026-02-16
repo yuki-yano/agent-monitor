@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 
 import { resolveActivityTimestamp } from "../activity-resolver";
+import { toErrorMessage } from "../errors";
 import {
   detectExternalInputFromLogDelta,
   type ExternalInputDetectResult,
@@ -8,16 +9,6 @@ import {
 import { type PaneRuntimeState, updateInputAt, updateOutputAt } from "./pane-state";
 
 const DEFAULT_FINGERPRINT_CAPTURE_INTERVAL_MS = 5000;
-
-const resolveErrorMessage = (error: unknown) => {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  if (typeof error === "string" && error.length > 0) {
-    return error;
-  }
-  return "unknown error";
-};
 
 type PaneOutputSnapshot = {
   paneId: string;
@@ -290,7 +281,7 @@ export const updatePaneOutputState = async ({
       paneState.externalInputLastCheckedAt = checkedAt;
       paneState.externalInputLastReason = "no-log";
       paneState.externalInputLastReasonCode = "DETECTOR_EXCEPTION";
-      paneState.externalInputLastErrorMessage = resolveErrorMessage(error);
+      paneState.externalInputLastErrorMessage = toErrorMessage(error);
       inputTouchedAt = null;
     }
   }

@@ -5,6 +5,7 @@ import type {
   SessionStateTimelineSource,
 } from "@vde-monitor/shared";
 
+import { toErrorMessage } from "../errors";
 import { mapWithConcurrencyLimitSettled } from "./concurrency";
 import type { PaneLogManager } from "./pane-log-manager";
 import { processPane } from "./pane-processor";
@@ -69,20 +70,6 @@ type CreatePaneUpdateServiceArgs = {
   stateTimeline: TimelineStoreLike;
   logActivity: LogActivityLike;
   savePersistedState: () => void;
-};
-
-const resolveErrorMessage = (error: unknown) => {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  if (typeof error === "string") {
-    return error;
-  }
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return "unknown error";
-  }
 };
 
 const resolveTimelineSource = (reason: string): SessionStateTimelineSource => {
@@ -242,7 +229,7 @@ export const createPaneUpdateService = ({
         paneProcessingFailures.set(pane.paneId, {
           count: (previous?.count ?? 0) + 1,
           lastFailedAt: failedAt,
-          lastErrorMessage: resolveErrorMessage(paneResult.reason),
+          lastErrorMessage: toErrorMessage(paneResult.reason),
         });
         activePaneIds.add(pane.paneId);
         continue;
