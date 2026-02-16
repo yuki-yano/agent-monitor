@@ -571,20 +571,16 @@ export const createTmuxActions = (adapter: TmuxAdapter, config: AgentMonitorConf
     if (!options) {
       return undefined;
     }
-    return options.map((option) => option.trim()).filter((option) => option.length > 0);
+    return options.filter((option) => option.trim().length > 0);
   };
 
   const resolveConfiguredLaunchOptions = (agent: LaunchAgent, optionsOverride?: string[]) => {
     const sourceOptions = optionsOverride ?? config.launch.agents[agent].options ?? [];
-    return sourceOptions.map((option) => option.trim()).filter((option) => option.length > 0);
+    return sourceOptions.filter((option) => option.trim().length > 0);
   };
 
-  const escapeShellArgument = (value: string) => `'${value.replace(/'/g, `'"'"'`)}'`;
-
-  const buildLaunchCommandLine = (agent: LaunchAgent, options: string[]) => {
-    const renderedOptions = options.map((option) => escapeShellArgument(option));
-    return [agent, ...renderedOptions].join(" ");
-  };
+  const buildLaunchCommandLine = (agent: LaunchAgent, options: string[]) =>
+    [agent, ...options].join(" ");
 
   const assertSessionExists = async (sessionName: string): Promise<ApiError | null> => {
     const result = await adapter.run(["has-session", "-t", sessionName]);

@@ -25,10 +25,7 @@ import { formatPath, isVwManagedWorktreePath } from "@/lib/session-format";
 import type { LaunchAgentHandler } from "@/state/launch-agent-options";
 
 const parseAgentOptions = (value: string) =>
-  value
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+  value.split(/\r?\n/).filter((line) => line.trim().length > 0);
 
 const normalizePathForDisplay = (value: string) =>
   value.replace(/[\\/]+$/g, "").replace(/\\/g, "/");
@@ -353,7 +350,8 @@ export const LaunchAgentButton = ({
               {overrideAgentOptions ? (
                 <div className="space-y-2">
                   <p className="border-latte-lavender/30 bg-latte-lavender/10 text-latte-lavender rounded-lg border px-2.5 py-1.5 font-mono text-[11px]">
-                    Override format: 1 line = 1 argument (e.g. `--dangerously-skip-permissions`)
+                    Override format: each line is evaluated by shell as-is (quote/escape manually as
+                    needed)
                   </p>
                   <div className="border-latte-surface2 bg-latte-base/80 text-latte-text focus-within:border-latte-lavender focus-within:ring-latte-lavender/25 overflow-hidden rounded-2xl border transition focus-within:ring-2">
                     <ZoomSafeTextarea

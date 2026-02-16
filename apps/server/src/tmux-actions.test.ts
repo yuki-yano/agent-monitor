@@ -428,7 +428,7 @@ describe("createTmuxActions.launchAgentInSession", () => {
       "-t",
       "%128",
       "--",
-      "codex '--model' 'gpt-5-codex'",
+      "codex --model gpt-5-codex",
     ]);
     expect(result.rollback).toEqual({ attempted: false, ok: true });
   });
@@ -480,7 +480,54 @@ describe("createTmuxActions.launchAgentInSession", () => {
       "-t",
       "%128",
       "--",
-      "codex '--approval-mode' 'full-auto'",
+      "codex --approval-mode full-auto",
+    ]);
+  });
+
+  it("passes shell fragments in agentOptions without extra quoting", async () => {
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-windows") {
+          return { stdout: "main\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "new-window") {
+          return { stdout: "@42\t3\tcodex-work\t%128\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes") {
+          return { stdout: "codex\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const config = {
+      ...defaultConfig,
+      token: "test-token",
+      launch: {
+        agents: {
+          codex: { options: ["--model", "gpt-5-codex"] },
+          claude: { options: [] },
+        },
+      },
+    };
+    const tmuxActions = createTmuxActions(adapter, config);
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "codex",
+      agentOptions: ['--message "hello world"', "--verbose"],
+    });
+
+    expect(result.ok).toBe(true);
+    expect(adapter.run).toHaveBeenCalledWith([
+      "send-keys",
+      "-l",
+      "-t",
+      "%128",
+      "--",
+      'codex --message "hello world" --verbose',
     ]);
   });
 

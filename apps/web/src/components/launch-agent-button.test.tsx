@@ -107,7 +107,7 @@ describe("LaunchAgentButton", () => {
     fireEvent.click(screen.getByRole("button", { name: "Launch Agent" }));
     fireEvent.click(screen.getByRole("button", { name: "Claude" }));
     fireEvent.click(screen.getByLabelText("Override agent options"));
-    expect(screen.getByText(/1 line = 1 argument/i)).toBeTruthy();
+    expect(screen.getByText(/evaluated by shell as-is/i)).toBeTruthy();
     const overrideInput = screen.getByLabelText("Agent options override");
     fireEvent.change(overrideInput, {
       target: { value: "--dangerously-skip-permissions\n--verbose" },
