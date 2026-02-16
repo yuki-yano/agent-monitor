@@ -6,7 +6,7 @@ import {
   createNextSearchRequestId,
   resetSearchExpandOverrides,
   scheduleSearchRequest,
-} from "./useSessionFiles-search-effect";
+} from "./session-files-search-effect";
 
 type SetState<T> = Dispatch<SetStateAction<T>>;
 

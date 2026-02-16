@@ -1,7 +1,7 @@
 import type { RepoFileTreePage } from "@vde-monitor/shared";
 import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback } from "react";
 
-import { resolveTreeLoadMoreTarget } from "./useSessionFiles-tree-utils";
+import { resolveTreeLoadMoreTarget } from "./session-files-tree-utils";
 
 type UseSessionFilesTreeActionsArgs = {
   isSearchActive: boolean;

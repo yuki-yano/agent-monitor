@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   buildLogReferenceLinkableCacheKey,
   resolveLogReferenceLinkableWithCache,
-} from "./useSessionFiles-log-linkable-cache";
+} from "./session-files-log-linkable-cache";
 
 describe("useSessionFiles log linkable cache helpers", () => {
   it("builds stable cache key from normalized inputs", () => {

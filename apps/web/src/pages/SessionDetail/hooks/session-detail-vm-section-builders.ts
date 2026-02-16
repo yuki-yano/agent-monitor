@@ -23,8 +23,8 @@ import type { SessionGroup } from "@/lib/session-group";
 import type { Theme } from "@/lib/theme";
 import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
 
+import type { FileTreeRenderNode } from "./session-files-tree-utils";
 import type { LogFileCandidateItem } from "./useSessionFiles-log-resolve-state";
-import type { FileTreeRenderNode } from "./useSessionFiles-tree-utils";
 
 type BuildTimelineSectionArgs = {
   timeline: SessionStateTimeline | null;

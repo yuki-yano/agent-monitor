@@ -3,7 +3,7 @@ import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback 
 
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 
-import { mergeSearchItems } from "./useSessionFiles-tree-utils";
+import { mergeSearchItems } from "./session-files-tree-utils";
 
 type UseSessionFilesSearchActionsArgs = {
   searchResult: RepoFileSearchPage | null;

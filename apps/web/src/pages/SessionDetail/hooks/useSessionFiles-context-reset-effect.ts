@@ -5,7 +5,7 @@ import {
   type ResetSessionFilesRefsInput,
   resetSessionFilesState,
   type ResetSessionFilesStateInput,
-} from "./useSessionFiles-reset";
+} from "./session-files-reset";
 
 type UseSessionFilesContextResetEffectArgs = {
   paneId: string;

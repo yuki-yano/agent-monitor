@@ -5,7 +5,7 @@ import {
   buildFileContentRequestKey,
   buildSearchRequestKey,
   fetchWithRequestMap,
-} from "./useSessionFiles-request-cache";
+} from "./session-files-request-cache";
 
 type UseSessionFilesRequestActionsArgs = {
   paneId: string;

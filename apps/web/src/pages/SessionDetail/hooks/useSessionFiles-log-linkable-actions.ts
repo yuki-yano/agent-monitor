@@ -4,7 +4,7 @@ import { normalizeLogReference } from "../log-file-reference";
 import {
   buildLogReferenceLinkableCacheKey,
   resolveLogReferenceLinkableWithCache,
-} from "./useSessionFiles-log-linkable-cache";
+} from "./session-files-log-linkable-cache";
 import type { LogFileCandidateItem } from "./useSessionFiles-log-resolve-state";
 
 type UseSessionFilesLogLinkableActionsArgs = {

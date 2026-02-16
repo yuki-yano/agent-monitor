@@ -1,7 +1,7 @@
 import type { RepoFileTreePage } from "@vde-monitor/shared";
 import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback } from "react";
 
-import { collectAncestorDirectories } from "./useSessionFiles-tree-utils";
+import { collectAncestorDirectories } from "./session-files-tree-utils";
 
 type UseSessionFilesTreeRevealArgs = {
   repoRoot: string | null;

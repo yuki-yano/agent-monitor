@@ -30,7 +30,7 @@ const LOG_FILE_RESOLVE_PAGE_LIMIT = 100;
 const LOG_FILE_RESOLVE_MAX_SEARCH_PAGES = 20;
 const LOG_REFERENCE_LINKABLE_CACHE_MAX = 1000;
 
-export type { FileTreeRenderNode } from "./useSessionFiles-tree-utils";
+export type { FileTreeRenderNode } from "./session-files-tree-utils";
 
 type UseSessionFilesParams = {
   paneId: string;

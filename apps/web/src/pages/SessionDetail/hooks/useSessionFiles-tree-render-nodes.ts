@@ -5,7 +5,7 @@ import {
   buildNormalRenderNodes,
   buildSearchRenderNodes,
   resolveTreeLoadMoreTarget,
-} from "./useSessionFiles-tree-utils";
+} from "./session-files-tree-utils";
 
 type UseSessionFilesTreeRenderNodesArgs = {
   isSearchActive: boolean;

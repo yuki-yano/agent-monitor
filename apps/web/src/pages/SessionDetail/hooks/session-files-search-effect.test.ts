@@ -6,7 +6,7 @@ import {
   createNextSearchRequestId,
   resetSearchExpandOverrides,
   scheduleSearchRequest,
-} from "./useSessionFiles-search-effect";
+} from "./session-files-search-effect";
 
 const flushMicrotasks = async () => {
   await Promise.resolve();

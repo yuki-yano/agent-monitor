@@ -3,8 +3,8 @@ import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback 
 
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 
-import { buildTreePageRequestKey, fetchWithRequestMap } from "./useSessionFiles-request-cache";
-import { mergeTreeEntries } from "./useSessionFiles-tree-utils";
+import { buildTreePageRequestKey, fetchWithRequestMap } from "./session-files-request-cache";
+import { mergeTreeEntries } from "./session-files-tree-utils";
 
 type UseSessionFilesTreeLoaderArgs = {
   paneId: string;

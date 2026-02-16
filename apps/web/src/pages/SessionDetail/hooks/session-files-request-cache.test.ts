@@ -5,7 +5,7 @@ import {
   buildSearchRequestKey,
   buildTreePageRequestKey,
   fetchWithRequestMap,
-} from "./useSessionFiles-request-cache";
+} from "./session-files-request-cache";
 
 describe("useSessionFiles request cache helpers", () => {
   it("deduplicates concurrent requests by key", async () => {

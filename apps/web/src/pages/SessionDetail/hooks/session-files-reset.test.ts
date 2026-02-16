@@ -1,7 +1,7 @@
 import type { RepoFileContent, RepoFileSearchPage, RepoFileTreePage } from "@vde-monitor/shared";
 import { describe, expect, it, vi } from "vitest";
 
-import { resetSessionFilesRefs, resetSessionFilesState } from "./useSessionFiles-reset";
+import { resetSessionFilesRefs, resetSessionFilesState } from "./session-files-reset";
 
 describe("useSessionFiles reset helpers", () => {
   it("resets request refs and increments request ids", () => {
