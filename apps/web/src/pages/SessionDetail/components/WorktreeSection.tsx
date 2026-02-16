@@ -5,6 +5,16 @@ import { useMemo } from "react";
 import { Button, Card, IconButton, TagPill, TruncatedSegmentText } from "@/components/ui";
 
 import { formatBranchLabel } from "../sessionDetailUtils";
+import {
+  buildVisibleFileChangeCategories,
+  formatGitMetric,
+  formatRelativeWorktreePath,
+  formatWorktreeFlag,
+  hasWorktreeUpstreamDelta,
+  resolveWorktreeFlagClassName,
+  resolveWorktreePrLinkUrl,
+  resolveWorktreePrStatus,
+} from "./worktree-view-model";
 
 type WorktreeSectionState = {
   worktreeSelectorEnabled: boolean;
@@ -27,121 +37,6 @@ type WorktreeSectionProps = {
   state: WorktreeSectionState;
   actions: WorktreeSectionActions;
 };
-
-const formatGitMetric = (value: number | null) => (value == null ? "—" : String(value));
-
-const buildVisibleFileChangeCategories = (
-  fileChanges: { add: number; m: number; d: number } | null | undefined,
-) =>
-  [
-    {
-      key: "add",
-      label: "A",
-      value: fileChanges?.add ?? 0,
-      className: "text-latte-green",
-    },
-    {
-      key: "m",
-      label: "M",
-      value: fileChanges?.m ?? 0,
-      className: "text-latte-yellow",
-    },
-    {
-      key: "d",
-      label: "D",
-      value: fileChanges?.d ?? 0,
-      className: "text-latte-red",
-    },
-  ].filter((item) => item.value > 0);
-
-const formatWorktreeFlag = (value: boolean | null) => {
-  if (value == null) {
-    return "Unknown";
-  }
-  return value ? "Yes" : "No";
-};
-
-const hasWorktreeUpstreamDelta = (value: number | null | undefined) =>
-  typeof value === "number" && value > 0;
-
-const normalizeSlashPath = (value: string) => {
-  const normalized = value.replace(/\\/g, "/").replace(/\/+$/, "");
-  if (normalized.length > 0) {
-    return normalized;
-  }
-  return "/";
-};
-
-const formatRelativeWorktreePath = (entryPath: string, repoRoot: string | null) => {
-  if (!repoRoot) {
-    return entryPath;
-  }
-  const normalizedEntryPath = normalizeSlashPath(entryPath);
-  const normalizedRepoRoot = normalizeSlashPath(repoRoot);
-  if (normalizedEntryPath === normalizedRepoRoot) {
-    return ".";
-  }
-  if (normalizedEntryPath.startsWith(`${normalizedRepoRoot}/`)) {
-    return normalizedEntryPath.slice(normalizedRepoRoot.length + 1);
-  }
-  return entryPath;
-};
-
-const resolveWorktreeFlagClassName = (
-  kind: "dirty" | "locked" | "merged",
-  value: boolean | null,
-) => {
-  if (value == null) {
-    return "border-latte-surface2/70 bg-latte-surface0/60 text-latte-subtext0";
-  }
-  if (kind === "dirty") {
-    return value
-      ? "border-latte-red/45 bg-latte-red/10 text-latte-red"
-      : "border-latte-green/45 bg-latte-green/10 text-latte-green";
-  }
-  if (kind === "locked") {
-    return value
-      ? "border-latte-yellow/45 bg-latte-yellow/12 text-latte-yellow"
-      : "border-latte-green/45 bg-latte-green/10 text-latte-green";
-  }
-  return value
-    ? "border-latte-green/45 bg-latte-green/10 text-latte-green"
-    : "border-latte-yellow/45 bg-latte-yellow/12 text-latte-yellow";
-};
-
-const resolveWorktreePrStatus = (
-  prStatus: WorktreeListEntry["prStatus"] | null | undefined,
-): { label: string; className: string } => {
-  switch (prStatus) {
-    case "none":
-      return {
-        label: "PR None",
-        className: "border-latte-peach/45 bg-latte-peach/12 text-latte-peach",
-      };
-    case "open":
-      return {
-        label: "PR Open",
-        className: "border-latte-blue/45 bg-latte-blue/10 text-latte-blue",
-      };
-    case "merged":
-      return {
-        label: "PR Merged",
-        className: "border-latte-green/45 bg-latte-green/10 text-latte-green",
-      };
-    case "closed_unmerged":
-      return {
-        label: "PR Closed",
-        className: "border-latte-red/45 bg-latte-red/10 text-latte-red",
-      };
-    default:
-      return {
-        label: "PR Unknown",
-        className: "border-latte-surface2/70 bg-latte-surface0/60 text-latte-subtext0",
-      };
-  }
-};
-
-const resolveWorktreePrLinkUrl = (entry: WorktreeListEntry): string | null => entry.prUrl ?? null;
 
 export const WorktreeSection = ({ state, actions }: WorktreeSectionProps) => {
   const {
