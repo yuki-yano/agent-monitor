@@ -16,10 +16,6 @@ import {
 import { isBinaryPatch, parseNumstat, pickStatus } from "./git-parsers";
 import { resolveRepoRoot, runGit } from "./git-utils";
 
-const LOG_TTL_MS = GIT_CACHE_TTL_MS;
-const DETAIL_TTL_MS = GIT_CACHE_TTL_MS;
-const FILE_TTL_MS = GIT_CACHE_TTL_MS;
-const MAX_PATCH_BYTES = GIT_PATCH_MAX_BYTES;
 const LOG_CACHE_MAX_ENTRIES = 200;
 const DETAIL_CACHE_MAX_ENTRIES = 500;
 const FILE_CACHE_MAX_ENTRIES = 1000;
@@ -246,7 +242,7 @@ const shouldUseCachedCommitLog = ({
     force,
     cachedAt: cached?.at ?? 0,
     nowMs,
-    ttlMs: LOG_TTL_MS,
+    ttlMs: GIT_CACHE_TTL_MS,
   });
 
 const commitLogFormat = [
@@ -357,7 +353,7 @@ export const fetchCommitDetail = async (
       force: options?.force,
       cachedAt: cached.at,
       nowMs,
-      ttlMs: DETAIL_TTL_MS,
+      ttlMs: GIT_CACHE_TTL_MS,
     })
   ) {
     return cached.detail;
@@ -428,7 +424,7 @@ export const fetchCommitFile = async (
       force: options?.force,
       cachedAt: cached.at,
       nowMs,
-      ttlMs: FILE_TTL_MS,
+      ttlMs: GIT_CACHE_TTL_MS,
     })
   ) {
     return cached.file;
@@ -437,7 +433,7 @@ export const fetchCommitFile = async (
   const binary = isBinaryPatch(patch) || file.additions == null || file.deletions == null;
   const { text: normalizedPatch, truncated } = truncateTextByLength({
     text: patch,
-    maxLength: MAX_PATCH_BYTES,
+    maxLength: GIT_PATCH_MAX_BYTES,
   });
   const diff: CommitFileDiff = {
     path: file.path,

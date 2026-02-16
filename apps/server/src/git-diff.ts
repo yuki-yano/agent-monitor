@@ -13,9 +13,6 @@ import {
 import { isBinaryPatch, parseNumstat, parseNumstatLine, pickStatus } from "./git-parsers";
 import { resolveRepoRoot, runGit } from "./git-utils";
 
-const SUMMARY_TTL_MS = GIT_CACHE_TTL_MS;
-const FILE_TTL_MS = GIT_CACHE_TTL_MS;
-const MAX_PATCH_BYTES = GIT_PATCH_MAX_BYTES;
 const SUMMARY_CACHE_MAX_ENTRIES = 200;
 const FILE_CACHE_MAX_ENTRIES = 500;
 
@@ -147,7 +144,7 @@ const getCachedSummary = (repoRoot: string, force: boolean | undefined, nowMs: n
       force,
       cachedAt: cached.at,
       nowMs,
-      ttlMs: SUMMARY_TTL_MS,
+      ttlMs: GIT_CACHE_TTL_MS,
     })
   ) {
     return null;
@@ -232,7 +229,7 @@ const getCachedDiffFile = (
       force,
       cachedAt: cached.at,
       nowMs,
-      ttlMs: FILE_TTL_MS,
+      ttlMs: GIT_CACHE_TTL_MS,
     })
   ) {
     return null;
@@ -271,7 +268,7 @@ const buildDiffFileFromPatch = (
 ): DiffFile => {
   const truncatedPatch = truncateTextByLength({
     text: patch,
-    maxLength: MAX_PATCH_BYTES,
+    maxLength: GIT_PATCH_MAX_BYTES,
   });
   const binary = isBinaryPatch(patch) || numstat?.additions == null || numstat?.deletions == null;
   return {
