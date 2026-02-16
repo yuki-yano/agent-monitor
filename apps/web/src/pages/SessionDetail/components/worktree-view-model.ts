@@ -4,6 +4,25 @@ type WorktreeFileChangeCounts = { add: number; m: number; d: number };
 
 export const formatGitMetric = (value: number | null) => (value == null ? "—" : String(value));
 
+export const sortWorktreeEntriesByRepoRoot = (
+  entries: WorktreeListEntry[],
+  worktreeRepoRoot: string | null,
+): WorktreeListEntry[] => {
+  if (!worktreeRepoRoot) {
+    return entries;
+  }
+  const repoRootEntries: WorktreeListEntry[] = [];
+  const restEntries: WorktreeListEntry[] = [];
+  entries.forEach((entry) => {
+    if (entry.path === worktreeRepoRoot) {
+      repoRootEntries.push(entry);
+      return;
+    }
+    restEntries.push(entry);
+  });
+  return [...repoRootEntries, ...restEntries];
+};
+
 export const buildVisibleFileChangeCategories = (
   fileChanges: WorktreeFileChangeCounts | null | undefined,
 ) =>

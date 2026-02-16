@@ -34,7 +34,11 @@ import { useStableVirtuosoScroll } from "../hooks/useStableVirtuosoScroll";
 import { DISCONNECTED_MESSAGE, formatBranchLabel } from "../sessionDetailUtils";
 import { ScreenPanelViewport } from "./ScreenPanelViewport";
 import { ScreenPanelWorktreeSelectorPanel } from "./ScreenPanelWorktreeSelectorPanel";
-import { buildVisibleFileChangeCategories, formatGitMetric } from "./worktree-view-model";
+import {
+  buildVisibleFileChangeCategories,
+  formatGitMetric,
+  sortWorktreeEntriesByRepoRoot,
+} from "./worktree-view-model";
 
 type ScreenPanelState = {
   mode: ScreenMode;
@@ -240,21 +244,10 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     () => buildVisibleFileChangeCategories(gitFileChanges),
     [gitFileChanges],
   );
-  const displayedWorktreeEntries = useMemo(() => {
-    if (!worktreeRepoRoot) {
-      return worktreeEntries;
-    }
-    const repoRootEntries: WorktreeListEntry[] = [];
-    const otherEntries: WorktreeListEntry[] = [];
-    worktreeEntries.forEach((entry) => {
-      if (entry.path === worktreeRepoRoot) {
-        repoRootEntries.push(entry);
-        return;
-      }
-      otherEntries.push(entry);
-    });
-    return [...repoRootEntries, ...otherEntries];
-  }, [worktreeEntries, worktreeRepoRoot]);
+  const displayedWorktreeEntries = useMemo(
+    () => sortWorktreeEntriesByRepoRoot(worktreeEntries, worktreeRepoRoot),
+    [worktreeEntries, worktreeRepoRoot],
+  );
   const visibleFileChangeCategoriesKey = useMemo(
     () => visibleFileChangeCategories.map((item) => `${item.key}:${item.value}`).join("|"),
     [visibleFileChangeCategories],
