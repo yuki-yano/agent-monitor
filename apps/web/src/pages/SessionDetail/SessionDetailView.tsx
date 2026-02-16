@@ -16,6 +16,7 @@ import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from
 import { Card, Tabs, TabsList, TabsTrigger } from "@/components/ui";
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import { buildSessionDocumentTitle } from "@/lib/brand";
+import { cn } from "@/lib/cn";
 import { readStoredSessionListFilter } from "@/pages/SessionList/sessionListFilters";
 
 import { CommitSection } from "./components/CommitSection";
@@ -386,7 +387,7 @@ export const SessionDetailView = ({
                 <span>Loading session...</span>
               </div>
               <p className="text-latte-subtext1 mt-2 text-xs">Checking the latest session state.</p>
-              <Link to="/" search={backToListSearch} className={`${backLinkClass} mt-4`}>
+              <Link to="/" search={backToListSearch} className={cn(backLinkClass, "mt-4")}>
                 <ArrowLeft className="h-4 w-4" />
                 Back to list
               </Link>
@@ -411,7 +412,7 @@ export const SessionDetailView = ({
                 ))}
               </div>
             ) : null}
-            <Link to="/" search={backToListSearch} className={`${backLinkClass} mt-4`}>
+            <Link to="/" search={backToListSearch} className={cn(backLinkClass, "mt-4")}>
               <ArrowLeft className="h-4 w-4" />
               Back to list
             </Link>
@@ -519,9 +520,10 @@ export const SessionDetailView = ({
                   role="separator"
                   aria-orientation="vertical"
                   aria-label="Resize panels"
-                  className={`group relative h-full w-4 cursor-col-resize touch-none items-center justify-center ${
-                    is2xlUp ? "flex" : "hidden"
-                  }`}
+                  className={cn(
+                    "group relative h-full w-4 cursor-col-resize touch-none items-center justify-center",
+                    is2xlUp ? "flex" : "hidden",
+                  )}
                   onPointerDown={is2xlUp ? handleDetailSplitPointerDown : undefined}
                 >
                   <span className="bg-latte-surface2/70 group-hover:bg-latte-lavender/60 pointer-events-none absolute inset-y-8 left-1/2 w-[2px] -translate-x-1/2 rounded-full transition-colors duration-200" />

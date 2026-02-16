@@ -25,6 +25,7 @@ import {
   Toolbar,
 } from "@/components/ui";
 import { sanitizeLogCopyText } from "@/lib/clipboard";
+import { cn } from "@/lib/cn";
 import type { ScreenMode } from "@/lib/screen-loading";
 
 import { usePromptContextLayout } from "../hooks/usePromptContextLayout";
@@ -311,7 +312,10 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
             stableScrollerRef.current = node;
           }}
           {...props}
-          className={`custom-scrollbar w-full min-w-0 max-w-full overflow-x-auto overflow-y-auto rounded-2xl ${className ?? ""}`}
+          className={cn(
+            "custom-scrollbar w-full min-w-0 max-w-full overflow-x-auto overflow-y-auto rounded-2xl",
+            className,
+          )}
         />
       ),
     );
@@ -360,9 +364,10 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
 
   return (
     <Card
-      className={`relative flex min-w-0 flex-col gap-2 overflow-visible p-2 sm:gap-3 sm:p-4 ${
-        isWorktreeSelectorOpen ? "z-[70]" : ""
-      }`}
+      className={cn(
+        "relative flex min-w-0 flex-col gap-2 overflow-visible p-2 sm:gap-3 sm:p-4",
+        isWorktreeSelectorOpen && "z-[70]",
+      )}
     >
       <Toolbar className="gap-2 sm:gap-3">
         <div className="flex items-center gap-2">{screenModeTabs(mode, onModeChange)}</div>
@@ -452,7 +457,10 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
               {worktreeSelectorEnabled ? (
                 <button
                   type="button"
-                  className={`border-latte-surface2/70 bg-latte-base/70 text-latte-text inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border px-2 py-[3px] text-[10px] font-semibold tracking-[0.05em] ${branchTriggerWidthClassName}`}
+                  className={cn(
+                    "border-latte-surface2/70 bg-latte-base/70 text-latte-text inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border px-2 py-[3px] text-[10px] font-semibold tracking-[0.05em]",
+                    branchTriggerWidthClassName,
+                  )}
                   title={gitBranchLabel}
                   aria-label="Select worktree"
                   onClick={toggleWorktreeSelector}
@@ -467,7 +475,10 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
               ) : (
                 <TagPill
                   tone="neutral"
-                  className={`text-latte-text inline-flex min-w-0 max-w-full items-center gap-1 px-2 py-[3px] text-[10px] font-semibold tracking-[0.05em] ${branchTriggerWidthClassName}`}
+                  className={cn(
+                    "text-latte-text inline-flex min-w-0 max-w-full items-center gap-1 px-2 py-[3px] text-[10px] font-semibold tracking-[0.05em]",
+                    branchTriggerWidthClassName,
+                  )}
                   title={gitBranchLabel}
                 >
                   <GitBranch className="text-latte-subtext0 h-3 w-3 shrink-0" />
@@ -507,7 +518,10 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
               <TagPill
                 key={item.key}
                 tone="meta"
-                className={`${item.className} shrink-0 px-2 py-[3px] text-[10px] font-semibold uppercase tracking-[0.08em]`}
+                className={cn(
+                  item.className,
+                  "shrink-0 px-2 py-[3px] text-[10px] font-semibold uppercase tracking-[0.08em]",
+                )}
               >
                 {item.label} {item.value}
               </TagPill>
@@ -530,7 +544,10 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
         <div data-testid="prompt-status-row" className="-mt-0.5 flex items-center gap-2">
           {pollingPauseMeta ? (
             <span
-              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${pollingPauseMeta.className}`}
+              className={cn(
+                "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em]",
+                pollingPauseMeta.className,
+              )}
             >
               {pollingPauseMeta.label}
             </span>

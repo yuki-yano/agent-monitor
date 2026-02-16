@@ -14,6 +14,7 @@ import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 
 import { Button, Callout, Card, IconButton, LoadingOverlay, Toolbar } from "@/components/ui";
 import { sanitizeLogCopyText } from "@/lib/clipboard";
+import { cn } from "@/lib/cn";
 
 import { logModalDisplayLinesAtom, logModalIsAtBottomAtom } from "../atoms/logAtoms";
 import { useStableVirtuosoScroll } from "../hooks/useStableVirtuosoScroll";
@@ -42,7 +43,10 @@ const QuickLogList = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     <div
       ref={ref}
       {...props}
-      className={`text-latte-text w-max min-w-max px-2 py-1.5 font-mono text-[12px] leading-[16px] sm:px-3 sm:py-2 ${className ?? ""}`}
+      className={cn(
+        "text-latte-text w-max min-w-max px-2 py-1.5 font-mono text-[12px] leading-[16px] sm:px-3 sm:py-2",
+        className,
+      )}
     />
   ),
 );
@@ -87,7 +91,10 @@ export const LogModal = ({ state, actions }: LogModalProps) => {
             scrollerRef.current = node;
           }}
           {...props}
-          className={`custom-scrollbar w-full min-w-0 max-w-full overflow-x-auto overflow-y-auto overscroll-contain rounded-2xl ${className ?? ""}`}
+          className={cn(
+            "custom-scrollbar w-full min-w-0 max-w-full overflow-x-auto overflow-y-auto overscroll-contain rounded-2xl",
+            className,
+          )}
         />
       ),
     );

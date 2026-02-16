@@ -10,6 +10,7 @@ import {
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 
 import { IconButton, LoadingOverlay } from "@/components/ui";
+import { cn } from "@/lib/cn";
 import type { ScreenMode } from "@/lib/screen-loading";
 
 type ScreenPanelViewportProps = {
@@ -34,7 +35,10 @@ const VirtuosoList = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     <div
       ref={ref}
       {...props}
-      className={`text-latte-text w-max min-w-full px-1 py-1 font-mono text-xs sm:px-2 sm:py-2 ${className ?? ""}`}
+      className={cn(
+        "text-latte-text w-max min-w-full px-1 py-1 font-mono text-xs sm:px-2 sm:py-2",
+        className,
+      )}
     />
   ),
 );
