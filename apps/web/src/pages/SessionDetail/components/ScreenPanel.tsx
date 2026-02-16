@@ -36,6 +36,7 @@ import {
   TabsTrigger,
   TagPill,
   Toolbar,
+  TruncatedSegmentText,
 } from "@/components/ui";
 import { sanitizeLogCopyText } from "@/lib/clipboard";
 import type { ScreenMode } from "@/lib/screen-loading";
@@ -1140,13 +1141,13 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
                             >
                               <span className="min-w-0 flex-1">
                                 <span className="flex min-w-0 flex-1 items-center gap-1.5">
-                                  <span
-                                    title={entryBranchLabel}
-                                    className={`text-latte-text min-w-0 flex-1 truncate font-mono ${
-                                      isRepoRootPath ? "text-left [direction:rtl]" : ""
-                                    }`}
-                                  >
-                                    {entryBranchLabel}
+                                  <span className="text-latte-text min-w-0 flex-1 font-mono">
+                                    <TruncatedSegmentText
+                                      text={entryBranchLabel}
+                                      reservePx={8}
+                                      minVisibleSegments={2}
+                                      className="min-w-0 flex-1 text-left"
+                                    />
                                   </span>
                                   {isRepoRootPath ? (
                                     <TagPill

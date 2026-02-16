@@ -13,8 +13,8 @@ import {
   LoadingOverlay,
   PanelSection,
   RowButton,
-  SectionHeader,
   TagPill,
+  TruncatedSegmentText,
 } from "@/components/ui";
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 
@@ -281,10 +281,13 @@ const DiffSummaryDescription = memo(
     totals: ReturnType<typeof sumFileStats>;
     fileChangeCategories: ReturnType<typeof buildVisibleFileChangeCategories>;
   }) => (
-    <span className="inline-flex items-center gap-1.5">
-      <span>{toFileCountLabel(fileCount)}</span>
+    <span
+      data-testid="diff-summary-line"
+      className="flex w-full min-w-0 items-center gap-1.5 whitespace-nowrap"
+    >
+      <span className="shrink-0">{toFileCountLabel(fileCount)}</span>
       {showTotals ? (
-        <span className="inline-flex items-center gap-2 text-xs">
+        <span className="flex min-w-0 shrink items-center gap-2 text-xs">
           {fileChangeCategories.map((item) => (
             <TagPill
               key={item.key}
@@ -299,9 +302,17 @@ const DiffSummaryDescription = memo(
         </span>
       ) : null}
       {diffBranch ? (
-        <span className="text-latte-subtext0/80 inline-flex items-center gap-1 font-mono text-[11px]">
-          <span aria-hidden="true">·</span>
-          <span>{formatBranchLabel(diffBranch)}</span>
+        <span className="text-latte-subtext0/80 flex min-w-0 flex-1 items-center gap-1 font-mono text-[11px]">
+          <span aria-hidden="true" className="shrink-0">
+            ·
+          </span>
+          <TruncatedSegmentText
+            data-testid="diff-branch-text"
+            text={formatBranchLabel(diffBranch)}
+            reservePx={6}
+            minVisibleSegments={2}
+            className="min-w-0 flex-1 pr-0.5 text-left"
+          />
         </span>
       ) : null}
     </span>
@@ -480,31 +491,33 @@ export const DiffSection = memo(({ state, actions }: DiffSectionProps) => {
 
   return (
     <Card className="flex flex-col gap-2">
-      <SectionHeader
-        title="Changes"
-        description={
-          <DiffSummaryDescription
-            fileCount={fileCount}
-            diffBranch={diffBranch}
-            showTotals={Boolean(diffSummary)}
-            totals={totals}
-            fileChangeCategories={fileChangeCategories}
-          />
-        }
-        action={
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-latte-subtext0 hover:text-latte-text h-[30px] w-[30px] p-0"
-            onClick={onRefresh}
-            disabled={diffLoading}
-            aria-label="Refresh changes"
-          >
-            <RefreshCw className="h-4 w-4" />
-            <span className="sr-only">Refresh</span>
-          </Button>
-        }
-      />
+      <div data-testid="changes-header" className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display text-latte-text text-base font-semibold tracking-tight">
+            Changes
+          </h2>
+          <p className="text-latte-subtext0 min-w-0 overflow-hidden text-sm">
+            <DiffSummaryDescription
+              fileCount={fileCount}
+              diffBranch={diffBranch}
+              showTotals={Boolean(diffSummary)}
+              totals={totals}
+              fileChangeCategories={fileChangeCategories}
+            />
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-latte-subtext0 hover:text-latte-text h-[30px] w-[30px] shrink-0 self-start p-0"
+          onClick={onRefresh}
+          disabled={diffLoading}
+          aria-label="Refresh changes"
+        >
+          <RefreshCw className="h-4 w-4" />
+          <span className="sr-only">Refresh</span>
+        </Button>
+      </div>
       {renderRepoRoot(diffSummary?.repoRoot)}
       <DiffSummaryReasonCallout reason={diffSummary?.reason} />
       <DiffErrorCallout diffError={diffError} />

@@ -89,6 +89,21 @@ describe("SessionHeader", () => {
     expect(screen.getByText("Pane pane-1")).toBeTruthy();
   });
 
+  it("renders current path with shared truncated-path component style", () => {
+    const session = createSessionDetail({
+      currentPath: "/tmp/vde-monitor/.worktree/feature/very/long/session/header/path",
+    });
+    const state = buildState({ session });
+    const actions = buildActions();
+    renderWithRouter(<SessionHeader state={state} actions={actions} />);
+
+    const pathElement = screen.getByTestId("session-header-current-path");
+    expect(pathElement.className).toContain("overflow-hidden");
+    expect(pathElement.className).toContain("basis-full");
+    expect(pathElement.textContent).toContain(".worktree/feature/very/long");
+    expect(pathElement.getAttribute("title")).toContain(".worktree/feature/very/long");
+  });
+
   it("hides worktree flags when path is outside vw worktree", () => {
     const session = createSessionDetail({
       worktreePath: "/Users/test/repo",

@@ -241,7 +241,7 @@ describe("ScreenPanel", () => {
     expect(within(selectorPanel).queryByText(".")).toBeNull();
   });
 
-  it("uses leading truncation style for repo-root branch label", () => {
+  it("uses shared truncation component for repo-root branch label", () => {
     const repoRootBranch = "feature/very-long-repo-root-branch-name-for-leading-truncate-check";
     const state = buildState({
       worktreeSelectorEnabled: true,
@@ -273,7 +273,8 @@ describe("ScreenPanel", () => {
 
     const selectorPanel = screen.getByTestId("worktree-selector-panel");
     const branchLabel = within(selectorPanel).getByTitle(repoRootBranch);
-    expect(branchLabel.className).toContain("[direction:rtl]");
+    expect(branchLabel.className).toContain("overflow-hidden");
+    expect(branchLabel.className).not.toContain("[direction:rtl]");
   });
 
   it("shows repo-root entry first", () => {
@@ -323,7 +324,7 @@ describe("ScreenPanel", () => {
 
     const selectorPanel = screen.getByTestId("worktree-selector-panel");
     const repoRootButton = within(selectorPanel).getByText("Repo Root").closest("button");
-    const featureButton = within(selectorPanel).getByText("feature/a").closest("button");
+    const featureButton = within(selectorPanel).getByTitle("feature/a").closest("button");
     expect(repoRootButton).toBeTruthy();
     expect(featureButton).toBeTruthy();
     expect(
@@ -434,7 +435,7 @@ describe("ScreenPanel", () => {
 
     fireEvent.click(screen.getByTestId("worktree-selector-trigger"));
     const selectorPanel = screen.getByTestId("worktree-selector-panel");
-    expect(within(selectorPanel).getByText("feature/a")).toBeTruthy();
+    expect(within(selectorPanel).getByTitle("feature/a")).toBeTruthy();
     expect(within(selectorPanel).queryByText("Loading worktrees...")).toBeNull();
   });
 

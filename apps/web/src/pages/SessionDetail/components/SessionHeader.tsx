@@ -12,6 +12,7 @@ import {
   LastInputPill,
   TagPill,
   TextButton,
+  TruncatedPathText,
 } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { buildGitHubRepoUrl } from "@/lib/github-repo-url";
@@ -202,6 +203,7 @@ const SessionTitleArea = ({
   onCloseTitleEditor,
 }: SessionTitleAreaProps) => {
   const showResetTitle = canResetTitle && !titleEditing;
+  const formattedCurrentPath = formatPath(currentPath);
   return (
     <>
       <div className="flex flex-wrap items-center gap-1">
@@ -233,9 +235,13 @@ const SessionTitleArea = ({
             <X className="h-3.5 w-3.5" />
           </IconButton>
         ) : null}
-        <span className="text-latte-subtext0 max-w-full truncate text-xs sm:max-w-[360px] sm:text-sm">
-          {formatPath(currentPath)}
-        </span>
+        <TruncatedPathText
+          data-testid="session-header-current-path"
+          path={formattedCurrentPath}
+          reservePx={12}
+          minVisibleSegments={2}
+          className="text-latte-subtext0 min-w-0 basis-full text-xs sm:max-w-[360px] sm:flex-1 sm:basis-auto sm:text-sm"
+        />
       </div>
       {titleError ? <p className="text-latte-red text-xs">{titleError}</p> : null}
     </>

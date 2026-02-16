@@ -34,5 +34,7 @@ export { TabsTrigger } from "./tabs";
 export { TagPill } from "./tag-pill";
 export { TextButton } from "./text-button";
 export { Toolbar } from "./toolbar";
+export { TruncatedPathText } from "./truncated-path-text";
+export { TruncatedSegmentText } from "./truncated-segment-text";
 export { ZoomSafeInput } from "./zoom-safe-input";
 export { ZoomSafeTextarea } from "./zoom-safe-textarea";
