@@ -26,6 +26,9 @@ const isUnavailableError = (message: string) =>
 const isPaneNotFoundError = (message: string) =>
   /pane .*not found|no such pane|invalid pane/i.test(message);
 
+const resolveUnknownErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
 const resolveProxyErrorCode = (message: string): ApiErrorCode => {
   if (isUnavailableError(message)) {
     return "WEZTERM_UNAVAILABLE";
@@ -153,7 +156,7 @@ export const sendProxyKeyDown = async ({
   try {
     child = adapter.spawnProxy();
   } catch (error) {
-    const message = error instanceof Error ? error.message : "wezterm proxy failed to start";
+    const message = resolveUnknownErrorMessage(error, "wezterm proxy failed to start");
     return {
       ok: false,
       error: {
@@ -195,8 +198,7 @@ export const sendProxyKeyDown = async ({
         try {
           frame = decodeNextPduFrame(stdoutBuffer);
         } catch (error) {
-          const message =
-            error instanceof Error ? error.message : "failed to decode proxy response";
+          const message = resolveUnknownErrorMessage(error, "failed to decode proxy response");
           finish({
             ok: false,
             error: {
