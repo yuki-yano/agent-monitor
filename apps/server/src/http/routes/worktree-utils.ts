@@ -1,11 +1,10 @@
-import path from "node:path";
-
 import type { SessionDetail, WorktreeList, WorktreeListEntry } from "@vde-monitor/shared";
 
 import { fetchDiffSummary } from "../../git-diff";
 import { runGit } from "../../git-utils";
 import { resolveRepoBranchCached } from "../../monitor/repo-branch";
 import { resolveVwWorktreeSnapshotCached } from "../../monitor/vw-worktree";
+import { normalizeAbsolutePath } from "../../path-normalization";
 
 type WorktreeListPayload = WorktreeList;
 type WorktreePathValidationPayload = Pick<WorktreeListPayload, "entries">;
@@ -15,18 +14,6 @@ type WorktreeListEntryBase = Omit<WorktreeListEntry, "fileChanges" | "additions"
 type WorktreeDiffStats = Pick<WorktreeListEntry, "fileChanges" | "additions" | "deletions">;
 type WorktreeAheadBehindStats = Pick<WorktreeListEntry, "ahead" | "behind">;
 type DiffSummaryResult = Awaited<ReturnType<typeof fetchDiffSummary>>;
-
-const normalizePath = (value: string | null | undefined): string | null => {
-  if (!value) {
-    return null;
-  }
-  const resolved = path.resolve(value);
-  const normalized = resolved.replace(/[\\/]+$/, "");
-  if (normalized.length > 0) {
-    return normalized;
-  }
-  return path.sep;
-};
 
 const resolveSnapshotCwd = (detail: WorktreeSource) =>
   detail.repoRoot ?? detail.currentPath ?? process.cwd();
@@ -206,7 +193,7 @@ export const resolveWorktreePathValidationPayload = async (
   const snapshot = await resolveVwWorktreeSnapshotCached(resolveSnapshotCwd(detail), {
     ghMode: "never",
   });
-  const repoRoot = normalizePath(snapshot?.repoRoot ?? detail.repoRoot);
+  const repoRoot = normalizeAbsolutePath(snapshot?.repoRoot ?? detail.repoRoot);
   if (!snapshot) {
     return {
       entries: [],
@@ -223,8 +210,8 @@ export const resolveWorktreeListPayload = async (
   const snapshot = await resolveVwWorktreeSnapshotCached(resolveSnapshotCwd(detail), {
     ghMode: "auto",
   });
-  const repoRoot = normalizePath(snapshot?.repoRoot ?? detail.repoRoot);
-  const currentPath = normalizePath(detail.currentPath);
+  const repoRoot = normalizeAbsolutePath(snapshot?.repoRoot ?? detail.repoRoot);
+  const currentPath = normalizeAbsolutePath(detail.currentPath);
 
   if (!snapshot) {
     return {
@@ -262,7 +249,7 @@ export const resolveValidWorktreePath = (
   payload: WorktreePathValidationPayload,
   rawPath: string,
 ): string | null => {
-  const normalized = normalizePath(rawPath);
+  const normalized = normalizeAbsolutePath(rawPath);
   if (!normalized) {
     return null;
   }

@@ -3,6 +3,7 @@ import path from "node:path";
 import { execa } from "execa";
 
 import { setMapEntryWithLimit } from "../cache";
+import { normalizeAbsolutePath } from "../path-normalization";
 
 const vwSnapshotCacheTtlMs = 3000;
 const defaultVwGhRefreshIntervalMs = 30_000;
@@ -75,13 +76,6 @@ export const configureVwGhRefreshIntervalMs = (intervalMs: number) => {
     return;
   }
   vwGhRefreshIntervalMs = intervalMs;
-};
-
-const normalizePath = (value: string | null): string | null => {
-  if (!value) return null;
-  const resolved = path.resolve(value);
-  const normalized = resolved.replace(/[\\/]+$/, "");
-  return normalized.length > 0 ? normalized : path.sep;
 };
 
 const isWithinPath = (targetPath: string, rootPath: string) => {
@@ -263,7 +257,7 @@ const parseSnapshot = (raw: unknown): VwWorktreeSnapshot | null => {
   if (payload.status !== "ok" || !Array.isArray(payload.worktrees)) {
     return null;
   }
-  const repoRoot = normalizePath(toNullableString(payload.repoRoot));
+  const repoRoot = normalizeAbsolutePath(toNullableString(payload.repoRoot));
   const baseBranch = toNullableString(payload.baseBranch);
   const entries = payload.worktrees
     .map((item): VwWorktreeEntry | null => {
@@ -278,7 +272,7 @@ const parseSnapshot = (raw: unknown): VwWorktreeSnapshot | null => {
         merged?: unknown;
         pr?: unknown;
       };
-      const normalizedPath = normalizePath(toNullableString(worktree.path));
+      const normalizedPath = normalizeAbsolutePath(toNullableString(worktree.path));
       if (!normalizedPath) {
         return null;
       }
@@ -344,7 +338,7 @@ export const resolveVwWorktreeSnapshotCached = async (
   cwd: string,
   options: ResolveVwWorktreeSnapshotOptions = {},
 ): Promise<VwWorktreeSnapshot | null> => {
-  const normalizedCwd = normalizePath(cwd);
+  const normalizedCwd = normalizeAbsolutePath(cwd);
   if (!normalizedCwd) {
     return null;
   }
@@ -410,7 +404,7 @@ export const resolveWorktreeStatusFromSnapshot = (
   cwd: string | null,
 ): ResolvedWorktreeStatus | null => {
   if (!snapshot) return null;
-  const normalizedCwd = normalizePath(cwd);
+  const normalizedCwd = normalizeAbsolutePath(cwd);
   if (!normalizedCwd) return null;
   const matched = snapshot.entries.find((entry) => isWithinPath(normalizedCwd, entry.path));
   if (!matched) return null;
