@@ -691,6 +691,11 @@ describe("createTmuxActions.launchAgentInSession", () => {
     vi.mocked(execa)
       .mockResolvedValueOnce({
         exitCode: 0,
+        stdout: "main\n",
+        stderr: "",
+      } as never)
+      .mockResolvedValueOnce({
+        exitCode: 0,
         stdout: "",
         stderr: "",
       } as never)
@@ -732,11 +737,17 @@ describe("createTmuxActions.launchAgentInSession", () => {
     expect(vi.mocked(execa)).toHaveBeenNthCalledWith(
       1,
       "vw",
-      ["switch", "feature/new-pane"],
+      ["branch", "--show-current"],
       expect.objectContaining({ cwd: "/tmp" }),
     );
     expect(vi.mocked(execa)).toHaveBeenNthCalledWith(
       2,
+      "vw",
+      ["switch", "feature/new-pane"],
+      expect.objectContaining({ cwd: "/tmp" }),
+    );
+    expect(vi.mocked(execa)).toHaveBeenNthCalledWith(
+      3,
       "vw",
       ["path", "feature/new-pane"],
       expect.objectContaining({ cwd: "/tmp" }),
@@ -745,6 +756,95 @@ describe("createTmuxActions.launchAgentInSession", () => {
       expect.arrayContaining(["new-window", "-d", "-P", "-F"]),
     );
     expect(adapter.run).toHaveBeenCalledWith(expect.arrayContaining(["-c", "/tmp"]));
+  });
+
+  it("rolls back switched branch when vw path fails after worktree creation", async () => {
+    vi.mocked(resolveVwWorktreeSnapshotCached).mockResolvedValueOnce({
+      repoRoot: "/tmp",
+      baseBranch: "main",
+      entries: [
+        {
+          path: "/tmp/.worktree/feature/a",
+          branch: "feature/a",
+          dirty: false,
+          locked: { value: false, owner: null, reason: null },
+          merged: { overall: false, byPR: null },
+          pr: { status: "none" },
+        },
+      ],
+    });
+    vi.mocked(execa)
+      .mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: "main\n",
+        stderr: "",
+      } as never)
+      .mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: "",
+        stderr: "",
+      } as never)
+      .mockResolvedValueOnce({
+        exitCode: 1,
+        stdout: "",
+        stderr: "path failed",
+      } as never)
+      .mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: "",
+        stderr: "",
+      } as never);
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes" && args.includes("#{pane_current_path}")) {
+          return { stdout: "/tmp\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const tmuxActions = createTmuxActions(adapter, { ...defaultConfig, token: "test-token" });
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "claude",
+      worktreeBranch: "feature/new-pane",
+      worktreeCreateIfMissing: true,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe("INVALID_PAYLOAD");
+    expect(result.error.message).toContain("vw path failed: path failed");
+    expect(vi.mocked(execa)).toHaveBeenNthCalledWith(
+      1,
+      "vw",
+      ["branch", "--show-current"],
+      expect.objectContaining({ cwd: "/tmp" }),
+    );
+    expect(vi.mocked(execa)).toHaveBeenNthCalledWith(
+      2,
+      "vw",
+      ["switch", "feature/new-pane"],
+      expect.objectContaining({ cwd: "/tmp" }),
+    );
+    expect(vi.mocked(execa)).toHaveBeenNthCalledWith(
+      3,
+      "vw",
+      ["path", "feature/new-pane"],
+      expect.objectContaining({ cwd: "/tmp" }),
+    );
+    expect(vi.mocked(execa)).toHaveBeenNthCalledWith(
+      4,
+      "vw",
+      ["switch", "main"],
+      expect.objectContaining({ cwd: "/tmp" }),
+    );
+    expect(adapter.run.mock.calls.some((call) => call[0]?.[0] === "new-window")).toBe(false);
   });
 
   it("returns INVALID_PAYLOAD when worktreePath and worktreeCreateIfMissing are combined", async () => {

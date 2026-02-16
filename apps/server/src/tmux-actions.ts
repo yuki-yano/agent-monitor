@@ -525,6 +525,26 @@ export const createTmuxActions = (adapter: TmuxAdapter, config: AgentMonitorConf
         };
       }
 
+      const currentBranch = await execa("vw", ["branch", "--show-current"], {
+        cwd: repoRoot,
+        reject: false,
+        timeout: 5000,
+        maxBuffer: 2_000_000,
+      });
+      const previousBranch =
+        currentBranch.exitCode === 0 ? normalizeOptionalText(currentBranch.stdout) : undefined;
+      const rollbackSwitchedBranch = async () => {
+        if (!previousBranch || previousBranch === worktreeBranch) {
+          return;
+        }
+        await execa("vw", ["switch", previousBranch], {
+          cwd: repoRoot,
+          reject: false,
+          timeout: 15_000,
+          maxBuffer: 2_000_000,
+        });
+      };
+
       const switched = await execa("vw", ["switch", worktreeBranch], {
         cwd: repoRoot,
         reject: false,
@@ -546,6 +566,7 @@ export const createTmuxActions = (adapter: TmuxAdapter, config: AgentMonitorConf
         maxBuffer: 2_000_000,
       });
       if (resolvedPath.exitCode !== 0) {
+        await rollbackSwitchedBranch();
         const message = (resolvedPath.stderr || resolvedPath.stdout || "vw path failed").trim();
         return {
           ok: false,
@@ -555,6 +576,7 @@ export const createTmuxActions = (adapter: TmuxAdapter, config: AgentMonitorConf
 
       const nextCwd = normalizeOptionalText(resolvedPath.stdout);
       if (!nextCwd) {
+        await rollbackSwitchedBranch();
         return {
           ok: false,
           error: buildError("INVALID_PAYLOAD", "vw path returned an empty path"),
