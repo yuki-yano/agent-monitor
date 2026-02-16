@@ -52,6 +52,31 @@ describe("resolveVwWorktreeSnapshotCached", () => {
     expect(execaMock).toHaveBeenCalledWith("vw", ["list", "--json"], expect.any(Object));
   });
 
+  it("forces --no-gh when ghMode is never", async () => {
+    const { resolveVwWorktreeSnapshotCached } = await loadModule();
+    execaMock.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: JSON.stringify({
+        status: "ok",
+        repoRoot: "/repo",
+        worktrees: [
+          {
+            branch: "main",
+            path: "/repo",
+            dirty: false,
+            locked: { value: false, owner: null, reason: null },
+            merged: { overall: false },
+          },
+        ],
+      }),
+    });
+
+    const snapshot = await resolveVwWorktreeSnapshotCached("/repo", { ghMode: "never" });
+
+    expect(snapshot?.repoRoot).toBe("/repo");
+    expect(execaMock).toHaveBeenCalledWith("vw", ["list", "--json", "--no-gh"], expect.any(Object));
+  });
+
   it("caches by normalized cwd", async () => {
     const { resolveVwWorktreeSnapshotCached } = await loadModule();
     execaMock.mockResolvedValueOnce({
@@ -97,6 +122,56 @@ describe("resolveVwWorktreeSnapshotCached", () => {
     expect(first?.entries[0]?.path).toBe("/repo");
     expect(second?.entries[0]?.path).toBe("/repo");
     expect(execaMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs gh lookup in auto mode even when no-gh cache is fresh", async () => {
+    const { resolveVwWorktreeSnapshotCached } = await loadModule();
+    execaMock
+      .mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          status: "ok",
+          repoRoot: "/repo",
+          worktrees: [
+            {
+              branch: "feature/foo",
+              path: "/repo/.worktree/feature/foo",
+              dirty: false,
+              locked: {},
+              merged: { overall: false, byPR: null },
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          status: "ok",
+          repoRoot: "/repo",
+          worktrees: [
+            {
+              branch: "feature/foo",
+              path: "/repo/.worktree/feature/foo",
+              dirty: false,
+              locked: {},
+              merged: { overall: false, byPR: true },
+            },
+          ],
+        }),
+      });
+
+    const first = await resolveVwWorktreeSnapshotCached("/repo", { ghMode: "never" });
+    const second = await resolveVwWorktreeSnapshotCached("/repo", { ghMode: "auto" });
+
+    expect(first?.entries[0]?.merged.byPR).toBeNull();
+    expect(second?.entries[0]?.merged.byPR).toBe(true);
+    expect(execaMock).toHaveBeenNthCalledWith(
+      1,
+      "vw",
+      ["list", "--json", "--no-gh"],
+      expect.any(Object),
+    );
+    expect(execaMock).toHaveBeenNthCalledWith(2, "vw", ["list", "--json"], expect.any(Object));
   });
 
   it("uses --no-gh within refresh interval and reuses cached merged state", async () => {

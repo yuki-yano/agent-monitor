@@ -476,7 +476,7 @@ export const createTmuxActions = (adapter: TmuxAdapter, config: AgentMonitorConf
       return snapshotCwd;
     }
 
-    const snapshot = await resolveVwWorktreeSnapshotCached(snapshotCwd.cwd);
+    const snapshot = await resolveVwWorktreeSnapshotCached(snapshotCwd.cwd, { ghMode: "never" });
     if (!snapshot) {
       return {
         ok: false,

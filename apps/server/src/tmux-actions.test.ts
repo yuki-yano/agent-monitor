@@ -566,7 +566,9 @@ describe("createTmuxActions.launchAgentInSession", () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(vi.mocked(resolveVwWorktreeSnapshotCached)).toHaveBeenCalledWith("/tmp");
+    expect(vi.mocked(resolveVwWorktreeSnapshotCached)).toHaveBeenCalledWith("/tmp", {
+      ghMode: "never",
+    });
     expect(adapter.run).toHaveBeenCalledWith(
       expect.arrayContaining(["new-window", "-d", "-P", "-F"]),
     );

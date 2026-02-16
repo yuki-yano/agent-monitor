@@ -199,7 +199,7 @@ export const createPaneUpdateService = ({
       if (existing) {
         return existing;
       }
-      const request = resolveVwWorktreeSnapshotCached(cwd);
+      const request = resolveVwWorktreeSnapshotCached(cwd, { ghMode: "never" });
       vwSnapshotByCwd.set(key, request);
       return request;
     };

@@ -248,6 +248,7 @@ export type WorktreeListEntry = {
   lockOwner: string | null;
   lockReason: string | null;
   merged: boolean | null;
+  prCreated?: boolean | null;
   ahead?: number | null;
   behind?: number | null;
   fileChanges?: {

@@ -221,6 +221,34 @@ const resolveWorktreeFlagClassName = (
     : "border-latte-yellow/45 bg-latte-yellow/12 text-latte-yellow";
 };
 
+const resolveWorktreePrStatus = (
+  prCreated: boolean | null | undefined,
+  merged: boolean | null,
+): { label: string; className: string } => {
+  if (prCreated == null) {
+    return {
+      label: "PR Unknown",
+      className: "border-latte-surface2/70 bg-latte-surface0/60 text-latte-subtext0",
+    };
+  }
+  if (!prCreated) {
+    return {
+      label: "PR None",
+      className: "border-latte-peach/45 bg-latte-peach/12 text-latte-peach",
+    };
+  }
+  if (merged === true) {
+    return {
+      label: "PR Merged",
+      className: "border-latte-green/45 bg-latte-green/10 text-latte-green",
+    };
+  }
+  return {
+    label: "PR Created",
+    className: "border-latte-blue/45 bg-latte-blue/10 text-latte-blue",
+  };
+};
+
 const pollingPauseLabelMap: Record<
   NonNullable<ScreenPanelState["pollingPauseReason"]>,
   { label: string; className: string }
@@ -1121,6 +1149,10 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
                           const hasBehind = hasWorktreeUpstreamDelta(entry.behind);
                           const shouldShowAheadBehind = !isRepoRootPath && (hasAhead || hasBehind);
                           const entryBranchLabel = formatBranchLabel(entry.branch);
+                          const prStatus = resolveWorktreePrStatus(
+                            entry.prCreated ?? null,
+                            entry.merged,
+                          );
                           return (
                             <button
                               key={entry.path}
@@ -1208,6 +1240,13 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
                                       className={`inline-flex items-center rounded-full border px-1.5 py-0.5 font-mono text-[9px] ${resolveWorktreeFlagClassName("locked", entry.locked)}`}
                                     >
                                       Locked {formatWorktreeFlag(entry.locked)}
+                                    </span>
+                                  ) : null}
+                                  {!isRepoRootPath ? (
+                                    <span
+                                      className={`inline-flex items-center rounded-full border px-1.5 py-0.5 font-mono text-[9px] ${prStatus.className}`}
+                                    >
+                                      {prStatus.label}
                                     </span>
                                   ) : null}
                                   {shouldShowMergedFlag ? (

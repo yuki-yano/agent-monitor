@@ -18,6 +18,12 @@ const mergedStateByRepoRoot = new Map<
   Map<string, { byPR: boolean | null; overall: boolean | null }>
 >();
 
+type VwSnapshotGhMode = "auto" | "always" | "never";
+
+export type ResolveVwWorktreeSnapshotOptions = {
+  ghMode?: VwSnapshotGhMode;
+};
+
 type VwWorktreeEntry = {
   path: string;
   branch: string | null;
@@ -101,6 +107,16 @@ const shouldRunGhLookup = (cwd: string, nowMs: number) => {
     return { key, ghEnabled: true } as const;
   }
   return { key, ghEnabled: nowMs - lastLookupAt >= vwGhRefreshIntervalMs } as const;
+};
+
+const resolveGhLookup = (cwd: string, nowMs: number, ghMode: VwSnapshotGhMode) => {
+  if (ghMode === "always") {
+    return { key: resolveLookupKey(cwd), ghEnabled: true } as const;
+  }
+  if (ghMode === "never") {
+    return { key: resolveLookupKey(cwd), ghEnabled: false } as const;
+  }
+  return shouldRunGhLookup(cwd, nowMs);
 };
 
 const markGhLookupAt = (key: string, nowMs: number) => {
@@ -266,21 +282,31 @@ const fetchSnapshot = async (
 
 export const resolveVwWorktreeSnapshotCached = async (
   cwd: string,
+  options: ResolveVwWorktreeSnapshotOptions = {},
 ): Promise<VwWorktreeSnapshot | null> => {
   const normalizedCwd = normalizePath(cwd);
   if (!normalizedCwd) {
     return null;
   }
+  const ghMode = options.ghMode ?? "auto";
   const nowMs = Date.now();
+  const ghLookup = resolveGhLookup(normalizedCwd, nowMs, ghMode);
+  const shouldBypassCache = ghLookup.ghEnabled;
   const cached = vwSnapshotCache.get(normalizedCwd);
-  if (cached && nowMs - cached.at < vwSnapshotCacheTtlMs) {
+  if (cached && nowMs - cached.at < vwSnapshotCacheTtlMs && !shouldBypassCache) {
     return cached.snapshot;
   }
-  const existing = inflight.get(normalizedCwd);
+  const inflightKey = `${normalizedCwd}:${ghLookup.ghEnabled ? "gh" : "no-gh"}`;
+  const existing = inflight.get(inflightKey);
   if (existing) {
     return existing;
   }
-  const ghLookup = shouldRunGhLookup(normalizedCwd, nowMs);
+  if (!ghLookup.ghEnabled) {
+    const ghInflight = inflight.get(`${normalizedCwd}:gh`);
+    if (ghInflight) {
+      return ghInflight;
+    }
+  }
   if (ghLookup.ghEnabled) {
     markGhLookupAt(ghLookup.key, nowMs);
   }
@@ -311,11 +337,11 @@ export const resolveVwWorktreeSnapshotCached = async (
         { snapshot: resolvedSnapshot, at: Date.now() },
         VW_SNAPSHOT_CACHE_MAX_ENTRIES,
       );
-      inflight.delete(normalizedCwd);
+      inflight.delete(inflightKey);
       return resolvedSnapshot;
     },
   );
-  inflight.set(normalizedCwd, request);
+  inflight.set(inflightKey, request);
   return request;
 };
 

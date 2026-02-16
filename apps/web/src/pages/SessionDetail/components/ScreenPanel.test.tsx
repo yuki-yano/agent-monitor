@@ -160,6 +160,7 @@ describe("ScreenPanel", () => {
           lockOwner: null,
           lockReason: null,
           merged: false,
+          prCreated: true,
           ahead: 2,
           behind: 1,
           fileChanges: {
@@ -196,6 +197,7 @@ describe("ScreenPanel", () => {
       aheadBadge.compareDocumentPosition(dirtyBadge) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).not.toBe(0);
     expect(within(selectorPanel).getByText("Locked No")).toBeTruthy();
+    expect(within(selectorPanel).getByText("PR Created")).toBeTruthy();
     expect(within(selectorPanel).getByText("Merged No")).toBeTruthy();
     expect(within(selectorPanel).getByText("Current")).toBeTruthy();
   });
@@ -237,6 +239,7 @@ describe("ScreenPanel", () => {
     expect(within(selectorPanel).queryByText("Ahead 4")).toBeNull();
     expect(within(selectorPanel).queryByText("Behind 2")).toBeNull();
     expect(within(selectorPanel).queryByText("Locked No")).toBeNull();
+    expect(within(selectorPanel).queryByText("PR Created")).toBeNull();
     expect(within(selectorPanel).queryByText("Merged No")).toBeNull();
     expect(within(selectorPanel).queryByText(".")).toBeNull();
   });
