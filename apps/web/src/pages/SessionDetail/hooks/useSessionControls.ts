@@ -9,7 +9,7 @@ import { useAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
-import { resolveResultErrorMessage } from "@/lib/api-utils";
+import { resolveResultErrorMessage, resolveUnknownErrorMessage } from "@/lib/api-utils";
 import type { ScreenMode } from "@/lib/screen-loading";
 
 import {
@@ -243,7 +243,7 @@ export const useSessionControls = ({
         insertIntoTextarea(textarea, buildImagePathInsertText(textarea, attachment.path));
         setScreenError(null);
       } catch (error) {
-        setScreenError(error instanceof Error ? error.message : API_ERROR_MESSAGES.uploadImage);
+        setScreenError(resolveUnknownErrorMessage(error, API_ERROR_MESSAGES.uploadImage));
       }
     },
     [paneId, setScreenError, uploadImageAttachment],

@@ -65,7 +65,7 @@ export const requestSessionField = async <T, K extends keyof T>({
     onConnectionIssue(null);
     return value;
   } catch (error) {
-    const message = error instanceof Error ? error.message : fallbackMessage;
+    const message = resolveUnknownErrorMessage(error, fallbackMessage);
     onConnectionIssue(message);
     throw error instanceof Error ? error : new Error(message);
   }
@@ -165,7 +165,7 @@ export const requestCommand = async ({
     onConnectionIssue(null);
     return data.command;
   } catch (error) {
-    const message = error instanceof Error ? error.message : fallbackMessage;
+    const message = resolveUnknownErrorMessage(error, fallbackMessage);
     onConnectionIssue(message);
     return { ok: false, error: buildApiError("INTERNAL", message) };
   }
@@ -218,7 +218,7 @@ export const requestLaunchCommand = async ({
     onConnectionIssue(null);
     return data.command;
   } catch (error) {
-    const message = error instanceof Error ? error.message : fallbackMessage;
+    const message = resolveUnknownErrorMessage(error, fallbackMessage);
     onConnectionIssue(message);
     return {
       ok: false,

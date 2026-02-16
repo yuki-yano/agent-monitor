@@ -2,6 +2,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
+import { resolveUnknownErrorMessage } from "@/lib/api-utils";
 import { buildSessionGroups } from "@/lib/session-group";
 import { useNowMs } from "@/lib/use-now-ms";
 import { useSidebarWidth } from "@/lib/use-sidebar-width";
@@ -225,7 +226,7 @@ export const useSessionListVM = () => {
         await refreshSessions();
         setScreenError(null);
       } catch (error) {
-        setScreenError(error instanceof Error ? error.message : API_ERROR_MESSAGES.launchAgent);
+        setScreenError(resolveUnknownErrorMessage(error, API_ERROR_MESSAGES.launchAgent));
       } finally {
         launchPendingRef.current.delete(key);
         setLaunchPendingSessions(new Set(launchPendingRef.current));
