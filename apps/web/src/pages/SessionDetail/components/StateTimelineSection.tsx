@@ -14,7 +14,6 @@ import {
   Callout,
   Card,
   PanelSection,
-  SectionHeader,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -219,62 +218,65 @@ export const StateTimelineSection = ({ state, actions }: StateTimelineSectionPro
 
   return (
     <Card className="flex min-w-0 flex-col gap-2.5 p-3 sm:gap-3 sm:p-4">
-      <SectionHeader
-        title="State Timeline"
-        action={
-          <div className="flex w-full flex-col gap-2">
-            <div className="flex w-full flex-wrap items-center gap-2">
-              {timelineScopeTabs(timelineScope, hasRepoTimeline, onTimelineScopeChange)}
-            </div>
-            <div className="flex w-full flex-wrap items-center gap-2">
-              {timelineRangeTabs(timelineRange, onTimelineRangeChange)}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setCompactView((previous) => !previous);
-                }}
-                aria-label="Toggle compact timeline"
-                className={cn(
-                  "bg-latte-base/75 transition-all duration-200",
-                  compactView
-                    ? "border-latte-lavender/85 bg-latte-lavender/22 text-latte-lavender ring-latte-lavender/35 hover:border-latte-lavender hover:bg-latte-lavender/28 shadow-accent ring-1"
-                    : "border-latte-surface2/70 text-latte-subtext0 hover:border-latte-overlay1 hover:bg-latte-base/85 hover:text-latte-text",
-                )}
-              >
-                Compact
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={onTimelineRefresh}
-                aria-label="Refresh timeline"
-              >
-                <RefreshCw className={`h-4 w-4 ${timelineLoading ? "animate-spin" : ""}`} />
-              </Button>
-              {!isMobile ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={onToggleTimelineExpanded}
-                  aria-label={timelineExpanded ? "Collapse timeline" : "Expand timeline"}
-                >
-                  {timelineExpanded ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        }
-      />
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display text-latte-text text-base font-semibold tracking-tight">
+            State Timeline
+          </h2>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-latte-subtext0 hover:text-latte-text h-[30px] w-[30px] shrink-0 self-start p-0"
+          onClick={onTimelineRefresh}
+          aria-label="Refresh timeline"
+        >
+          <RefreshCw className={`h-4 w-4 ${timelineLoading ? "animate-spin" : ""}`} />
+          <span className="sr-only">Refresh</span>
+        </Button>
+      </div>
+      <div className="flex w-full flex-col gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2">
+          {timelineScopeTabs(timelineScope, hasRepoTimeline, onTimelineScopeChange)}
+        </div>
+        <div className="flex w-full flex-wrap items-center gap-2">
+          {timelineRangeTabs(timelineRange, onTimelineRangeChange)}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setCompactView((previous) => !previous);
+            }}
+            aria-label="Toggle compact timeline"
+            className={cn(
+              "bg-latte-base/75 transition-all duration-200",
+              compactView
+                ? "border-latte-lavender/85 bg-latte-lavender/22 text-latte-lavender ring-latte-lavender/35 hover:border-latte-lavender hover:bg-latte-lavender/28 shadow-accent ring-1"
+                : "border-latte-surface2/70 text-latte-subtext0 hover:border-latte-overlay1 hover:bg-latte-base/85 hover:text-latte-text",
+            )}
+          >
+            Compact
+          </Button>
+          {!isMobile ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={onToggleTimelineExpanded}
+              aria-label={timelineExpanded ? "Collapse timeline" : "Expand timeline"}
+            >
+              {timelineExpanded ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          ) : null}
+        </div>
+      </div>
 
       {timelineError ? (
         <Callout tone="error" size="xs">

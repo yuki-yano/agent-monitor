@@ -20,7 +20,6 @@ import {
   InsetPanel,
   LoadingOverlay,
   PanelSection,
-  SectionHeader,
   TagPill,
 } from "@/components/ui";
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
@@ -662,23 +661,27 @@ export const CommitSection = memo(({ state, actions }: CommitSectionProps) => {
 
   return (
     <Card className="flex flex-col gap-2">
-      <SectionHeader
-        title="Commit Log"
-        description={commitHeaderDescription}
-        action={
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-latte-subtext0 hover:text-latte-text h-[30px] w-[30px] p-0"
-            onClick={onRefresh}
-            disabled={commitLoading}
-            aria-label="Refresh commit log"
-          >
-            <RefreshCw className="h-4 w-4" />
-            <span className="sr-only">Refresh</span>
-          </Button>
-        }
-      />
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display text-latte-text text-base font-semibold tracking-tight">
+            Commit Log
+          </h2>
+          <p className="text-latte-subtext0 min-w-0 overflow-hidden text-sm">
+            {commitHeaderDescription}
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-latte-subtext0 hover:text-latte-text h-[30px] w-[30px] shrink-0 self-start p-0"
+          onClick={onRefresh}
+          disabled={commitLoading}
+          aria-label="Refresh commit log"
+        >
+          <RefreshCw className="h-4 w-4" />
+          <span className="sr-only">Refresh</span>
+        </Button>
+      </div>
       <CommitRepoRoot repoRoot={commitLog?.repoRoot} />
       <CommitReasonCallout reason={commitLog?.reason} />
       <CommitErrorCallout commitError={commitError} />
