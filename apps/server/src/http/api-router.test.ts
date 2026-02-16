@@ -147,6 +147,25 @@ const createTestContext = (configOverrides: Partial<AgentMonitorConfig> = {}) =>
     sendKeys: vi.fn(async () => ({ ok: true })),
     sendRaw: vi.fn(async () => ({ ok: true })),
     focusPane: vi.fn(async () => ({ ok: true as const })),
+    launchAgentInSession: vi.fn(async () => ({
+      ok: true as const,
+      result: {
+        sessionName: "session",
+        agent: "codex" as const,
+        windowId: "@42",
+        windowIndex: 1,
+        windowName: "codex-work",
+        paneId: "%99",
+        launchedCommand: "codex" as const,
+        resolvedOptions: [],
+        verification: {
+          status: "verified" as const,
+          observedCommand: "codex",
+          attempts: 1,
+        },
+      },
+      rollback: { attempted: false, ok: true },
+    })),
   } as unknown as MultiplexerInputActions;
   const api = createApiRouter({ config, monitor, actions });
   return {
@@ -560,6 +579,131 @@ describe("createApiRouter", () => {
     expect(secondData.command.error.code).toBe("INVALID_PAYLOAD");
     expect(secondData.command.error.message).toBe("requestId payload mismatch");
     expect(actions.sendText).toHaveBeenCalledTimes(1);
+  });
+
+  it("launches a new agent window in a session", async () => {
+    const { api, actions } = createTestContext();
+    const res = await api.request("/sessions/launch", {
+      method: "POST",
+      headers: { ...authHeaders, "content-type": "application/json" },
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "launch-req-1",
+        windowName: "codex-work",
+        cwd: "/tmp",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.command.ok).toBe(true);
+    expect(actions.launchAgentInSession).toHaveBeenCalledWith({
+      sessionName: "dev-main",
+      agent: "codex",
+      windowName: "codex-work",
+      cwd: "/tmp",
+    });
+  });
+
+  it("returns 400 for invalid launch payload", async () => {
+    const { api, actions } = createTestContext();
+    const res = await api.request("/sessions/launch", {
+      method: "POST",
+      headers: { ...authHeaders, "content-type": "application/json" },
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "codex",
+      }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(actions.launchAgentInSession).not.toHaveBeenCalled();
+  });
+
+  it("deduplicates launch command by requestId and sessionName", async () => {
+    const { api, actions } = createTestContext();
+    const headers = { ...authHeaders, "content-type": "application/json" };
+    const payload = JSON.stringify({
+      sessionName: "dev-main",
+      agent: "claude",
+      requestId: "launch-req-1",
+      windowName: "claude-work",
+    });
+
+    const first = await api.request("/sessions/launch", {
+      method: "POST",
+      headers,
+      body: payload,
+    });
+    const second = await api.request("/sessions/launch", {
+      method: "POST",
+      headers,
+      body: payload,
+    });
+
+    const firstData = await first.json();
+    const secondData = await second.json();
+    expect(firstData.command.ok).toBe(true);
+    expect(secondData.command.ok).toBe(true);
+    expect(actions.launchAgentInSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns rate limit error on repeated launch requests", async () => {
+    const { api, actions } = createTestContext({
+      rateLimit: { ...defaultConfig.rateLimit, send: { windowMs: 1000, max: 1 } },
+    });
+    const headers = { ...authHeaders, "content-type": "application/json" };
+    const first = await api.request("/sessions/launch", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "launch-rate-limit-1",
+      }),
+    });
+    const second = await api.request("/sessions/launch", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "launch-rate-limit-2",
+      }),
+    });
+
+    const firstData = await first.json();
+    const secondData = await second.json();
+    expect(firstData.command.ok).toBe(true);
+    expect(secondData.command.ok).toBe(false);
+    expect(secondData.command.error.code).toBe("RATE_LIMIT");
+    expect(secondData.command.rollback).toEqual({ attempted: false, ok: true });
+    expect(actions.launchAgentInSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns launch command errors from actions", async () => {
+    const { api, actions } = createTestContext();
+    vi.mocked(actions.launchAgentInSession).mockResolvedValueOnce({
+      ok: false,
+      error: { code: "TMUX_UNAVAILABLE", message: "launch-agent requires tmux backend" },
+      rollback: { attempted: false, ok: true },
+    });
+
+    const res = await api.request("/sessions/launch", {
+      method: "POST",
+      headers: { ...authHeaders, "content-type": "application/json" },
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "launch-req-error",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.command.ok).toBe(false);
+    expect(data.command.error.code).toBe("TMUX_UNAVAILABLE");
   });
 
   it("focuses pane via focus endpoint", async () => {

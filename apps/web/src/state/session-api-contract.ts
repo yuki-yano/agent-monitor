@@ -9,6 +9,7 @@ export const createApiClient = (apiBasePath: string, authHeaders: Record<string,
   });
 
 type ApiClientContract = ReturnType<typeof createApiClient>;
+type SessionsClient = ApiClientContract["sessions"];
 type SessionClient = ApiClientContract["sessions"][":paneId"];
 type NotesClient = SessionClient["notes"];
 
@@ -38,6 +39,7 @@ export type SendKeysJson = NonNullable<
 export type SendRawJson = NonNullable<
   InferRequestType<SessionClient["send"]["raw"]["$post"]>["json"]
 >;
+export type LaunchAgentJson = NonNullable<InferRequestType<SessionsClient["launch"]["$post"]>["json"]>;
 export type SessionTitleJson = NonNullable<
   InferRequestType<SessionClient["title"]["$put"]>["json"]
 >;

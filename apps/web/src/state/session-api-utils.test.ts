@@ -8,6 +8,7 @@ import {
   buildCommitLogQuery,
   buildDiffFileQuery,
   buildForceQuery,
+  buildLaunchAgentJson,
   buildPaneHashParam,
   buildPaneNoteParam,
   buildPaneParam,
@@ -176,6 +177,41 @@ describe("session-api-utils", () => {
     expect(buildSessionTitleJson("next title")).toEqual({ title: "next title" });
     expect(buildRepoNotePayloadJson("note", "body")).toEqual({ title: "note", body: "body" });
     expect(buildRepoNotePayloadJson(undefined, "body")).toEqual({ title: null, body: "body" });
+    expect(
+      buildLaunchAgentJson({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "req-1",
+      }),
+    ).toEqual({
+      sessionName: "dev-main",
+      agent: "codex",
+      requestId: "req-1",
+    });
+    expect(
+      buildLaunchAgentJson({
+        sessionName: "dev-main",
+        agent: "claude",
+        requestId: "req-2",
+        worktreePath: "/repo/.worktree/feature/x",
+        worktreeBranch: "feature/x",
+      }),
+    ).toEqual({
+      sessionName: "dev-main",
+      agent: "claude",
+      requestId: "req-2",
+      worktreePath: "/repo/.worktree/feature/x",
+      worktreeBranch: "feature/x",
+    });
+    expect(() =>
+      buildLaunchAgentJson({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "req-3",
+        cwd: "/tmp",
+        worktreeBranch: "feature/x",
+      }),
+    ).toThrow("cwd cannot be combined with worktreePath/worktreeBranch");
     const file = new File([new Uint8Array([1, 2, 3])], "sample.png", { type: "image/png" });
     expect(buildUploadImageForm(file)).toEqual({ image: file });
 

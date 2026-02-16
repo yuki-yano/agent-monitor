@@ -77,6 +77,7 @@ export const useSessionDetailViewShellSectionProps = ({
   } = title;
   const {
     handleFocusPane,
+    handleLaunchAgentInSession,
     handleTouchPane,
     handleTouchRepoPin,
     handleOpenPaneHere,
@@ -181,6 +182,7 @@ export const useSessionDetailViewShellSectionProps = ({
         resolvedTheme,
         paneId,
         handleFocusPane,
+        handleLaunchAgentInSession,
         handleTouchPane,
         handleTouchRepoPin,
       }),
@@ -196,6 +198,7 @@ export const useSessionDetailViewShellSectionProps = ({
       resolvedTheme,
       paneId,
       handleFocusPane,
+      handleLaunchAgentInSession,
       handleTouchPane,
       handleTouchRepoPin,
     ],

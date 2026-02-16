@@ -17,6 +17,7 @@ import type {
   CommitLogQuery,
   DiffFileQuery,
   ForceQuery,
+  LaunchAgentJson,
   NoteIdParam,
   PaneHashParam,
   PaneParam,
@@ -114,6 +115,47 @@ export const buildSendRawJson = (items: SendRawJson["items"], unsafe: boolean): 
   items,
   unsafe,
 });
+
+export const buildLaunchAgentJson = ({
+  sessionName,
+  agent,
+  requestId,
+  windowName,
+  cwd,
+  worktreePath,
+  worktreeBranch,
+}: {
+  sessionName: string;
+  agent: "codex" | "claude";
+  requestId: string;
+  windowName?: string;
+  cwd?: string;
+  worktreePath?: string;
+  worktreeBranch?: string;
+}): LaunchAgentJson => {
+  if (cwd && (worktreePath || worktreeBranch)) {
+    throw new Error("cwd cannot be combined with worktreePath/worktreeBranch");
+  }
+
+  const json: LaunchAgentJson = {
+    sessionName,
+    agent,
+    requestId,
+  };
+  if (windowName) {
+    json.windowName = windowName;
+  }
+  if (cwd) {
+    json.cwd = cwd;
+  }
+  if (worktreePath) {
+    json.worktreePath = worktreePath;
+  }
+  if (worktreeBranch) {
+    json.worktreeBranch = worktreeBranch;
+  }
+  return json;
+};
 
 export const buildSessionTitleJson = (title: string | null): SessionTitleJson => ({
   title,

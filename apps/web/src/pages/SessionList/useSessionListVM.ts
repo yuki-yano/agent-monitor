@@ -28,6 +28,13 @@ const FILTER_OPTIONS = SESSION_LIST_FILTER_VALUES.map((value) => ({
   label: value.replace("_", " "),
 }));
 
+const createLaunchRequestId = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `launch-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
 export const useSessionListVM = () => {
   const {
     sessions,
@@ -37,6 +44,7 @@ export const useSessionListVM = () => {
     refreshSessions,
     requestStateTimeline,
     requestScreen,
+    launchAgentInSession,
     touchSession,
     highlightCorrections,
   } = useSessions();
@@ -48,6 +56,7 @@ export const useSessionListVM = () => {
   const { resolvedTheme } = useTheme();
   const { sidebarWidth, handlePointerDown } = useSidebarWidth();
   const [pins, setPins] = useState(() => readStoredSessionListPins());
+  const [launchPendingKeys, setLaunchPendingKeys] = useState<Set<string>>(() => new Set());
   const repoPinValues = pins.repos;
 
   useEffect(() => {
@@ -187,6 +196,49 @@ export const useSessionListVM = () => {
     [paneRepoRootMap, touchSession],
   );
 
+  const handleLaunchAgentInSession = useCallback(
+    async (
+      sessionName: string,
+      agent: "codex" | "claude",
+      options?: {
+        worktreePath?: string;
+        worktreeBranch?: string;
+      },
+    ) => {
+      const key = `${sessionName}:${agent}`;
+      let shouldLaunch = false;
+      setLaunchPendingKeys((prev) => {
+        if (prev.has(key)) {
+          return prev;
+        }
+        shouldLaunch = true;
+        const next = new Set(prev);
+        next.add(key);
+        return next;
+      });
+      if (!shouldLaunch) {
+        return;
+      }
+
+      try {
+        const result = await launchAgentInSession(sessionName, agent, createLaunchRequestId(), options);
+        if (result.ok) {
+          await refreshSessions();
+        }
+      } finally {
+        setLaunchPendingKeys((prev) => {
+          if (!prev.has(key)) {
+            return prev;
+          }
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      }
+    },
+    [launchAgentInSession, refreshSessions],
+  );
+
   return {
     sessions,
     groups,
@@ -223,6 +275,8 @@ export const useSessionListVM = () => {
     onOpenPaneInNewWindow: handleOpenPaneInNewWindow,
     onOpenHere: handleOpenHere,
     onOpenNewTab: handleOpenInNewTab,
+    launchPendingKeys,
+    onLaunchAgentInSession: handleLaunchAgentInSession,
     onTouchRepoPin: handleTouchRepoPin,
     onTouchPanePin: handleTouchPanePin,
   };

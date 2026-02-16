@@ -3,6 +3,7 @@ import type {
   ApiEnvelope,
   CommandResponse,
   ImageAttachment,
+  LaunchCommandResponse,
   RawItem,
   RepoNote,
 } from "@vde-monitor/shared";
@@ -12,6 +13,7 @@ import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import type { ApiClientContract, NoteIdParam, PaneParam } from "./session-api-contract";
 import { requestImageAttachment as executeRequestImageAttachment } from "./session-api-request-executors";
 import {
+  buildLaunchAgentJson,
   buildPaneParam,
   buildRepoNotePayloadJson,
   buildSendKeysJson,
@@ -51,12 +53,21 @@ type RequestPaneNoteField = <T, K extends keyof T>(params: {
   fallbackMessage: string;
 }) => Promise<NonNullable<T[K]>>;
 
+type RunLaunchCommand = (
+  fallbackMessage: string,
+  request: (signal?: AbortSignal) => Promise<Response>,
+  options?: {
+    requestTimeoutMs?: number;
+  },
+) => Promise<LaunchCommandResponse>;
+
 type CreateSessionActionRequestsParams = {
   apiClient: ApiClientContract;
   runPaneCommand: RunPaneCommand;
   runPaneMutation: RunPaneMutation;
   requestPaneField: RequestPaneField;
   requestPaneNoteField: RequestPaneNoteField;
+  runLaunchCommand: RunLaunchCommand;
   ensureToken: () => void;
   onConnectionIssue: (message: string | null) => void;
   handleSessionMissing: (paneId: string, res: Response, data: ApiEnvelope<unknown> | null) => void;
@@ -68,11 +79,13 @@ export const createSessionActionRequests = ({
   runPaneMutation,
   requestPaneField,
   requestPaneNoteField,
+  runLaunchCommand,
   ensureToken,
   onConnectionIssue,
   handleSessionMissing,
 }: CreateSessionActionRequestsParams) => {
   const SEND_TEXT_REQUEST_TIMEOUT_MS = 10000;
+  const LAUNCH_AGENT_REQUEST_TIMEOUT_MS = 10_000;
 
   const sendText = async (
     paneId: string,
@@ -98,6 +111,38 @@ export const createSessionActionRequests = ({
   const focusPane = async (paneId: string): Promise<CommandResponse> => {
     return runPaneCommand(paneId, API_ERROR_MESSAGES.focusPane, (param, signal) =>
       apiClient.sessions[":paneId"].focus.$post({ param }, { init: { signal } }),
+    );
+  };
+
+  const launchAgentInSession = async (
+    sessionName: string,
+    agent: "codex" | "claude",
+    requestId: string,
+    options?: {
+      windowName?: string;
+      cwd?: string;
+      worktreePath?: string;
+      worktreeBranch?: string;
+    },
+  ): Promise<LaunchCommandResponse> => {
+    return runLaunchCommand(
+      API_ERROR_MESSAGES.launchAgent,
+      (signal) =>
+        apiClient.sessions.launch.$post(
+          {
+            json: buildLaunchAgentJson({
+              sessionName,
+              agent,
+              requestId,
+              windowName: options?.windowName,
+              cwd: options?.cwd,
+              worktreePath: options?.worktreePath,
+              worktreeBranch: options?.worktreeBranch,
+            }),
+          },
+          { init: { signal } },
+        ),
+      { requestTimeoutMs: LAUNCH_AGENT_REQUEST_TIMEOUT_MS },
     );
   };
 
@@ -200,6 +245,7 @@ export const createSessionActionRequests = ({
 
   return {
     sendText,
+    launchAgentInSession,
     focusPane,
     uploadImageAttachment,
     sendKeys,

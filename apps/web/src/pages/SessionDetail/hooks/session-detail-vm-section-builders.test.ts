@@ -37,6 +37,7 @@ describe("session detail vm section builders", () => {
     const saveTitle = vi.fn();
     const resetTitle = vi.fn();
     const handleFocusPane = vi.fn(async () => undefined);
+    const handleLaunchAgentInSession = vi.fn(async () => undefined);
     const handleTouchPaneWithRepoAnchor = vi.fn();
     const handleTouchRepoPin = vi.fn();
     const handleOpenPaneHere = vi.fn();
@@ -300,6 +301,7 @@ describe("session detail vm section builders", () => {
 
     const actions = buildActionsSection({
       handleFocusPane,
+      handleLaunchAgentInSession,
       handleTouchPaneWithRepoAnchor,
       handleTouchRepoPin,
       handleOpenPaneHere,
@@ -308,6 +310,7 @@ describe("session detail vm section builders", () => {
       handleOpenInNewTab,
     });
     expect(actions.handleTouchPane).toBe(handleTouchPaneWithRepoAnchor);
+    expect(actions.handleLaunchAgentInSession).toBe(handleLaunchAgentInSession);
     expect(actions.handleOpenPaneInNewWindow).toBe(handleOpenPaneInNewWindow);
     expect(actions.handleOpenInNewTab).toBe(handleOpenInNewTab);
   });

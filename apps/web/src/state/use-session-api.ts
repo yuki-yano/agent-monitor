@@ -4,6 +4,7 @@ import {
   type ClientFileNavigatorConfig,
   type CommandResponse,
   type HighlightCorrectionConfig,
+  type LaunchCommandResponse,
   type ScreenResponse,
   type SessionSummary,
 } from "@vde-monitor/shared";
@@ -18,6 +19,7 @@ import {
   mutateSession as executeMutateSession,
   refreshSessions as executeRefreshSessions,
   requestCommand as executeRequestCommand,
+  requestLaunchCommand as executeRequestLaunchCommand,
   requestSessionField as executeRequestSessionField,
 } from "./session-api-request-executors";
 import { createSessionScreenRequest } from "./session-api-screen-request";
@@ -319,6 +321,23 @@ export const useSessionApi = ({
     ],
   );
 
+  const requestLaunchCommand = useCallback(
+    async (
+      request: (signal?: AbortSignal) => Promise<Response>,
+      fallbackMessage: string,
+      requestTimeoutMs?: number,
+    ): Promise<LaunchCommandResponse> =>
+      executeRequestLaunchCommand({
+        request,
+        fallbackMessage,
+        requestTimeoutMs,
+        ensureToken,
+        onConnectionIssue,
+        buildApiError,
+      }),
+    [buildApiError, ensureToken, onConnectionIssue],
+  );
+
   const runPaneCommand = useCallback(
     (
       paneId: string,
@@ -348,6 +367,7 @@ export const useSessionApi = ({
 
   const {
     sendText,
+    launchAgentInSession,
     focusPane,
     uploadImageAttachment,
     sendKeys,
@@ -365,6 +385,8 @@ export const useSessionApi = ({
         runPaneMutation,
         requestPaneField: requestPaneQueryField,
         requestPaneNoteField,
+        runLaunchCommand: (fallbackMessage, request, options) =>
+          requestLaunchCommand(request, fallbackMessage, options?.requestTimeoutMs),
         ensureToken,
         onConnectionIssue,
         handleSessionMissing,
@@ -374,6 +396,7 @@ export const useSessionApi = ({
       ensureToken,
       handleSessionMissing,
       onConnectionIssue,
+      requestLaunchCommand,
       runPaneCommand,
       runPaneMutation,
       requestPaneQueryField,
@@ -397,6 +420,7 @@ export const useSessionApi = ({
       requestRepoFileContent,
       requestScreen,
       sendText,
+      launchAgentInSession,
       focusPane,
       uploadImageAttachment,
       sendKeys,
@@ -411,6 +435,7 @@ export const useSessionApi = ({
       createRepoNote,
       deleteRepoNote,
       focusPane,
+      launchAgentInSession,
       refreshSessions,
       requestCommitDetail,
       requestCommitFile,

@@ -147,6 +147,17 @@ const TestComponent = () => {
       <button type="button" onClick={() => vm.onTouchPanePin("pane-test")}>
         touch-pane
       </button>
+      <button
+        type="button"
+        onClick={() =>
+          void vm.onLaunchAgentInSession("session-launch", "codex", {
+            worktreePath: "/Users/test/repo/.worktree/feature/launch",
+            worktreeBranch: "feature/launch",
+          })
+        }
+      >
+        launch-agent
+      </button>
       <button type="button" onClick={vm.onOpenNewTab}>
         open-new-tab
       </button>
@@ -198,6 +209,7 @@ describe("useSessionListVM", () => {
       refreshSessions: vi.fn(),
       requestStateTimeline: vi.fn(),
       requestScreen: vi.fn(),
+      launchAgentInSession: vi.fn(),
       touchSession: vi.fn(),
       highlightCorrections: { codex: true, claude: true },
     });
@@ -274,6 +286,7 @@ describe("useSessionListVM", () => {
       refreshSessions: vi.fn(),
       requestStateTimeline: vi.fn(),
       requestScreen: vi.fn(),
+      launchAgentInSession: vi.fn(),
       touchSession: vi.fn(),
       highlightCorrections: { codex: true, claude: true },
     });
@@ -297,6 +310,7 @@ describe("useSessionListVM", () => {
       refreshSessions: vi.fn(),
       requestStateTimeline: vi.fn(),
       requestScreen: vi.fn(),
+      launchAgentInSession: vi.fn(),
       touchSession,
       highlightCorrections: { codex: true, claude: true },
     });
@@ -316,6 +330,87 @@ describe("useSessionListVM", () => {
     });
   });
 
+  it("launches agent session with worktree options and refreshes sessions", async () => {
+    const refreshSessions = vi.fn();
+    const launchAgentInSession = vi.fn().mockResolvedValue({
+      ok: true,
+      result: {
+        sessionName: "session-launch",
+        agent: "codex",
+        windowId: "@9",
+        windowIndex: 1,
+        windowName: "codex-work",
+        paneId: "%9",
+        launchedCommand: "codex",
+        resolvedOptions: [],
+        verification: { status: "verified", observedCommand: "codex", attempts: 1 },
+      },
+      rollback: { attempted: false, ok: true },
+    });
+
+    mockUseSessions.mockReturnValue({
+      sessions: [],
+      connected: true,
+      connectionStatus: "healthy",
+      connectionIssue: null,
+      refreshSessions,
+      requestStateTimeline: vi.fn(),
+      requestScreen: vi.fn(),
+      launchAgentInSession,
+      touchSession: vi.fn(),
+      highlightCorrections: { codex: true, claude: true },
+    });
+
+    await renderWithRouter(["/"]);
+    fireEvent.click(screen.getByRole("button", { name: "launch-agent" }));
+
+    await waitFor(() => {
+      expect(launchAgentInSession).toHaveBeenCalledWith(
+        "session-launch",
+        "codex",
+        expect.any(String),
+        {
+          worktreePath: "/Users/test/repo/.worktree/feature/launch",
+          worktreeBranch: "feature/launch",
+        },
+      );
+    });
+    await waitFor(() => {
+      expect(refreshSessions).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("closes quick panel and log modal before opening selected pane in new tab", async () => {
+    const closeQuickPanel = vi.fn();
+    const closeLogModal = vi.fn();
+    mockUseSessionLogs.selectedPaneId = "pane target/1";
+    mockUseSessionLogs.closeQuickPanel = closeQuickPanel;
+    mockUseSessionLogs.closeLogModal = closeLogModal;
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+
+    await renderWithRouter(["/"]);
+    fireEvent.click(screen.getByRole("button", { name: "open-new-tab" }));
+
+    expect(closeQuickPanel).toHaveBeenCalledTimes(1);
+    expect(closeLogModal).toHaveBeenCalledTimes(1);
+    expect(openSpy).toHaveBeenCalledWith(
+      "/sessions/pane%20target%2F1",
+      "_blank",
+      "noopener,noreferrer",
+    );
+    const openOrder = openSpy.mock.invocationCallOrder[0];
+    const closeQuickOrder = closeQuickPanel.mock.invocationCallOrder[0];
+    const closeLogOrder = closeLogModal.mock.invocationCallOrder[0];
+    expect(openOrder).toBeDefined();
+    expect(closeQuickOrder).toBeDefined();
+    expect(closeLogOrder).toBeDefined();
+    if (openOrder == null || closeQuickOrder == null || closeLogOrder == null) {
+      throw new Error("missing invocation order");
+    }
+    expect(closeQuickOrder).toBeLessThan(openOrder);
+    expect(closeLogOrder).toBeLessThan(openOrder);
+    openSpy.mockRestore();
+  });
   it("opens specified pane in new window from quick panel action", async () => {
     const closeQuickPanel = vi.fn();
     const closeLogModal = vi.fn();

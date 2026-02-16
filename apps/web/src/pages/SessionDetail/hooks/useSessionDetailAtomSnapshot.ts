@@ -25,6 +25,7 @@ export const useSessionDetailAtomSnapshot = (paneId: string): SessionDetailAtomS
     connectionIssue,
     highlightCorrections,
     fileNavigatorConfig,
+    refreshSessions,
     reconnect,
     requestWorktrees,
     requestDiffSummary,
@@ -39,6 +40,7 @@ export const useSessionDetailAtomSnapshot = (paneId: string): SessionDetailAtomS
     requestRepoFileContent,
     requestScreen,
     focusPane,
+    launchAgentInSession,
     uploadImageAttachment,
     sendText,
     sendKeys,
@@ -54,6 +56,7 @@ export const useSessionDetailAtomSnapshot = (paneId: string): SessionDetailAtomS
   const sessionApi = useMemo<SessionApi>(
     () => ({
       reconnect,
+      refreshSessions,
       requestWorktrees,
       requestDiffSummary,
       requestDiffFile,
@@ -67,6 +70,7 @@ export const useSessionDetailAtomSnapshot = (paneId: string): SessionDetailAtomS
       requestRepoFileContent,
       requestScreen,
       focusPane,
+      launchAgentInSession,
       uploadImageAttachment,
       sendText,
       sendKeys,
@@ -79,6 +83,7 @@ export const useSessionDetailAtomSnapshot = (paneId: string): SessionDetailAtomS
     }),
     [
       reconnect,
+      refreshSessions,
       requestWorktrees,
       requestDiffSummary,
       requestDiffFile,
@@ -92,6 +97,7 @@ export const useSessionDetailAtomSnapshot = (paneId: string): SessionDetailAtomS
       requestRepoFileContent,
       requestScreen,
       focusPane,
+      launchAgentInSession,
       uploadImageAttachment,
       sendText,
       sendKeys,

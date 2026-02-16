@@ -250,6 +250,7 @@ type BuildTitleSectionArgs = {
 
 type BuildActionsSectionArgs = {
   handleFocusPane: (targetPaneId: string) => Promise<void>;
+  handleLaunchAgentInSession: (sessionName: string, agent: "codex" | "claude") => Promise<void>;
   handleTouchPaneWithRepoAnchor: (targetPaneId: string) => void;
   handleTouchRepoPin: (repoRoot: string | null) => void;
   handleOpenPaneHere: (targetPaneId: string) => void;
@@ -652,6 +653,7 @@ export const buildTitleSection = ({
 
 export const buildActionsSection = ({
   handleFocusPane,
+  handleLaunchAgentInSession,
   handleTouchPaneWithRepoAnchor,
   handleTouchRepoPin,
   handleOpenPaneHere,
@@ -660,6 +662,7 @@ export const buildActionsSection = ({
   handleOpenInNewTab,
 }: BuildActionsSectionArgs) => ({
   handleFocusPane,
+  handleLaunchAgentInSession,
   handleTouchPane: handleTouchPaneWithRepoAnchor,
   handleTouchRepoPin,
   handleOpenPaneHere,

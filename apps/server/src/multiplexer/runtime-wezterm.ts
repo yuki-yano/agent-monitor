@@ -53,6 +53,17 @@ export const createWeztermRuntime = (config: AgentMonitorConfig): MultiplexerRun
       }
       return result;
     },
+    launchAgentInSession: async () => ({
+      ok: false,
+      error: {
+        code: "TMUX_UNAVAILABLE",
+        message: "launch-agent requires tmux backend",
+      },
+      rollback: {
+        attempted: false,
+        ok: true,
+      },
+    }),
   };
   const captureFingerprint = async (paneId: string, useAlt: boolean) => {
     try {

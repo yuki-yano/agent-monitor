@@ -28,6 +28,10 @@ vi.mock("@/pages/SessionDetail/components/SessionSidebar", () => ({
     state: { sessionGroups: unknown[] };
     actions: {
       onFocusPane?: (paneId: string) => Promise<void> | void;
+      onLaunchAgentInSession?: (
+        sessionName: string,
+        agent: "codex" | "claude",
+      ) => Promise<void> | void;
       onTouchSession?: (paneId: string) => void;
       onTouchRepoPin?: (repoRoot: string | null) => void;
     };
@@ -41,6 +45,12 @@ vi.mock("@/pages/SessionDetail/components/SessionSidebar", () => ({
       </button>
       <button type="button" onClick={() => actions.onTouchRepoPin?.("/Users/test/sidebar-repo")}>
         sidebar-pin-repo
+      </button>
+      <button
+        type="button"
+        onClick={() => actions.onLaunchAgentInSession?.("sidebar-session", "claude")}
+      >
+        sidebar-launch
       </button>
     </div>
   ),
@@ -184,6 +194,8 @@ const createViewProps = (overrides: Partial<SessionListViewProps> = {}): Session
     onOpenPaneInNewWindow: vi.fn(),
     onOpenHere: vi.fn(),
     onOpenNewTab: vi.fn(),
+    launchPendingKeys: new Set<string>(),
+    onLaunchAgentInSession: vi.fn(),
     onTouchRepoPin: vi.fn(),
     onTouchPanePin: vi.fn(),
     ...overrides,
@@ -300,6 +312,27 @@ describe("SessionListView", () => {
     expect(cardScope.getByText("CODEX")).toBeTruthy();
   });
 
+  it("calls onLaunchAgentInSession from session section launch button", () => {
+    const session = buildSession({
+      sessionName: "launch-target",
+      worktreePath: "/Users/test/repo/.worktree/feature/a",
+      branch: "feature/a",
+    });
+    const onLaunchAgentInSession = vi.fn();
+    const props = createViewProps({
+      sessions: [session],
+      onLaunchAgentInSession,
+    });
+
+    renderWithRouter(<SessionListView {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Launch Codex" }));
+
+    expect(onLaunchAgentInSession).toHaveBeenCalledWith("launch-target", "codex", {
+      worktreePath: "/Users/test/repo/.worktree/feature/a",
+      worktreeBranch: "feature/a",
+    });
+  });
+
   it("uses window-level pane totals for each window section", () => {
     const agentPane = buildSession({
       paneId: "pane-1",
@@ -364,8 +397,9 @@ describe("SessionListView", () => {
     const sessionLabels = screen
       .getAllByText(/^Session (alpha|beta)$/)
       .map((element) => element.textContent);
-    expect(sessionLabels[0]).toContain("Session beta");
-    expect(sessionLabels[1]).toContain("Session alpha");
+    const orderedUniqueLabels = Array.from(new Set(sessionLabels));
+    expect(orderedUniqueLabels[0]).toContain("Session beta");
+    expect(orderedUniqueLabels[1]).toContain("Session alpha");
   });
 
   it("passes sidebar groups independently from visible groups", () => {
@@ -398,10 +432,12 @@ describe("SessionListView", () => {
 
   it("wires sidebar open and pin handlers", () => {
     const onOpenPaneHere = vi.fn();
+    const onLaunchAgentInSession = vi.fn();
     const onTouchRepoPin = vi.fn();
     const onTouchPanePin = vi.fn();
     const props = createViewProps({
       onOpenPaneHere,
+      onLaunchAgentInSession,
       onTouchRepoPin,
       onTouchPanePin,
     });
@@ -411,8 +447,10 @@ describe("SessionListView", () => {
     fireEvent.click(screen.getByRole("button", { name: "sidebar-open" }));
     fireEvent.click(screen.getByRole("button", { name: "sidebar-pin-pane" }));
     fireEvent.click(screen.getByRole("button", { name: "sidebar-pin-repo" }));
+    fireEvent.click(screen.getByRole("button", { name: "sidebar-launch" }));
 
     expect(onOpenPaneHere).toHaveBeenCalledWith("pane-sidebar-open");
+    expect(onLaunchAgentInSession).toHaveBeenCalledWith("sidebar-session", "claude");
     expect(onTouchPanePin).toHaveBeenCalledWith("pane-sidebar-pin");
     expect(onTouchRepoPin).toHaveBeenCalledWith("/Users/test/sidebar-repo");
   });

@@ -354,6 +354,36 @@ export type CommandResponse = {
   error?: ApiError;
 };
 
+export type LaunchAgent = "codex" | "claude";
+
+export type LaunchRollback = {
+  attempted: boolean;
+  ok: boolean;
+  message?: string;
+};
+
+export type LaunchVerification = {
+  status: "verified" | "timeout" | "mismatch" | "skipped";
+  observedCommand: string | null;
+  attempts: number;
+};
+
+export type LaunchAgentResult = {
+  sessionName: string;
+  agent: LaunchAgent;
+  windowId: string;
+  windowIndex: number;
+  windowName: string;
+  paneId: string;
+  launchedCommand: LaunchAgent;
+  resolvedOptions: string[];
+  verification: LaunchVerification;
+};
+
+export type LaunchCommandResponse =
+  | { ok: true; result: LaunchAgentResult; rollback: LaunchRollback }
+  | { ok: false; error: ApiError; rollback: LaunchRollback };
+
 export type ImageAttachment = {
   path: string;
   mimeType: "image/png" | "image/jpeg" | "image/webp";
@@ -423,6 +453,17 @@ export type ServerHealth = {
   clientConfig?: ClientConfig;
 };
 
+export type AgentLaunchOptionsConfig = {
+  options: string[];
+};
+
+export type LaunchConfig = {
+  agents: {
+    codex: AgentLaunchOptionsConfig;
+    claude: AgentLaunchOptionsConfig;
+  };
+};
+
 export type AgentMonitorConfigBase = {
   bind: "127.0.0.1" | "0.0.0.0";
   port: number;
@@ -471,6 +512,7 @@ export type AgentMonitorConfigBase = {
       target: string | null;
     };
   };
+  launch: LaunchConfig;
   fileNavigator: FileNavigatorConfig;
   tmux: { socketName: string | null; socketPath: string | null; primaryClient: string | null };
 };

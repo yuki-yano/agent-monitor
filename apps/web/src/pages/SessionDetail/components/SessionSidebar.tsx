@@ -46,6 +46,10 @@ type SessionSidebarState = {
 type SessionSidebarActions = {
   onSelectSession?: (paneId: string) => void;
   onFocusPane?: (paneId: string) => Promise<void> | void;
+  onLaunchAgentInSession?: (
+    sessionName: string,
+    agent: "codex" | "claude",
+  ) => Promise<void> | void;
   onTouchSession?: (paneId: string) => void;
   onTouchRepoPin?: (repoRoot: string | null) => void;
 };
@@ -80,19 +84,23 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
     currentPaneId,
     className,
   } = state;
-  const { onSelectSession, onFocusPane, onTouchSession, onTouchRepoPin } = actions;
+  const { onSelectSession, onFocusPane, onLaunchAgentInSession, onTouchSession, onTouchRepoPin } =
+    actions;
 
   const {
     filter,
     focusPendingPaneIds,
+    launchPendingKeys,
     handleSelectSession,
     handleFocusPane,
+    handleLaunchAgentInSession,
     handleFilterChange,
     handleTouchRepoPin,
     handleTouchPane,
   } = useSessionSidebarActions({
     onSelectSession,
     onFocusPane,
+    onLaunchAgentInSession,
     onTouchSession,
     onTouchRepoPin,
   });
@@ -154,12 +162,14 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
         nowMs={nowMs}
         currentPaneId={currentPaneId}
         focusPendingPaneIds={focusPendingPaneIds}
+        launchPendingKeys={launchPendingKeys}
         onHoverStart={handleHoverStart}
         onHoverEnd={handleHoverEnd}
         onFocus={handleFocus}
         onBlur={handleBlur}
         onSelect={handleSelect}
         onFocusPane={handleFocusPane}
+        onLaunchAgentInSession={handleLaunchAgentInSession}
         onTouchSession={handleTouchPane}
         onTouchRepoPin={handleTouchRepoPin}
         registerItemRef={registerItemRef}

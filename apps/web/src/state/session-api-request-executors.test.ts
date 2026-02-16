@@ -9,6 +9,7 @@ import {
   refreshSessions,
   requestCommand,
   requestImageAttachment,
+  requestLaunchCommand,
   requestScreenResponse,
   requestSessionField,
 } from "./session-api-request-executors";
@@ -274,6 +275,75 @@ describe("session-api-request-executors", () => {
     expect(onConnectionIssue).toHaveBeenCalledWith(response.error?.message);
     expect(handleSessionMissing).not.toHaveBeenCalled();
     expect(onSessionRemoved).not.toHaveBeenCalled();
+  });
+
+  it("requestLaunchCommand returns launch payload on success", async () => {
+    const ensureToken = vi.fn();
+    const onConnectionIssue = vi.fn();
+    server.use(
+      http.post(pathToUrl("/tests/launch-command-success"), () => {
+        return HttpResponse.json({
+          command: {
+            ok: true,
+            result: {
+              sessionName: "dev-main",
+              agent: "codex",
+              windowId: "@42",
+              windowIndex: 1,
+              windowName: "codex-work",
+              paneId: "%11",
+              launchedCommand: "codex",
+              resolvedOptions: [],
+              verification: {
+                status: "verified",
+                observedCommand: "codex",
+                attempts: 1,
+              },
+            },
+            rollback: {
+              attempted: false,
+              ok: true,
+            },
+          },
+        });
+      }),
+    );
+
+    const response = await requestLaunchCommand({
+      request: postRequestWithSignal("/tests/launch-command-success"),
+      fallbackMessage: "launch failed",
+      ensureToken,
+      onConnectionIssue,
+      buildApiError: (code, message) => ({ code, message }),
+    });
+
+    expect(response.ok).toBe(true);
+    expect(onConnectionIssue).toHaveBeenCalledWith(null);
+  });
+
+  it("requestLaunchCommand returns INTERNAL response when request fails", async () => {
+    const ensureToken = vi.fn();
+    const onConnectionIssue = vi.fn();
+    server.use(
+      http.post(pathToUrl("/tests/launch-command-network-error"), () => {
+        return HttpResponse.error();
+      }),
+    );
+
+    const response = await requestLaunchCommand({
+      request: postRequestWithSignal("/tests/launch-command-network-error"),
+      fallbackMessage: "launch failed",
+      ensureToken,
+      onConnectionIssue,
+      buildApiError: (code, message) => ({ code, message }),
+    });
+
+    expect(response.ok).toBe(false);
+    if (response.ok) {
+      return;
+    }
+    expect(response.error.code).toBe("INTERNAL");
+    expect(response.rollback).toEqual({ attempted: false, ok: true });
   });
 
   it("requestScreenResponse returns screen payload on success", async () => {

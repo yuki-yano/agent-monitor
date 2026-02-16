@@ -382,6 +382,7 @@ describe("section props builders", () => {
     const closeTitleEditor = vi.fn();
     const handleTouchSession = vi.fn();
     const handleFocusPane = vi.fn();
+    const handleLaunchAgentInSession = vi.fn(async () => undefined);
     const handleTouchPane = vi.fn();
     const handleTouchRepoPin = vi.fn();
     const handleSendText = vi.fn(async () => undefined);
@@ -474,11 +475,13 @@ describe("section props builders", () => {
       resolvedTheme: "latte",
       paneId: "%1",
       handleFocusPane,
+      handleLaunchAgentInSession,
       handleTouchPane,
       handleTouchRepoPin,
     });
     expect(sidebar.state.currentPaneId).toBe("%1");
     expect(sidebar.actions.onFocusPane).toBe(handleFocusPane);
+    expect(sidebar.actions.onLaunchAgentInSession).toBe(handleLaunchAgentInSession);
 
     const controls = buildControlsPanelProps({
       interactive: true,

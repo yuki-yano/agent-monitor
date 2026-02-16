@@ -260,6 +260,10 @@ type BuildSessionSidebarPropsArgs = {
   resolvedTheme: Theme;
   paneId: string;
   handleFocusPane: (paneId: string) => void;
+  handleLaunchAgentInSession: (
+    sessionName: string,
+    agent: "codex" | "claude",
+  ) => Promise<void>;
   handleTouchPane: (paneId: string) => void;
   handleTouchRepoPin: (repoRoot: string | null) => void;
 };
@@ -728,6 +732,7 @@ export const buildSessionSidebarProps = ({
   resolvedTheme,
   paneId,
   handleFocusPane,
+  handleLaunchAgentInSession,
   handleTouchPane,
   handleTouchRepoPin,
 }: BuildSessionSidebarPropsArgs) => ({
@@ -746,6 +751,7 @@ export const buildSessionSidebarProps = ({
   },
   actions: {
     onFocusPane: handleFocusPane,
+    onLaunchAgentInSession: handleLaunchAgentInSession,
     onTouchSession: handleTouchPane,
     onTouchRepoPin: handleTouchRepoPin,
   },

@@ -15,6 +15,15 @@ type SessionGroupSectionProps = {
   group: SessionGroup;
   nowMs: number;
   allSessions: SessionSummary[];
+  launchPendingKeys: Set<string>;
+  onLaunchAgentInSession: (
+    sessionName: string,
+    agent: "codex" | "claude",
+    options?: {
+      worktreePath?: string;
+      worktreeBranch?: string;
+    },
+  ) => Promise<void> | void;
   onTouchRepoPin: (repoRoot: string | null) => void;
   onTouchPanePin: (paneId: string) => void;
   onRegisterPaneScrollTarget?: (paneId: string, element: HTMLAnchorElement | null) => void;
@@ -24,6 +33,8 @@ export const SessionGroupSection = ({
   group,
   nowMs,
   allSessions,
+  launchPendingKeys,
+  onLaunchAgentInSession,
   onTouchRepoPin,
   onTouchPanePin,
   onRegisterPaneScrollTarget,
@@ -127,6 +138,52 @@ export const SessionGroupSection = ({
               key={sessionSection.sessionName}
               className={cn(sessionIndex > 0 ? "pt-2.5 sm:pt-4" : null)}
             >
+              {(() => {
+                const sessionPaneCandidates = sessionSection.windowGroups.flatMap(
+                  (windowGroup) => windowGroup.sessions,
+                );
+                const launchSourceSession =
+                  sessionPaneCandidates.find((session) => session.paneActive) ??
+                  sessionPaneCandidates[0];
+                const launchOptions =
+                  launchSourceSession?.worktreePath || launchSourceSession?.branch
+                    ? {
+                        worktreePath: launchSourceSession.worktreePath ?? undefined,
+                        worktreeBranch: launchSourceSession.branch ?? undefined,
+                      }
+                    : undefined;
+                const codexLaunchKey = `${sessionSection.sessionName}:codex`;
+                const claudeLaunchKey = `${sessionSection.sessionName}:claude`;
+                return (
+                  <div className="mb-2.5 flex flex-wrap items-center gap-2.5 px-1">
+                    <TagPill tone="neutral" className="text-[10px]">
+                      Session {sessionSection.sessionName}
+                    </TagPill>
+                    <div className="ml-auto flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        className="border-latte-blue/45 bg-latte-base/85 text-latte-blue hover:bg-latte-blue/12 rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() =>
+                          onLaunchAgentInSession(sessionSection.sessionName, "codex", launchOptions)
+                        }
+                        disabled={launchPendingKeys.has(codexLaunchKey)}
+                      >
+                        Launch Codex
+                      </button>
+                      <button
+                        type="button"
+                        className="border-latte-mauve/45 bg-latte-base/85 text-latte-mauve hover:bg-latte-mauve/12 rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() =>
+                          onLaunchAgentInSession(sessionSection.sessionName, "claude", launchOptions)
+                        }
+                        disabled={launchPendingKeys.has(claudeLaunchKey)}
+                      >
+                        Launch Claude
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="space-y-2.5 sm:space-y-4">
                 {sessionSection.windowGroups.map((windowGroup) => (
                   <SessionWindowSection

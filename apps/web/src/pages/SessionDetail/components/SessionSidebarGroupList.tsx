@@ -11,12 +11,17 @@ type SessionSidebarGroupListProps = {
   nowMs: number;
   currentPaneId?: string | null;
   focusPendingPaneIds: Set<string>;
+  launchPendingKeys: Set<string>;
   onHoverStart: (paneId: string) => void;
   onHoverEnd: (paneId: string) => void;
   onFocus: (paneId: string) => void;
   onBlur: (paneId: string) => void;
   onSelect: (paneId: string) => void;
   onFocusPane: (paneId: string) => Promise<void> | void;
+  onLaunchAgentInSession: (
+    sessionName: string,
+    agent: "codex" | "claude",
+  ) => Promise<void> | void;
   onTouchSession: (paneId: string) => void;
   onTouchRepoPin: (repoRoot: string | null) => void;
   registerItemRef: (paneId: string, node: HTMLDivElement | null) => void;
@@ -27,16 +32,20 @@ export const SessionSidebarGroupList = ({
   nowMs,
   currentPaneId,
   focusPendingPaneIds,
+  launchPendingKeys,
   onHoverStart,
   onHoverEnd,
   onFocus,
   onBlur,
   onSelect,
   onFocusPane,
+  onLaunchAgentInSession,
   onTouchSession,
   onTouchRepoPin,
   registerItemRef,
 }: SessionSidebarGroupListProps) => {
+  const launchedSessions = new Set<string>();
+
   return (
     <div className="space-y-5">
       {sidebarGroups.length === 0 && (
@@ -76,45 +85,74 @@ export const SessionSidebarGroupList = ({
               </div>
             </div>
             <div className="space-y-4 pl-2.5">
-              {group.windowGroups.map((windowGroup) => (
-                <div
-                  key={`${windowGroup.sessionName}:${windowGroup.windowIndex}`}
-                  className="border-latte-surface2/60 bg-latte-crust/70 rounded-2xl border px-3 py-3"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-latte-text truncate text-[12px] font-semibold uppercase tracking-wider">
-                        Window {windowGroup.windowIndex}
-                      </p>
-                      <p className="text-latte-subtext0 truncate text-[10px]">
-                        Session {windowGroup.sessionName}
-                      </p>
+              {group.windowGroups.map((windowGroup) => {
+                const shouldRenderLaunchButtons = !launchedSessions.has(windowGroup.sessionName);
+                if (shouldRenderLaunchButtons) {
+                  launchedSessions.add(windowGroup.sessionName);
+                }
+                const codexLaunchKey = `${windowGroup.sessionName}:codex`;
+                const claudeLaunchKey = `${windowGroup.sessionName}:claude`;
+
+                return (
+                  <div
+                    key={`${windowGroup.sessionName}:${windowGroup.windowIndex}`}
+                    className="border-latte-surface2/60 bg-latte-crust/70 rounded-2xl border px-3 py-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-latte-text truncate text-[12px] font-semibold uppercase tracking-wider">
+                          Window {windowGroup.windowIndex}
+                        </p>
+                        <p className="text-latte-subtext0 truncate text-[10px]">
+                          Session {windowGroup.sessionName}
+                        </p>
+                      </div>
+                      <TagPill tone="neutral" className="text-[9px]">
+                        {windowGroup.sessions.length} / {groupTotalPanes} panes
+                      </TagPill>
                     </div>
-                    <TagPill tone="neutral" className="text-[9px]">
-                      {windowGroup.sessions.length} / {groupTotalPanes} panes
-                    </TagPill>
+                    {shouldRenderLaunchButtons ? (
+                      <div className="mt-2 flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          className="border-latte-blue/45 bg-latte-base/85 text-latte-blue hover:bg-latte-blue/12 rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={() => onLaunchAgentInSession(windowGroup.sessionName, "codex")}
+                          disabled={launchPendingKeys.has(codexLaunchKey)}
+                        >
+                          Launch Codex
+                        </button>
+                        <button
+                          type="button"
+                          className="border-latte-mauve/45 bg-latte-base/85 text-latte-mauve hover:bg-latte-mauve/12 rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={() => onLaunchAgentInSession(windowGroup.sessionName, "claude")}
+                          disabled={launchPendingKeys.has(claudeLaunchKey)}
+                        >
+                          Launch Claude
+                        </button>
+                      </div>
+                    ) : null}
+                    <div className="mt-3 space-y-2">
+                      {windowGroup.sessions.map((item) => (
+                        <SessionSidebarItem
+                          key={item.paneId}
+                          item={item}
+                          nowMs={nowMs}
+                          isCurrent={currentPaneId === item.paneId}
+                          isFocusPending={focusPendingPaneIds.has(item.paneId)}
+                          onHoverStart={onHoverStart}
+                          onHoverEnd={onHoverEnd}
+                          onFocus={onFocus}
+                          onBlur={onBlur}
+                          onSelect={() => onSelect(item.paneId)}
+                          onFocusPane={onFocusPane}
+                          onTouchSession={onTouchSession}
+                          registerItemRef={registerItemRef}
+                        />
+                      ))}
+                    </div>
                   </div>
-                  <div className="mt-3 space-y-2">
-                    {windowGroup.sessions.map((item) => (
-                      <SessionSidebarItem
-                        key={item.paneId}
-                        item={item}
-                        nowMs={nowMs}
-                        isCurrent={currentPaneId === item.paneId}
-                        isFocusPending={focusPendingPaneIds.has(item.paneId)}
-                        onHoverStart={onHoverStart}
-                        onHoverEnd={onHoverEnd}
-                        onFocus={onFocus}
-                        onBlur={onBlur}
-                        onSelect={() => onSelect(item.paneId)}
-                        onFocusPane={onFocusPane}
-                        onTouchSession={onTouchSession}
-                        registerItemRef={registerItemRef}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         );

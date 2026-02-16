@@ -132,6 +132,12 @@ export const defaultConfig: AgentMonitorConfigFile = {
       target: "auto",
     },
   },
+  launch: {
+    agents: {
+      codex: { options: [] },
+      claude: { options: [] },
+    },
+  },
   fileNavigator: {
     includeIgnoredPaths: [],
     autoExpandMatchLimit: 100,

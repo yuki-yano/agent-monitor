@@ -52,6 +52,8 @@ export const SessionListView = ({
   onOpenPaneInNewWindow,
   onOpenHere,
   onOpenNewTab,
+  launchPendingKeys,
+  onLaunchAgentInSession,
   onTouchRepoPin,
   onTouchPanePin,
 }: SessionListViewProps) => {
@@ -160,6 +162,8 @@ export const SessionListView = ({
           actions={{
             onSelectSession: onOpenPaneHere,
             onFocusPane: onOpenPaneHere,
+            onLaunchAgentInSession: (sessionName, agent) =>
+              onLaunchAgentInSession(sessionName, agent),
             onTouchSession: handleTouchPanePinWithScroll,
             onTouchRepoPin: handleTouchRepoPinWithScroll,
           }}
@@ -259,6 +263,8 @@ export const SessionListView = ({
                       group={group}
                       allSessions={sessions}
                       nowMs={nowMs}
+                      launchPendingKeys={launchPendingKeys}
+                      onLaunchAgentInSession={onLaunchAgentInSession}
                       onTouchRepoPin={handleTouchRepoPinWithScroll}
                       onTouchPanePin={handleTouchPanePinWithScroll}
                       onRegisterPaneScrollTarget={registerPaneScrollTarget}

@@ -9,6 +9,7 @@ import type {
   DiffSummary,
   HighlightCorrectionConfig,
   ImageAttachment,
+  LaunchCommandResponse,
   RawItem,
   RepoFileContent,
   RepoFileSearchPage,
@@ -27,6 +28,7 @@ import type { Theme } from "@/lib/theme";
 
 export type SessionApi = {
   reconnect: () => void;
+  refreshSessions: () => Promise<void>;
   requestWorktrees: (paneId: string) => Promise<WorktreeList>;
   requestDiffSummary: (
     paneId: string,
@@ -81,6 +83,17 @@ export type SessionApi = {
     options: { lines?: number; mode?: "text" | "image"; cursor?: string },
   ) => Promise<ScreenResponse>;
   focusPane: (paneId: string) => Promise<CommandResponse>;
+  launchAgentInSession: (
+    sessionName: string,
+    agent: "codex" | "claude",
+    requestId: string,
+    options?: {
+      windowName?: string;
+      cwd?: string;
+      worktreePath?: string;
+      worktreeBranch?: string;
+    },
+  ) => Promise<LaunchCommandResponse>;
   uploadImageAttachment: (paneId: string, file: File) => Promise<ImageAttachment>;
   sendText: (
     paneId: string,

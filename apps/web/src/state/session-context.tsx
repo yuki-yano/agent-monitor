@@ -9,6 +9,7 @@ import type {
   DiffSummary,
   HighlightCorrectionConfig,
   ImageAttachment,
+  LaunchCommandResponse,
   RawItem,
   RepoFileContent,
   RepoFileSearchPage,
@@ -94,6 +95,17 @@ type SessionContextValue = {
     options: { lines?: number; mode?: "text" | "image"; cursor?: string },
   ) => Promise<ScreenResponse>;
   focusPane: (paneId: string) => Promise<CommandResponse>;
+  launchAgentInSession: (
+    sessionName: string,
+    agent: "codex" | "claude",
+    requestId: string,
+    options?: {
+      windowName?: string;
+      cwd?: string;
+      worktreePath?: string;
+      worktreeBranch?: string;
+    },
+  ) => Promise<LaunchCommandResponse>;
   uploadImageAttachment: (paneId: string, file: File) => Promise<ImageAttachment>;
   sendText: (
     paneId: string,
@@ -163,6 +175,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     requestRepoFileContent,
     requestScreen,
     focusPane,
+    launchAgentInSession,
     uploadImageAttachment,
     sendText,
     sendKeys,
@@ -230,6 +243,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         requestRepoFileContent,
         requestScreen,
         focusPane,
+        launchAgentInSession,
         uploadImageAttachment,
         sendText,
         sendKeys,

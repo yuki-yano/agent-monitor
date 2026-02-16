@@ -6,6 +6,7 @@ import {
   HighlightCorrectionConfig,
   ImageAttachment,
   imageAttachmentSchema,
+  LaunchCommandResponse,
   ScreenResponse,
   SessionSummary,
 } from "@vde-monitor/shared";
@@ -166,6 +167,60 @@ export const requestCommand = async ({
     const message = error instanceof Error ? error.message : fallbackMessage;
     onConnectionIssue(message);
     return { ok: false, error: buildApiError("INTERNAL", message) };
+  }
+};
+
+type RequestLaunchCommandParams = {
+  request: (signal?: AbortSignal) => Promise<Response>;
+  fallbackMessage: string;
+  requestTimeoutMs?: number;
+  ensureToken: EnsureToken;
+  onConnectionIssue: OnConnectionIssue;
+  buildApiError: (code: ApiError["code"], message: string) => ApiError;
+};
+
+export const requestLaunchCommand = async ({
+  request,
+  fallbackMessage,
+  requestTimeoutMs,
+  ensureToken,
+  onConnectionIssue,
+  buildApiError,
+}: RequestLaunchCommandParams): Promise<LaunchCommandResponse> => {
+  ensureToken();
+  try {
+    const { res, data } = await requestJson<ApiEnvelope<{ command?: LaunchCommandResponse }>>(request, {
+      timeoutMs: requestTimeoutMs,
+      timeoutMessage: API_ERROR_MESSAGES.requestTimeout,
+    });
+    if (!res.ok) {
+      const message = extractErrorMessage(res, data, fallbackMessage, { includeStatus: true });
+      onConnectionIssue(message);
+      return {
+        ok: false,
+        error: data?.error ?? buildApiError("INTERNAL", message),
+        rollback: { attempted: false, ok: true },
+      };
+    }
+    if (!data?.command) {
+      const message = API_ERROR_MESSAGES.invalidResponse;
+      onConnectionIssue(message);
+      return {
+        ok: false,
+        error: buildApiError("INTERNAL", message),
+        rollback: { attempted: false, ok: true },
+      };
+    }
+    onConnectionIssue(null);
+    return data.command;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : fallbackMessage;
+    onConnectionIssue(message);
+    return {
+      ok: false,
+      error: buildApiError("INTERNAL", message),
+      rollback: { attempted: false, ok: true },
+    };
   }
 };
 

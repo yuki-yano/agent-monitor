@@ -1,6 +1,8 @@
 import { zValidator } from "@hono/zod-validator";
 import {
   allowedKeySchema,
+  launchAgentRequestSchema,
+  type LaunchCommandResponse,
   type RawItem,
   type SessionStateTimelineRange,
   type SessionStateTimelineScope,
@@ -8,6 +10,7 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 
+import { setMapEntryWithLimit } from "../../cache";
 import { createScreenResponse } from "../../screen/screen-response";
 import { buildError, nowIso } from "../helpers";
 import {
@@ -55,6 +58,9 @@ const notePayloadSchema = z.object({
 const imageAttachmentFormSchema = z.object({
   image: z.instanceof(File).optional(),
 });
+const launchRequestSchema = launchAgentRequestSchema;
+const LAUNCH_IDEMPOTENCY_TTL_MS = 60_000;
+const LAUNCH_IDEMPOTENCY_MAX_ENTRIES = 500;
 
 const resolveTimelineRange = (range: string | undefined): SessionStateTimelineRange => {
   if (range === "15m" || range === "1h" || range === "3h" || range === "6h" || range === "24h") {
@@ -92,6 +98,13 @@ export const createSessionRoutes = ({
   executeCommand,
 }: SessionRouteDeps) => {
   const sendTextIdempotency = createSendTextIdempotencyExecutor({});
+  const launchIdempotency = new Map<
+    string,
+    {
+      expiresAtMs: number;
+      response: LaunchCommandResponse;
+    }
+  >();
   type ResolvedPane = Exclude<ReturnType<typeof resolvePane>, Response>;
 
   const withPane = <TReturn>(
@@ -109,6 +122,48 @@ export const createSessionRoutes = ({
     session: monitor.registry.getDetail(pane.paneId) ?? pane.detail,
   });
 
+  const pruneLaunchIdempotency = () => {
+    const nowMs = Date.now();
+    for (const [key, value] of launchIdempotency.entries()) {
+      if (value.expiresAtMs <= nowMs) {
+        launchIdempotency.delete(key);
+      }
+    }
+  };
+
+  const executeLaunchAgentCommand = async (
+    body: z.infer<typeof launchRequestSchema>,
+  ): Promise<LaunchCommandResponse> => {
+    pruneLaunchIdempotency();
+    const cacheKey = `${body.sessionName}:${body.requestId}`;
+    const cached = launchIdempotency.get(cacheKey);
+    if (cached && cached.expiresAtMs > Date.now()) {
+      return cached.response;
+    }
+    if (cached) {
+      launchIdempotency.delete(cacheKey);
+    }
+
+    const response = await actions.launchAgentInSession({
+      sessionName: body.sessionName,
+      agent: body.agent,
+      windowName: body.windowName,
+      cwd: body.cwd,
+      worktreePath: body.worktreePath,
+      worktreeBranch: body.worktreeBranch,
+    });
+    setMapEntryWithLimit(
+      launchIdempotency,
+      cacheKey,
+      {
+        expiresAtMs: Date.now() + LAUNCH_IDEMPOTENCY_TTL_MS,
+        response,
+      },
+      LAUNCH_IDEMPOTENCY_MAX_ENTRIES,
+    );
+    return response;
+  };
+
   return new Hono()
     .get("/sessions", (c) => {
       return c.json({
@@ -121,6 +176,21 @@ export const createSessionRoutes = ({
           },
         },
       });
+    })
+    .post("/sessions/launch", zValidator("json", launchRequestSchema), async (c) => {
+      if (!sendLimiter(getLimiterKey(c))) {
+        return c.json({
+          command: {
+            ok: false,
+            error: buildError("RATE_LIMIT", "rate limited"),
+            rollback: { attempted: false, ok: true },
+          },
+        });
+      }
+
+      const body = c.req.valid("json");
+      const command = await executeLaunchAgentCommand(body);
+      return c.json({ command });
     })
     .get("/sessions/:paneId", (c) => {
       return withPane(c, (pane) => c.json({ session: pane.detail }));

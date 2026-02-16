@@ -1,4 +1,13 @@
-import type { AllowedKey, ApiError, PaneMeta, RawItem } from "@vde-monitor/shared";
+import type {
+  AllowedKey,
+  ApiError,
+  LaunchAgent,
+  LaunchAgentResult,
+  LaunchRollback,
+  LaunchVerification,
+  PaneMeta,
+  RawItem,
+} from "@vde-monitor/shared";
 
 export type MultiplexerBackend = "tmux" | "wezterm";
 
@@ -32,11 +41,31 @@ export type MultiplexerActionResult =
   | { ok: true; error?: undefined }
   | { ok: false; error: ApiError };
 
+export type LaunchAgentInSessionInput = {
+  sessionName: string;
+  agent: LaunchAgent;
+  windowName?: string;
+  cwd?: string;
+  worktreePath?: string;
+  worktreeBranch?: string;
+};
+
+export type MultiplexerLaunchRollback = LaunchRollback;
+export type MultiplexerLaunchVerification = LaunchVerification;
+export type LaunchAgentInSessionResult = LaunchAgentResult;
+
+export type MultiplexerLaunchResult =
+  | { ok: true; result: LaunchAgentInSessionResult; rollback: MultiplexerLaunchRollback }
+  | { ok: false; error: ApiError; rollback: MultiplexerLaunchRollback };
+
 export type MultiplexerInputActions = {
   sendText: (paneId: string, text: string, enter?: boolean) => Promise<MultiplexerActionResult>;
   sendKeys: (paneId: string, keys: AllowedKey[]) => Promise<MultiplexerActionResult>;
   sendRaw: (paneId: string, items: RawItem[], unsafe?: boolean) => Promise<MultiplexerActionResult>;
   focusPane: (paneId: string) => Promise<MultiplexerActionResult>;
+  launchAgentInSession: (
+    input: LaunchAgentInSessionInput,
+  ) => Promise<MultiplexerLaunchResult>;
 };
 
 export type MultiplexerRuntime = {

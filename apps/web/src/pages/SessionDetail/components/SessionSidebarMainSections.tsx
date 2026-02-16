@@ -61,12 +61,17 @@ type SessionSidebarListSectionProps = {
   nowMs: number;
   currentPaneId?: string | null;
   focusPendingPaneIds: Set<string>;
+  launchPendingKeys: Set<string>;
   onHoverStart: (paneId: string) => void;
   onHoverEnd: (paneId: string) => void;
   onFocus: (paneId: string) => void;
   onBlur: (paneId: string) => void;
   onSelect: (paneId: string) => void;
   onFocusPane: (paneId: string) => Promise<void> | void;
+  onLaunchAgentInSession: (
+    sessionName: string,
+    agent: "codex" | "claude",
+  ) => Promise<void> | void;
   onTouchSession: (paneId: string) => void;
   onTouchRepoPin: (repoRoot: string | null) => void;
   registerItemRef: (paneId: string, node: HTMLDivElement | null) => void;
@@ -78,12 +83,14 @@ const SessionSidebarListSection = ({
   nowMs,
   currentPaneId,
   focusPendingPaneIds,
+  launchPendingKeys,
   onHoverStart,
   onHoverEnd,
   onFocus,
   onBlur,
   onSelect,
   onFocusPane,
+  onLaunchAgentInSession,
   onTouchSession,
   onTouchRepoPin,
   registerItemRef,
@@ -97,12 +104,14 @@ const SessionSidebarListSection = ({
       nowMs={nowMs}
       currentPaneId={currentPaneId}
       focusPendingPaneIds={focusPendingPaneIds}
+      launchPendingKeys={launchPendingKeys}
       onHoverStart={onHoverStart}
       onHoverEnd={onHoverEnd}
       onFocus={onFocus}
       onBlur={onBlur}
       onSelect={onSelect}
       onFocusPane={onFocusPane}
+      onLaunchAgentInSession={onLaunchAgentInSession}
       onTouchSession={onTouchSession}
       onTouchRepoPin={onTouchRepoPin}
       registerItemRef={registerItemRef}
@@ -120,12 +129,17 @@ type SessionSidebarMainSectionsProps = {
   nowMs: number;
   currentPaneId?: string | null;
   focusPendingPaneIds: Set<string>;
+  launchPendingKeys: Set<string>;
   onHoverStart: (paneId: string) => void;
   onHoverEnd: (paneId: string) => void;
   onFocus: (paneId: string) => void;
   onBlur: (paneId: string) => void;
   onSelect: (paneId: string) => void;
   onFocusPane: (paneId: string) => Promise<void> | void;
+  onLaunchAgentInSession: (
+    sessionName: string,
+    agent: "codex" | "claude",
+  ) => Promise<void> | void;
   onTouchSession: (paneId: string) => void;
   onTouchRepoPin: (repoRoot: string | null) => void;
   registerItemRef: (paneId: string, node: HTMLDivElement | null) => void;
@@ -141,12 +155,14 @@ export const SessionSidebarMainSections = ({
   nowMs,
   currentPaneId,
   focusPendingPaneIds,
+  launchPendingKeys,
   onHoverStart,
   onHoverEnd,
   onFocus,
   onBlur,
   onSelect,
   onFocusPane,
+  onLaunchAgentInSession,
   onTouchSession,
   onTouchRepoPin,
   registerItemRef,
@@ -161,12 +177,14 @@ export const SessionSidebarMainSections = ({
         nowMs={nowMs}
         currentPaneId={currentPaneId}
         focusPendingPaneIds={focusPendingPaneIds}
+        launchPendingKeys={launchPendingKeys}
         onHoverStart={onHoverStart}
         onHoverEnd={onHoverEnd}
         onFocus={onFocus}
         onBlur={onBlur}
         onSelect={onSelect}
         onFocusPane={onFocusPane}
+        onLaunchAgentInSession={onLaunchAgentInSession}
         onTouchSession={onTouchSession}
         onTouchRepoPin={onTouchRepoPin}
         registerItemRef={registerItemRef}
