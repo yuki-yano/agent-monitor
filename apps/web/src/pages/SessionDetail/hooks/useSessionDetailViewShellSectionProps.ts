@@ -9,6 +9,11 @@ import {
   buildSessionSidebarProps,
 } from "./section-props-builders";
 
+type SessionDetailViewShellSectionsInput = Pick<
+  SessionDetailViewProps,
+  "meta" | "sidebar" | "controls" | "logs" | "title" | "actions"
+>;
+
 export const useSessionDetailViewShellSectionProps = ({
   meta,
   sidebar,
@@ -16,7 +21,7 @@ export const useSessionDetailViewShellSectionProps = ({
   logs,
   title,
   actions,
-}: SessionDetailViewProps) => {
+}: SessionDetailViewShellSectionsInput) => {
   const { paneId, session, nowMs, connectionIssue } = meta;
   const {
     sessionGroups,

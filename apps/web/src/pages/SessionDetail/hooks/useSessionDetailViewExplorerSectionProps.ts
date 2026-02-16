@@ -9,6 +9,11 @@ import {
   buildScreenPanelProps,
 } from "./section-props-builders";
 
+type SessionDetailViewExplorerSectionsInput = Pick<
+  SessionDetailViewProps,
+  "meta" | "sidebar" | "screen" | "controls" | "files" | "diffs"
+>;
+
 export const useSessionDetailViewExplorerSectionProps = ({
   meta,
   sidebar,
@@ -16,7 +21,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
   controls,
   files,
   diffs,
-}: SessionDetailViewProps) => {
+}: SessionDetailViewExplorerSectionsInput) => {
   const { paneId, session, connectionIssue } = meta;
   const { resolvedTheme } = sidebar;
   const {

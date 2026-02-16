@@ -32,7 +32,9 @@ import { SessionHeader } from "./components/SessionHeader";
 import { SessionSidebar } from "./components/SessionSidebar";
 import { StateTimelineSection } from "./components/StateTimelineSection";
 import { WorktreeSection } from "./components/WorktreeSection";
-import { useSessionDetailViewSectionProps } from "./hooks/useSessionDetailViewSectionProps";
+import { useSessionDetailViewDataSectionProps } from "./hooks/useSessionDetailViewDataSectionProps";
+import { useSessionDetailViewExplorerSectionProps } from "./hooks/useSessionDetailViewExplorerSectionProps";
+import { useSessionDetailViewShellSectionProps } from "./hooks/useSessionDetailViewShellSectionProps";
 import { backLinkClass } from "./sessionDetailUtils";
 import type { SessionDetailVM } from "./useSessionDetailVM";
 
@@ -164,31 +166,39 @@ export const SessionDetailView = ({
   );
   const [sectionTabsIconOnly, setSectionTabsIconOnly] = useState(false);
   const [missingSessionGraceElapsed, setMissingSessionGraceElapsed] = useState(false);
+  const { diffSectionProps, stateTimelineSectionProps, commitSectionProps, notesSectionProps } =
+    useSessionDetailViewDataSectionProps({
+      meta,
+      timeline,
+      screen,
+      diffs,
+      files,
+      commits,
+      notes,
+    });
   const {
-    diffSectionProps,
     fileNavigatorSectionProps,
     fileContentModalProps,
-    commitSectionProps,
     screenPanelProps,
-    stateTimelineSectionProps,
-    notesSectionProps,
+    logFileCandidateModalProps,
+  } = useSessionDetailViewExplorerSectionProps({
+    meta,
+    sidebar,
+    screen,
+    controls,
+    files,
+    diffs,
+  });
+  const {
     quickPanelProps,
     logModalProps,
-    logFileCandidateModalProps,
     sessionHeaderProps,
     sessionSidebarProps,
     controlsPanelProps,
-  } = useSessionDetailViewSectionProps({
+  } = useSessionDetailViewShellSectionProps({
     meta,
     sidebar,
-    layout,
-    timeline,
-    screen,
     controls,
-    diffs,
-    files,
-    commits,
-    notes,
     logs,
     title,
     actions,

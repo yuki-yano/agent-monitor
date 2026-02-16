@@ -8,6 +8,11 @@ import {
   buildStateTimelineSectionProps,
 } from "./section-props-builders";
 
+type SessionDetailViewDataSectionsInput = Pick<
+  SessionDetailViewProps,
+  "meta" | "timeline" | "screen" | "diffs" | "files" | "commits" | "notes"
+>;
+
 export const useSessionDetailViewDataSectionProps = ({
   meta,
   timeline,
@@ -16,7 +21,7 @@ export const useSessionDetailViewDataSectionProps = ({
   files,
   commits,
   notes,
-}: SessionDetailViewProps) => {
+}: SessionDetailViewDataSectionsInput) => {
   const { paneId, session } = meta;
   const sourceRepoRoot = screen.effectiveWorktreePath ?? session?.repoRoot ?? null;
   const {
