@@ -1,6 +1,8 @@
 import type { SessionSummary, WorktreeList } from "@vde-monitor/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { createNextRequestId, isCurrentRequest } from "./session-request-guard";
+
 const VIRTUAL_WORKTREE_STORAGE_KEY_PREFIX = "vde-monitor:virtual-worktree:v1";
 
 type StoredVirtualWorktreeSelection = {
@@ -113,8 +115,7 @@ export const useSessionVirtualWorktree = ({
 
   const fetchWorktrees = useCallback(
     async (options?: { resetEntries?: boolean }) => {
-      const requestId = latestRequestIdRef.current + 1;
-      latestRequestIdRef.current = requestId;
+      const requestId = createNextRequestId(latestRequestIdRef);
       const shouldResetEntries = options?.resetEntries === true;
       const shouldShowLoading = shouldResetEntries || !hasLoadedWorktreeListRef.current;
       if (shouldResetEntries) {
@@ -127,13 +128,13 @@ export const useSessionVirtualWorktree = ({
       setError(null);
       try {
         const next = await requestWorktrees(paneId);
-        if (latestRequestIdRef.current !== requestId) {
+        if (!isCurrentRequest(latestRequestIdRef, requestId)) {
           return;
         }
         setWorktreeList(next);
         hasLoadedWorktreeListRef.current = true;
       } catch (nextError) {
-        if (latestRequestIdRef.current !== requestId) {
+        if (!isCurrentRequest(latestRequestIdRef, requestId)) {
           return;
         }
         if (shouldShowLoading) {
@@ -141,7 +142,7 @@ export const useSessionVirtualWorktree = ({
         }
         setError(nextError instanceof Error ? nextError.message : "Failed to load worktrees");
       } finally {
-        if (latestRequestIdRef.current === requestId && shouldShowLoading) {
+        if (isCurrentRequest(latestRequestIdRef, requestId) && shouldShowLoading) {
           setLoading(false);
         }
       }

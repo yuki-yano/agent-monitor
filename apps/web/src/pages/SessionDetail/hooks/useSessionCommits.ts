@@ -8,6 +8,7 @@ import { useVisibilityPolling } from "@/lib/use-visibility-polling";
 
 import { type CommitState, commitStateAtom, initialCommitState } from "../atoms/commitAtoms";
 import { AUTO_REFRESH_INTERVAL_MS, buildCommitLogSignature } from "../sessionDetailUtils";
+import { createNextRequestId, isCurrentScopedRequest } from "./session-request-guard";
 
 type UseSessionCommitsParams = {
   paneId: string;
@@ -252,8 +253,7 @@ export const useSessionCommits = ({
     async (options?: { append?: boolean; force?: boolean }) => {
       if (!paneId) return;
       const targetScopeKey = requestScopeKey;
-      const requestId = commitLogRequestIdRef.current + 1;
-      commitLogRequestIdRef.current = requestId;
+      const requestId = createNextRequestId(commitLogRequestIdRef);
       const { append, force } = resolveCommitLogLoadOptions(options);
       dispatch({ type: "startLogLoad", append });
       dispatch({ type: "setCommitError", error: null });
@@ -266,24 +266,36 @@ export const useSessionCommits = ({
           ...(worktreePath ? { worktreePath } : {}),
         });
         if (
-          activeScopeRef.current !== targetScopeKey ||
-          commitLogRequestIdRef.current !== requestId
+          !isCurrentScopedRequest({
+            requestIdRef: commitLogRequestIdRef,
+            requestId,
+            activeScopeRef,
+            scopeKey: targetScopeKey,
+          })
         ) {
           return;
         }
         applyCommitLog(log, { append, updateSignature: !append });
       } catch (err) {
         if (
-          activeScopeRef.current !== targetScopeKey ||
-          commitLogRequestIdRef.current !== requestId
+          !isCurrentScopedRequest({
+            requestIdRef: commitLogRequestIdRef,
+            requestId,
+            activeScopeRef,
+            scopeKey: targetScopeKey,
+          })
         ) {
           return;
         }
         dispatchCommitLogError(dispatch, append, err);
       } finally {
         if (
-          activeScopeRef.current === targetScopeKey &&
-          commitLogRequestIdRef.current === requestId
+          isCurrentScopedRequest({
+            requestIdRef: commitLogRequestIdRef,
+            requestId,
+            activeScopeRef,
+            scopeKey: targetScopeKey,
+          })
         ) {
           dispatch({ type: "finishLogLoad", append });
         }
@@ -370,8 +382,7 @@ export const useSessionCommits = ({
   const pollCommitLog = useCallback(async () => {
     if (!paneId) return;
     const targetScopeKey = requestScopeKey;
-    const requestId = commitLogRequestIdRef.current + 1;
-    commitLogRequestIdRef.current = requestId;
+    const requestId = createNextRequestId(commitLogRequestIdRef);
     try {
       const log = await requestCommitLog(paneId, {
         limit: commitPageSize,
@@ -380,8 +391,12 @@ export const useSessionCommits = ({
         ...(worktreePath ? { worktreePath } : {}),
       });
       if (
-        activeScopeRef.current !== targetScopeKey ||
-        commitLogRequestIdRef.current !== requestId
+        !isCurrentScopedRequest({
+          requestIdRef: commitLogRequestIdRef,
+          requestId,
+          activeScopeRef,
+          scopeKey: targetScopeKey,
+        })
       ) {
         return;
       }

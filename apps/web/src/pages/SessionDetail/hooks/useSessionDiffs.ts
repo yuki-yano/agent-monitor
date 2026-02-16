@@ -16,6 +16,7 @@ import {
   diffSummaryAtom,
 } from "../atoms/diffAtoms";
 import { AUTO_REFRESH_INTERVAL_MS, buildDiffSummarySignature } from "../sessionDetailUtils";
+import { createNextRequestId, isCurrentScopedRequest } from "./session-request-guard";
 
 type UseSessionDiffsParams = {
   paneId: string;
@@ -152,8 +153,7 @@ export const useSessionDiffs = ({
   const loadDiffSummary = useCallback(async () => {
     if (!paneId) return;
     const targetScopeKey = requestScopeKey;
-    const requestId = summaryRequestIdRef.current + 1;
-    summaryRequestIdRef.current = requestId;
+    const requestId = createNextRequestId(summaryRequestIdRef);
     setDiffLoading(true);
     setDiffError(null);
     try {
@@ -161,17 +161,38 @@ export const useSessionDiffs = ({
         paneId,
         worktreePath ? { force: true, worktreePath } : { force: true },
       );
-      if (summaryRequestIdRef.current !== requestId || activeScopeRef.current !== targetScopeKey) {
+      if (
+        !isCurrentScopedRequest({
+          requestIdRef: summaryRequestIdRef,
+          requestId,
+          activeScopeRef,
+          scopeKey: targetScopeKey,
+        })
+      ) {
         return;
       }
       await applyDiffSummary(summary, true);
     } catch (err) {
-      if (summaryRequestIdRef.current !== requestId || activeScopeRef.current !== targetScopeKey) {
+      if (
+        !isCurrentScopedRequest({
+          requestIdRef: summaryRequestIdRef,
+          requestId,
+          activeScopeRef,
+          scopeKey: targetScopeKey,
+        })
+      ) {
         return;
       }
       setDiffError(err instanceof Error ? err.message : API_ERROR_MESSAGES.diffSummary);
     } finally {
-      if (summaryRequestIdRef.current === requestId && activeScopeRef.current === targetScopeKey) {
+      if (
+        isCurrentScopedRequest({
+          requestIdRef: summaryRequestIdRef,
+          requestId,
+          activeScopeRef,
+          scopeKey: targetScopeKey,
+        })
+      ) {
         setDiffLoading(false);
       }
     }
@@ -188,14 +209,20 @@ export const useSessionDiffs = ({
   const pollDiffSummary = useCallback(async () => {
     if (!paneId) return;
     const targetScopeKey = requestScopeKey;
-    const requestId = summaryRequestIdRef.current + 1;
-    summaryRequestIdRef.current = requestId;
+    const requestId = createNextRequestId(summaryRequestIdRef);
     try {
       const summary = await requestDiffSummary(
         paneId,
         worktreePath ? { force: true, worktreePath } : { force: true },
       );
-      if (summaryRequestIdRef.current !== requestId || activeScopeRef.current !== targetScopeKey) {
+      if (
+        !isCurrentScopedRequest({
+          requestIdRef: summaryRequestIdRef,
+          requestId,
+          activeScopeRef,
+          scopeKey: targetScopeKey,
+        })
+      ) {
         return;
       }
       const signature = buildDiffSummarySignature(summary);
@@ -244,24 +271,36 @@ export const useSessionDiffs = ({
           retry: false,
         });
         if (
-          summaryRequestIdRef.current !== requestId ||
-          activeScopeRef.current !== targetScopeKey
+          !isCurrentScopedRequest({
+            requestIdRef: summaryRequestIdRef,
+            requestId,
+            activeScopeRef,
+            scopeKey: targetScopeKey,
+          })
         ) {
           return;
         }
         setDiffFiles((prev) => ({ ...prev, [path]: file }));
       } catch (err) {
         if (
-          summaryRequestIdRef.current !== requestId ||
-          activeScopeRef.current !== targetScopeKey
+          !isCurrentScopedRequest({
+            requestIdRef: summaryRequestIdRef,
+            requestId,
+            activeScopeRef,
+            scopeKey: targetScopeKey,
+          })
         ) {
           return;
         }
         setDiffError(err instanceof Error ? err.message : API_ERROR_MESSAGES.diffFile);
       } finally {
         if (
-          summaryRequestIdRef.current === requestId &&
-          activeScopeRef.current === targetScopeKey
+          isCurrentScopedRequest({
+            requestIdRef: summaryRequestIdRef,
+            requestId,
+            activeScopeRef,
+            scopeKey: targetScopeKey,
+          })
         ) {
           setDiffLoadingFiles((prev) => ({ ...prev, [path]: false }));
         }

@@ -8,6 +8,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import { useVisibilityPolling } from "@/lib/use-visibility-polling";
 
+import { createNextRequestId, isCurrentPaneRequest } from "./session-request-guard";
+
 type UseSessionTimelineParams = {
   paneId: string;
   connected: boolean;
@@ -59,8 +61,7 @@ export const useSessionTimeline = ({
         return;
       }
       const targetPaneId = paneId;
-      const requestId = timelineRequestIdRef.current + 1;
-      timelineRequestIdRef.current = requestId;
+      const requestId = createNextRequestId(timelineRequestIdRef);
       if (!silent) {
         pendingInteractiveLoadsRef.current += 1;
         setTimelineLoading(true);
@@ -73,8 +74,12 @@ export const useSessionTimeline = ({
           range: timelineRange,
         });
         if (
-          timelineRequestIdRef.current !== requestId ||
-          activePaneIdRef.current !== targetPaneId
+          !isCurrentPaneRequest({
+            requestIdRef: timelineRequestIdRef,
+            requestId,
+            activePaneIdRef,
+            paneId: targetPaneId,
+          })
         ) {
           return;
         }
@@ -82,8 +87,12 @@ export const useSessionTimeline = ({
         setTimelineError(null);
       } catch (err) {
         if (
-          timelineRequestIdRef.current !== requestId ||
-          activePaneIdRef.current !== targetPaneId
+          !isCurrentPaneRequest({
+            requestIdRef: timelineRequestIdRef,
+            requestId,
+            activePaneIdRef,
+            paneId: targetPaneId,
+          })
         ) {
           return;
         }
