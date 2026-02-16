@@ -654,6 +654,25 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     };
   }, [isWorktreeSelectorOpen]);
 
+  useEffect(() => {
+    if (!isWorktreeSelectorOpen || typeof document === "undefined") {
+      return;
+    }
+    const handlePointerDown = (event: PointerEvent) => {
+      const containerNode = branchPillContainerRef.current;
+      if (!containerNode) {
+        return;
+      }
+      if (event.target instanceof Node && !containerNode.contains(event.target)) {
+        setIsWorktreeSelectorOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [isWorktreeSelectorOpen]);
+
   const evaluateBranchLabelPlacement = useCallback(() => {
     const leftNode = promptGitContextLeftRef.current;
     const containerNode = branchPillContainerRef.current;

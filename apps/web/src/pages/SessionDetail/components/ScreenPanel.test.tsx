@@ -444,6 +444,39 @@ describe("ScreenPanel", () => {
     expect(document.body.dataset.vdeWorktreeSelectorOpen).toBeUndefined();
   });
 
+  it("closes worktree selector when clicking outside panel", () => {
+    const state = buildState({
+      worktreeSelectorEnabled: true,
+      worktreeEntries: [
+        {
+          path: "/repo",
+          branch: "main",
+          dirty: false,
+          locked: false,
+          lockOwner: null,
+          lockReason: null,
+          merged: false,
+          fileChanges: {
+            add: 0,
+            m: 0,
+            d: 0,
+          },
+          additions: 0,
+          deletions: 0,
+        },
+      ],
+      actualWorktreePath: "/repo",
+    });
+    const actions = buildActions();
+    render(<ScreenPanel state={state} actions={actions} controls={null} />);
+
+    fireEvent.click(screen.getByTestId("worktree-selector-trigger"));
+    expect(screen.getByTestId("worktree-selector-panel")).toBeTruthy();
+
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByTestId("worktree-selector-panel")).toBeNull();
+  });
+
   it("reloads worktrees from selector header", () => {
     const onRefresh = vi.fn();
     const onRefreshWorktrees = vi.fn();
