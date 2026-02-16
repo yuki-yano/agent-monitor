@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act, render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TruncatedSegmentText } from "./truncated-segment-text";
@@ -17,10 +17,9 @@ const rect = (width: number): DOMRect =>
     toJSON: () => "",
   }) as DOMRect;
 
-const waitForNextTick = async () => {
-  await act(async () => {
-    await new Promise((resolve) => window.setTimeout(resolve, 0));
-  });
+const getVisibleLabel = (testId: string) => {
+  const text = screen.getByTestId(testId);
+  return text.querySelector("span:not([aria-hidden='true'])");
 };
 
 describe("TruncatedSegmentText", () => {
@@ -69,11 +68,9 @@ describe("TruncatedSegmentText", () => {
       <TruncatedSegmentText data-testid="text" data-width="300" text="feature/very/long/branch" />,
     );
 
-    await waitForNextTick();
-
-    const text = screen.getByTestId("text");
-    const visibleLabel = text.querySelector("span:not([aria-hidden='true'])");
-    expect(visibleLabel?.textContent).toBe("feature/very/long/branch");
+    await waitFor(() => {
+      expect(getVisibleLabel("text")?.textContent).toBe("feature/very/long/branch");
+    });
   });
 
   it("keeps at least two segments when truncated", async () => {
@@ -81,11 +78,9 @@ describe("TruncatedSegmentText", () => {
       <TruncatedSegmentText data-testid="text" data-width="110" text="aaaaaa/bbbbbb/cccccc" />,
     );
 
-    await waitForNextTick();
-
-    const text = screen.getByTestId("text");
-    const visibleLabel = text.querySelector("span:not([aria-hidden='true'])");
-    expect(visibleLabel?.textContent).toBe(".../bbbbbb/cccccc");
+    await waitFor(() => {
+      expect(getVisibleLabel("text")?.textContent).toBe(".../bbbbbb/cccccc");
+    });
   });
 
   it("truncates long single-segment text from the start", async () => {
@@ -97,11 +92,10 @@ describe("TruncatedSegmentText", () => {
       />,
     );
 
-    await waitForNextTick();
-
-    const text = screen.getByTestId("text");
-    const visibleLabel = text.querySelector("span:not([aria-hidden='true'])");
-    expect(visibleLabel?.textContent?.startsWith("…")).toBe(true);
-    expect(visibleLabel?.textContent).not.toBe("feature-super-long-branch-name");
+    await waitFor(() => {
+      const visibleLabel = getVisibleLabel("text");
+      expect(visibleLabel?.textContent?.startsWith("…")).toBe(true);
+      expect(visibleLabel?.textContent).not.toBe("feature-super-long-branch-name");
+    });
   });
 });

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act, render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TruncatedPathText } from "./truncated-path-text";
@@ -17,9 +17,11 @@ const rect = (width: number): DOMRect =>
     toJSON: () => "",
   }) as DOMRect;
 
-const waitForNextTick = async () => {
-  await act(async () => {
-    await new Promise((resolve) => window.setTimeout(resolve, 0));
+const expectVisibleLabel = async (testId: string, expected: string) => {
+  await waitFor(() => {
+    const path = screen.getByTestId(testId);
+    const visibleLabel = path.querySelector("span:not([aria-hidden='true'])");
+    expect(visibleLabel?.textContent).toBe(expected);
   });
 };
 
@@ -67,22 +69,16 @@ describe("TruncatedPathText", () => {
   it("shows the full path when it fits", async () => {
     render(<TruncatedPathText data-testid="path" data-width="240" path="apps/web/src/index.ts" />);
 
-    await waitForNextTick();
+    await expectVisibleLabel("path", "apps/web/src/index.ts");
 
     const path = screen.getByTestId("path");
-    const visibleLabel = path.querySelector("span:not([aria-hidden='true'])");
-    expect(visibleLabel?.textContent).toBe("apps/web/src/index.ts");
     expect(path.getAttribute("title")).toBe("apps/web/src/index.ts");
   });
 
   it("keeps at least two trailing segments by default", async () => {
     render(<TruncatedPathText data-testid="path" data-width="110" path="aaaaaa/bbbbbb/cccccc" />);
 
-    await waitForNextTick();
-
-    const path = screen.getByTestId("path");
-    const visibleLabel = path.querySelector("span:not([aria-hidden='true'])");
-    expect(visibleLabel?.textContent).toBe(".../bbbbbb/cccccc");
+    await expectVisibleLabel("path", ".../bbbbbb/cccccc");
   });
 
   it("allows one trailing segment when minVisibleSegments is 1", async () => {
@@ -95,10 +91,6 @@ describe("TruncatedPathText", () => {
       />,
     );
 
-    await waitForNextTick();
-
-    const path = screen.getByTestId("path");
-    const visibleLabel = path.querySelector("span:not([aria-hidden='true'])");
-    expect(visibleLabel?.textContent).toBe(".../cccccc");
+    await expectVisibleLabel("path", ".../cccccc");
   });
 });
