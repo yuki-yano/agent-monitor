@@ -13,7 +13,12 @@ import {
 } from "@vde-monitor/shared";
 
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
-import { expectField, extractErrorMessage, requestJson } from "@/lib/api-utils";
+import {
+  expectField,
+  extractErrorMessage,
+  requestJson,
+  toErrorWithFallback,
+} from "@/lib/api-utils";
 
 import {
   applyRefreshSessionsFailure,
@@ -67,7 +72,7 @@ export const requestSessionField = async <T, K extends keyof T>({
   } catch (error) {
     const message = resolveUnknownErrorMessage(error, fallbackMessage);
     onConnectionIssue(message);
-    throw error instanceof Error ? error : new Error(message);
+    throw toErrorWithFallback(error, fallbackMessage);
   }
 };
 

@@ -2,7 +2,7 @@ import type { ApiEnvelope } from "@vde-monitor/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { API_ERROR_MESSAGES } from "./api-messages";
-import { expectField, extractErrorMessage, requestJson } from "./api-utils";
+import { expectField, extractErrorMessage, requestJson, toErrorWithFallback } from "./api-utils";
 
 describe("api-utils", () => {
   afterEach(() => {
@@ -55,6 +55,17 @@ describe("api-utils", () => {
     expect(expectField(res, data, "value", "fallback")).toBe(42);
     const missing = { value: null } as ApiEnvelope<{ value: number | null }>;
     expect(() => expectField(res, missing, "value", "fallback")).toThrow("fallback");
+  });
+
+  it("converts unknown errors to Error with fallback message", () => {
+    const err = toErrorWithFallback("not-an-error", "fallback message");
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toBe("fallback message");
+  });
+
+  it("returns Error input as-is", () => {
+    const original = new Error("boom");
+    expect(toErrorWithFallback(original, "fallback message")).toBe(original);
   });
 
   it("supports timeout with AbortController and returns timeout message", async () => {
