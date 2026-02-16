@@ -4,6 +4,8 @@ import {
   type ClientFileNavigatorConfig,
   type CommandResponse,
   type HighlightCorrectionConfig,
+  type LaunchCommandResponse,
+  type LaunchConfig,
   type ScreenResponse,
   type SessionSummary,
 } from "@vde-monitor/shared";
@@ -18,6 +20,7 @@ import {
   mutateSession as executeMutateSession,
   refreshSessions as executeRefreshSessions,
   requestCommand as executeRequestCommand,
+  requestLaunchCommand as executeRequestLaunchCommand,
   requestSessionField as executeRequestSessionField,
 } from "./session-api-request-executors";
 import { createSessionScreenRequest } from "./session-api-screen-request";
@@ -37,6 +40,7 @@ type UseSessionApiParams = {
   onSessionRemoved: (paneId: string) => void;
   onHighlightCorrections: (config: HighlightCorrectionConfig) => void;
   onFileNavigatorConfig: (config: ClientFileNavigatorConfig) => void;
+  onLaunchConfig?: (config: LaunchConfig) => void;
 };
 
 type PaneParam = ReturnType<typeof buildPaneParam>;
@@ -54,6 +58,7 @@ export const useSessionApi = ({
   onSessionRemoved,
   onHighlightCorrections,
   onFileNavigatorConfig,
+  onLaunchConfig,
 }: UseSessionApiParams) => {
   const ensureToken = useCallback(() => {
     if (!token) {
@@ -103,12 +108,14 @@ export const useSessionApi = ({
       onConnectionIssue,
       onHighlightCorrections,
       onFileNavigatorConfig,
+      onLaunchConfig,
     });
   }, [
     apiClient,
     onConnectionIssue,
     onFileNavigatorConfig,
     onHighlightCorrections,
+    onLaunchConfig,
     onSessions,
     token,
   ]);
@@ -319,6 +326,23 @@ export const useSessionApi = ({
     ],
   );
 
+  const requestLaunchCommand = useCallback(
+    async (
+      request: (signal?: AbortSignal) => Promise<Response>,
+      fallbackMessage: string,
+      requestTimeoutMs?: number,
+    ): Promise<LaunchCommandResponse> =>
+      executeRequestLaunchCommand({
+        request,
+        fallbackMessage,
+        requestTimeoutMs,
+        ensureToken,
+        onConnectionIssue,
+        buildApiError,
+      }),
+    [buildApiError, ensureToken, onConnectionIssue],
+  );
+
   const runPaneCommand = useCallback(
     (
       paneId: string,
@@ -348,7 +372,10 @@ export const useSessionApi = ({
 
   const {
     sendText,
+    launchAgentInSession,
     focusPane,
+    killPane,
+    killWindow,
     uploadImageAttachment,
     sendKeys,
     sendRaw,
@@ -365,6 +392,8 @@ export const useSessionApi = ({
         runPaneMutation,
         requestPaneField: requestPaneQueryField,
         requestPaneNoteField,
+        runLaunchCommand: (fallbackMessage, request, options) =>
+          requestLaunchCommand(request, fallbackMessage, options?.requestTimeoutMs),
         ensureToken,
         onConnectionIssue,
         handleSessionMissing,
@@ -374,6 +403,7 @@ export const useSessionApi = ({
       ensureToken,
       handleSessionMissing,
       onConnectionIssue,
+      requestLaunchCommand,
       runPaneCommand,
       runPaneMutation,
       requestPaneQueryField,
@@ -397,7 +427,10 @@ export const useSessionApi = ({
       requestRepoFileContent,
       requestScreen,
       sendText,
+      launchAgentInSession,
       focusPane,
+      killPane,
+      killWindow,
       uploadImageAttachment,
       sendKeys,
       sendRaw,
@@ -411,6 +444,9 @@ export const useSessionApi = ({
       createRepoNote,
       deleteRepoNote,
       focusPane,
+      killPane,
+      killWindow,
+      launchAgentInSession,
       refreshSessions,
       requestCommitDetail,
       requestCommitFile,

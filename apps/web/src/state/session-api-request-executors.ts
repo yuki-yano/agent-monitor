@@ -6,6 +6,8 @@ import {
   HighlightCorrectionConfig,
   ImageAttachment,
   imageAttachmentSchema,
+  LaunchCommandResponse,
+  LaunchConfig,
   ScreenResponse,
   SessionSummary,
 } from "@vde-monitor/shared";
@@ -169,6 +171,63 @@ export const requestCommand = async ({
   }
 };
 
+type RequestLaunchCommandParams = {
+  request: (signal?: AbortSignal) => Promise<Response>;
+  fallbackMessage: string;
+  requestTimeoutMs?: number;
+  ensureToken: EnsureToken;
+  onConnectionIssue: OnConnectionIssue;
+  buildApiError: (code: ApiError["code"], message: string) => ApiError;
+};
+
+export const requestLaunchCommand = async ({
+  request,
+  fallbackMessage,
+  requestTimeoutMs,
+  ensureToken,
+  onConnectionIssue,
+  buildApiError,
+}: RequestLaunchCommandParams): Promise<LaunchCommandResponse> => {
+  ensureToken();
+  try {
+    const { res, data } = await requestJson<ApiEnvelope<{ command?: LaunchCommandResponse }>>(
+      request,
+      {
+        timeoutMs: requestTimeoutMs,
+        timeoutMessage: API_ERROR_MESSAGES.requestTimeout,
+      },
+    );
+    if (!res.ok) {
+      const message = extractErrorMessage(res, data, fallbackMessage, { includeStatus: true });
+      onConnectionIssue(message);
+      return {
+        ok: false,
+        error: data?.error ?? buildApiError("INTERNAL", message),
+        rollback: { attempted: false, ok: true },
+      };
+    }
+    if (!data?.command) {
+      const message = API_ERROR_MESSAGES.invalidResponse;
+      onConnectionIssue(message);
+      return {
+        ok: false,
+        error: buildApiError("INTERNAL", message),
+        rollback: { attempted: false, ok: true },
+      };
+    }
+    onConnectionIssue(null);
+    return data.command;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : fallbackMessage;
+    onConnectionIssue(message);
+    return {
+      ok: false,
+      error: buildApiError("INTERNAL", message),
+      rollback: { attempted: false, ok: true },
+    };
+  }
+};
+
 type RequestScreenResponseParams = {
   paneId: string;
   mode: "text" | "image";
@@ -274,6 +333,7 @@ type RefreshSessionsParams = {
   onConnectionIssue: OnConnectionIssue;
   onHighlightCorrections: (config: HighlightCorrectionConfig) => void;
   onFileNavigatorConfig: (config: ClientFileNavigatorConfig) => void;
+  onLaunchConfig?: (config: LaunchConfig) => void;
 };
 
 export const refreshSessions = async ({
@@ -283,6 +343,7 @@ export const refreshSessions = async ({
   onConnectionIssue,
   onHighlightCorrections,
   onFileNavigatorConfig,
+  onLaunchConfig,
 }: RefreshSessionsParams): Promise<RefreshSessionsResult> => {
   if (!token) {
     return { ok: false, authError: true };
@@ -298,6 +359,7 @@ export const refreshSessions = async ({
       onSessions,
       onHighlightCorrections,
       onFileNavigatorConfig,
+      onLaunchConfig,
       onConnectionIssue,
     });
   } catch (error) {

@@ -89,7 +89,6 @@ export type SessionSummary = {
   worktreeLockOwner?: string | null;
   worktreeLockReason?: string | null;
   worktreeMerged?: boolean | null;
-  worktreePrCreated?: boolean | null;
   repoRoot: string | null;
   agent: "codex" | "claude" | "unknown";
   state: SessionStateValue;
@@ -240,6 +239,8 @@ export type RepoFileContent = {
   content: string | null;
 };
 
+export type WorktreePrStatus = "none" | "open" | "merged" | "closed_unmerged" | "unknown";
+
 export type WorktreeListEntry = {
   path: string;
   branch: string | null;
@@ -248,6 +249,7 @@ export type WorktreeListEntry = {
   lockOwner: string | null;
   lockReason: string | null;
   merged: boolean | null;
+  prStatus?: WorktreePrStatus | null;
   ahead?: number | null;
   behind?: number | null;
   fileChanges?: {
@@ -354,6 +356,36 @@ export type CommandResponse = {
   error?: ApiError;
 };
 
+export type LaunchAgent = "codex" | "claude";
+
+export type LaunchRollback = {
+  attempted: boolean;
+  ok: boolean;
+  message?: string;
+};
+
+export type LaunchVerification = {
+  status: "verified" | "timeout" | "mismatch" | "skipped";
+  observedCommand: string | null;
+  attempts: number;
+};
+
+export type LaunchAgentResult = {
+  sessionName: string;
+  agent: LaunchAgent;
+  windowId: string;
+  windowIndex: number;
+  windowName: string;
+  paneId: string;
+  launchedCommand: LaunchAgent;
+  resolvedOptions: string[];
+  verification: LaunchVerification;
+};
+
+export type LaunchCommandResponse =
+  | { ok: true; result: LaunchAgentResult; rollback: LaunchRollback }
+  | { ok: false; error: ApiError; rollback: LaunchRollback };
+
 export type ImageAttachment = {
   path: string;
   mimeType: "image/png" | "image/jpeg" | "image/webp";
@@ -416,11 +448,23 @@ export type ClientFileNavigatorConfig = {
 export type ClientConfig = {
   screen: ClientScreenConfig;
   fileNavigator: ClientFileNavigatorConfig;
+  launch: LaunchConfig;
 };
 
 export type ServerHealth = {
   version: string;
   clientConfig?: ClientConfig;
+};
+
+export type AgentLaunchOptionsConfig = {
+  options: string[];
+};
+
+export type LaunchConfig = {
+  agents: {
+    codex: AgentLaunchOptionsConfig;
+    claude: AgentLaunchOptionsConfig;
+  };
 };
 
 export type AgentMonitorConfigBase = {
@@ -471,6 +515,7 @@ export type AgentMonitorConfigBase = {
       target: string | null;
     };
   };
+  launch: LaunchConfig;
   fileNavigator: FileNavigatorConfig;
   tmux: { socketName: string | null; socketPath: string | null; primaryClient: string | null };
 };

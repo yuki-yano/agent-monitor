@@ -36,6 +36,7 @@ import {
   TabsTrigger,
   TagPill,
   Toolbar,
+  TruncatedSegmentText,
 } from "@/components/ui";
 import { sanitizeLogCopyText } from "@/lib/clipboard";
 import type { ScreenMode } from "@/lib/screen-loading";
@@ -218,6 +219,39 @@ const resolveWorktreeFlagClassName = (
   return value
     ? "border-latte-green/45 bg-latte-green/10 text-latte-green"
     : "border-latte-yellow/45 bg-latte-yellow/12 text-latte-yellow";
+};
+
+const resolveWorktreePrStatus = (
+  prStatus: WorktreeListEntry["prStatus"] | null | undefined,
+): { label: string; className: string } => {
+  switch (prStatus) {
+    case "none":
+      return {
+        label: "PR None",
+        className: "border-latte-peach/45 bg-latte-peach/12 text-latte-peach",
+      };
+    case "open":
+      return {
+        label: "PR Open",
+        className: "border-latte-blue/45 bg-latte-blue/10 text-latte-blue",
+      };
+    case "merged":
+      return {
+        label: "PR Merged",
+        className: "border-latte-green/45 bg-latte-green/10 text-latte-green",
+      };
+    case "closed_unmerged":
+      return {
+        label: "PR Closed",
+        className: "border-latte-red/45 bg-latte-red/10 text-latte-red",
+      };
+    case "unknown":
+    default:
+      return {
+        label: "PR Unknown",
+        className: "border-latte-surface2/70 bg-latte-surface0/60 text-latte-subtext0",
+      };
+  }
 };
 
 const pollingPauseLabelMap: Record<
@@ -1120,6 +1154,7 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
                           const hasBehind = hasWorktreeUpstreamDelta(entry.behind);
                           const shouldShowAheadBehind = !isRepoRootPath && (hasAhead || hasBehind);
                           const entryBranchLabel = formatBranchLabel(entry.branch);
+                          const prStatus = resolveWorktreePrStatus(entry.prStatus ?? null);
                           return (
                             <button
                               key={entry.path}
@@ -1140,13 +1175,13 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
                             >
                               <span className="min-w-0 flex-1">
                                 <span className="flex min-w-0 flex-1 items-center gap-1.5">
-                                  <span
-                                    title={entryBranchLabel}
-                                    className={`text-latte-text min-w-0 flex-1 truncate font-mono ${
-                                      isRepoRootPath ? "text-left [direction:rtl]" : ""
-                                    }`}
-                                  >
-                                    {entryBranchLabel}
+                                  <span className="text-latte-text min-w-0 flex-1 font-mono">
+                                    <TruncatedSegmentText
+                                      text={entryBranchLabel}
+                                      reservePx={8}
+                                      minVisibleSegments={2}
+                                      className="min-w-0 flex-1 text-left"
+                                    />
                                   </span>
                                   {isRepoRootPath ? (
                                     <TagPill
@@ -1207,6 +1242,13 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
                                       className={`inline-flex items-center rounded-full border px-1.5 py-0.5 font-mono text-[9px] ${resolveWorktreeFlagClassName("locked", entry.locked)}`}
                                     >
                                       Locked {formatWorktreeFlag(entry.locked)}
+                                    </span>
+                                  ) : null}
+                                  {!isRepoRootPath ? (
+                                    <span
+                                      className={`inline-flex items-center rounded-full border px-1.5 py-0.5 font-mono text-[9px] ${prStatus.className}`}
+                                    >
+                                      {prStatus.label}
                                     </span>
                                   ) : null}
                                   {shouldShowMergedFlag ? (

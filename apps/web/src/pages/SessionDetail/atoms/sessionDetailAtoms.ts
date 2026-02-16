@@ -9,6 +9,8 @@ import type {
   DiffSummary,
   HighlightCorrectionConfig,
   ImageAttachment,
+  LaunchCommandResponse,
+  LaunchConfig,
   RawItem,
   RepoFileContent,
   RepoFileSearchPage,
@@ -24,9 +26,11 @@ import type {
 import { atom } from "jotai";
 
 import type { Theme } from "@/lib/theme";
+import { defaultLaunchConfig, type LaunchAgentRequestOptions } from "@/state/launch-agent-options";
 
 export type SessionApi = {
   reconnect: () => void;
+  refreshSessions: () => Promise<void>;
   requestWorktrees: (paneId: string) => Promise<WorktreeList>;
   requestDiffSummary: (
     paneId: string,
@@ -81,6 +85,14 @@ export type SessionApi = {
     options: { lines?: number; mode?: "text" | "image"; cursor?: string },
   ) => Promise<ScreenResponse>;
   focusPane: (paneId: string) => Promise<CommandResponse>;
+  killPane: (paneId: string) => Promise<CommandResponse>;
+  killWindow: (paneId: string) => Promise<CommandResponse>;
+  launchAgentInSession: (
+    sessionName: string,
+    agent: "codex" | "claude",
+    requestId: string,
+    options?: LaunchAgentRequestOptions,
+  ) => Promise<LaunchCommandResponse>;
   uploadImageAttachment: (paneId: string, file: File) => Promise<ImageAttachment>;
   sendText: (
     paneId: string,
@@ -118,6 +130,7 @@ export const highlightCorrectionsAtom = atom<HighlightCorrectionConfig>({
 export const fileNavigatorConfigAtom = atom<ClientFileNavigatorConfig>({
   autoExpandMatchLimit: 100,
 });
+export const launchConfigAtom = atom<LaunchConfig>(defaultLaunchConfig);
 export const resolvedThemeAtom = atom<Theme>("latte");
 export const sessionApiAtom = atom<SessionApi | null>(null);
 

@@ -1,6 +1,7 @@
 import type {
   CommandResponse,
   HighlightCorrectionConfig,
+  LaunchCommandResponse,
   ScreenResponse,
   SessionStateTimeline,
   SessionStateTimelineRange,
@@ -9,7 +10,9 @@ import type {
 } from "@vde-monitor/shared";
 import { useCallback } from "react";
 
+import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import type { Theme } from "@/lib/theme";
+import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
 
 import { useSessionDetailActions } from "./useSessionDetailActions";
 import { useSessionLogs } from "./useSessionLogs";
@@ -36,6 +39,13 @@ type UseSessionDetailTimelineLogsActionsArgs = {
   highlightCorrections: HighlightCorrectionConfig;
   touchSession: (paneId: string) => Promise<void>;
   focusPane: (paneId: string) => Promise<CommandResponse>;
+  refreshSessions: () => Promise<void>;
+  launchAgentInSession: (
+    sessionName: string,
+    agent: "codex" | "claude",
+    requestId: string,
+    options?: LaunchAgentRequestOptions,
+  ) => Promise<LaunchCommandResponse>;
   setScreenError: (error: string | null) => void;
   touchRepoSortAnchor: (repoRoot: string | null) => void;
   paneRepoRootMap: Map<string, string | null>;
@@ -53,11 +63,20 @@ export const useSessionDetailTimelineLogsActions = ({
   highlightCorrections,
   touchSession,
   focusPane,
+  refreshSessions,
+  launchAgentInSession,
   setScreenError,
   touchRepoSortAnchor,
   paneRepoRootMap,
   currentRepoRoot,
 }: UseSessionDetailTimelineLogsActionsArgs) => {
+  const createRequestId = () => {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+    return `launch-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  };
+
   const timeline = useSessionTimeline({
     paneId,
     connected,
@@ -113,6 +132,23 @@ export const useSessionDetailTimelineLogsActions = ({
     [touchRepoSortAnchor, paneRepoRootMap, handleTouchPane],
   );
 
+  const handleLaunchAgentInSession = useCallback(
+    async (sessionName: string, agent: "codex" | "claude", options?: LaunchAgentRequestOptions) => {
+      const result = await launchAgentInSession(sessionName, agent, createRequestId(), options);
+      if (!result.ok) {
+        setScreenError(result.error?.message ?? API_ERROR_MESSAGES.launchAgent);
+        return;
+      }
+      await refreshSessions();
+      if (result.result.verification.status !== "verified") {
+        setScreenError(`Launch verification: ${result.result.verification.status}`);
+        return;
+      }
+      setScreenError(null);
+    },
+    [launchAgentInSession, refreshSessions, setScreenError],
+  );
+
   return {
     timeline,
     logs,
@@ -123,6 +159,7 @@ export const useSessionDetailTimelineLogsActions = ({
       handleOpenPaneHere,
       handleOpenHere,
       handleTouchRepoPin,
+      handleLaunchAgentInSession,
       handleTouchCurrentSession,
       handleTouchPaneWithRepoAnchor,
     },

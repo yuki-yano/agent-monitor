@@ -41,7 +41,7 @@ describe("worktree-utils", () => {
       currentPath: "/repo/worktree-a",
     });
 
-    expect(resolveVwWorktreeSnapshotCached).toHaveBeenCalledWith("/repo");
+    expect(resolveVwWorktreeSnapshotCached).toHaveBeenCalledWith("/repo", { ghMode: "auto" });
     expect(fetchDiffSummary).not.toHaveBeenCalled();
     expect(payload).toEqual({
       repoRoot: "/repo",
@@ -62,6 +62,7 @@ describe("worktree-utils", () => {
           dirty: true,
           locked: { value: false, owner: null, reason: null },
           merged: { overall: false, byPR: null },
+          pr: { status: "none" },
         },
       ],
     });
@@ -103,6 +104,7 @@ describe("worktree-utils", () => {
         lockOwner: null,
         lockReason: null,
         merged: false,
+        prStatus: "none",
         ahead: 3,
         behind: 1,
         fileChanges: { add: 2, m: 1, d: 1 },
@@ -117,6 +119,7 @@ describe("worktree-utils", () => {
         lockOwner: null,
         lockReason: null,
         merged: null,
+        prStatus: null,
         ahead: null,
         behind: null,
         fileChanges: { add: 0, m: 0, d: 0 },
@@ -187,6 +190,7 @@ describe("worktree-utils", () => {
           dirty: true,
           locked: { value: false, owner: null, reason: null },
           merged: { overall: false, byPR: null },
+          pr: { status: "unknown" },
         },
       ],
     });
@@ -205,6 +209,7 @@ describe("worktree-utils", () => {
         lockOwner: null,
         lockReason: null,
         merged: false,
+        prStatus: "unknown",
         ahead: null,
         behind: null,
       },
@@ -216,6 +221,7 @@ describe("worktree-utils", () => {
         lockOwner: null,
         lockReason: null,
         merged: null,
+        prStatus: null,
         ahead: null,
         behind: null,
       },

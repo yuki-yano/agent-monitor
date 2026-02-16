@@ -13,10 +13,17 @@ const vwSnapshotCache = new Map<string, { snapshot: VwWorktreeSnapshot | null; a
 const inflight = new Map<string, Promise<VwWorktreeSnapshot | null>>();
 const ghLookupAt = new Map<string, number>();
 const repoRootByCwd = new Map<string, string>();
-const mergedStateByRepoRoot = new Map<
+const cachedWorktreeStateByRepoRoot = new Map<
   string,
-  Map<string, { byPR: boolean | null; overall: boolean | null }>
+  Map<string, { byPR: boolean | null; overall: boolean | null; prStatus: VwPrStatus | null }>
 >();
+
+type VwSnapshotGhMode = "auto" | "always" | "never";
+type VwPrStatus = "none" | "open" | "merged" | "closed_unmerged" | "unknown";
+
+export type ResolveVwWorktreeSnapshotOptions = {
+  ghMode?: VwSnapshotGhMode;
+};
 
 type VwWorktreeEntry = {
   path: string;
@@ -30,6 +37,9 @@ type VwWorktreeEntry = {
   merged: {
     overall: boolean | null;
     byPR: boolean | null;
+  };
+  pr: {
+    status: VwPrStatus | null;
   };
 };
 
@@ -48,7 +58,6 @@ export type ResolvedWorktreeStatus = {
   worktreeLockOwner: string | null;
   worktreeLockReason: string | null;
   worktreeMerged: boolean | null;
-  worktreePrCreated: boolean | null;
 };
 
 export const configureVwGhRefreshIntervalMs = (intervalMs: number) => {
@@ -76,6 +85,25 @@ const toNullableBoolean = (value: unknown) => (typeof value === "boolean" ? valu
 const toNullableString = (value: unknown) =>
   typeof value === "string" && value.trim().length > 0 ? value : null;
 
+const vwPrStatuses = new Set<VwPrStatus>(["none", "open", "merged", "closed_unmerged", "unknown"]);
+
+const toNullablePrStatus = (value: unknown): VwPrStatus | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  return vwPrStatuses.has(value as VwPrStatus) ? (value as VwPrStatus) : null;
+};
+
+const deriveLegacyPrStatus = (mergedByPr: boolean | null): VwPrStatus | null => {
+  if (mergedByPr === true) {
+    return "merged";
+  }
+  if (mergedByPr === false) {
+    return "none";
+  }
+  return null;
+};
+
 const resolveLookupKey = (cwd: string) => {
   const directRepoRoot = repoRootByCwd.get(cwd);
   if (directRepoRoot) {
@@ -83,7 +111,7 @@ const resolveLookupKey = (cwd: string) => {
   }
 
   let matchedRepoRoot: string | null = null;
-  for (const repoRoot of mergedStateByRepoRoot.keys()) {
+  for (const repoRoot of cachedWorktreeStateByRepoRoot.keys()) {
     if (
       isWithinPath(cwd, repoRoot) &&
       (!matchedRepoRoot || repoRoot.length > matchedRepoRoot.length)
@@ -101,6 +129,16 @@ const shouldRunGhLookup = (cwd: string, nowMs: number) => {
     return { key, ghEnabled: true } as const;
   }
   return { key, ghEnabled: nowMs - lastLookupAt >= vwGhRefreshIntervalMs } as const;
+};
+
+const resolveGhLookup = (cwd: string, nowMs: number, ghMode: VwSnapshotGhMode) => {
+  if (ghMode === "always") {
+    return { key: resolveLookupKey(cwd), ghEnabled: true } as const;
+  }
+  if (ghMode === "never") {
+    return { key: resolveLookupKey(cwd), ghEnabled: false } as const;
+  }
+  return shouldRunGhLookup(cwd, nowMs);
 };
 
 const markGhLookupAt = (key: string, nowMs: number) => {
@@ -126,8 +164,11 @@ const trackRepoRoot = (cwd: string, repoRoot: string | null) => {
   ghLookupAt.delete(cwd);
 };
 
-const buildMergedStateByBranch = (entries: VwWorktreeEntry[]) => {
-  const byBranch = new Map<string, { byPR: boolean | null; overall: boolean | null }>();
+const buildCachedStateByBranch = (entries: VwWorktreeEntry[]) => {
+  const byBranch = new Map<
+    string,
+    { byPR: boolean | null; overall: boolean | null; prStatus: VwPrStatus | null }
+  >();
   entries.forEach((entry) => {
     if (!entry.branch) {
       return;
@@ -135,19 +176,20 @@ const buildMergedStateByBranch = (entries: VwWorktreeEntry[]) => {
     byBranch.set(entry.branch, {
       byPR: entry.merged.byPR,
       overall: entry.merged.overall,
+      prStatus: entry.pr.status,
     });
   });
   return byBranch;
 };
 
-const applyCachedMergedState = (
+const applyCachedWorktreeState = (
   repoRoot: string | null,
   entries: VwWorktreeEntry[],
 ): VwWorktreeEntry[] => {
   if (!repoRoot) {
     return entries;
   }
-  const cached = mergedStateByRepoRoot.get(repoRoot);
+  const cached = cachedWorktreeStateByRepoRoot.get(repoRoot);
   if (!cached) {
     return entries;
   }
@@ -163,8 +205,13 @@ const applyCachedMergedState = (
     const cachedState = cached.get(entry.branch) ?? {
       byPR: null,
       overall: null,
+      prStatus: null,
     };
-    if (entry.merged.byPR === cachedState.byPR && entry.merged.overall === cachedState.overall) {
+    if (
+      entry.merged.byPR === cachedState.byPR &&
+      entry.merged.overall === cachedState.overall &&
+      entry.pr.status === cachedState.prStatus
+    ) {
       return entry;
     }
     changed = true;
@@ -174,6 +221,10 @@ const applyCachedMergedState = (
         ...entry.merged,
         byPR: cachedState.byPR,
         overall: cachedState.overall,
+      },
+      pr: {
+        ...entry.pr,
+        status: cachedState.prStatus,
       },
     };
   });
@@ -207,6 +258,7 @@ const parseSnapshot = (raw: unknown): VwWorktreeSnapshot | null => {
         dirty?: unknown;
         locked?: unknown;
         merged?: unknown;
+        pr?: unknown;
       };
       const normalizedPath = normalizePath(toNullableString(worktree.path));
       if (!normalizedPath) {
@@ -218,6 +270,8 @@ const parseSnapshot = (raw: unknown): VwWorktreeSnapshot | null => {
         reason?: unknown;
       };
       const merged = (worktree.merged ?? {}) as { overall?: unknown; byPR?: unknown };
+      const pr = (worktree.pr ?? {}) as { status?: unknown };
+      const mergedByPr = toNullableBoolean(merged.byPR);
       return {
         path: normalizedPath,
         branch: toNullableString(worktree.branch),
@@ -229,7 +283,10 @@ const parseSnapshot = (raw: unknown): VwWorktreeSnapshot | null => {
         },
         merged: {
           overall: toNullableBoolean(merged.overall),
-          byPR: toNullableBoolean(merged.byPR),
+          byPR: mergedByPr,
+        },
+        pr: {
+          status: toNullablePrStatus(pr.status) ?? deriveLegacyPrStatus(mergedByPr),
         },
       };
     })
@@ -266,21 +323,31 @@ const fetchSnapshot = async (
 
 export const resolveVwWorktreeSnapshotCached = async (
   cwd: string,
+  options: ResolveVwWorktreeSnapshotOptions = {},
 ): Promise<VwWorktreeSnapshot | null> => {
   const normalizedCwd = normalizePath(cwd);
   if (!normalizedCwd) {
     return null;
   }
+  const ghMode = options.ghMode ?? "auto";
   const nowMs = Date.now();
+  const ghLookup = resolveGhLookup(normalizedCwd, nowMs, ghMode);
+  const shouldBypassCache = ghLookup.ghEnabled;
   const cached = vwSnapshotCache.get(normalizedCwd);
-  if (cached && nowMs - cached.at < vwSnapshotCacheTtlMs) {
+  if (cached && nowMs - cached.at < vwSnapshotCacheTtlMs && !shouldBypassCache) {
     return cached.snapshot;
   }
-  const existing = inflight.get(normalizedCwd);
+  const inflightKey = `${normalizedCwd}:${ghLookup.ghEnabled ? "gh" : "no-gh"}`;
+  const existing = inflight.get(inflightKey);
   if (existing) {
     return existing;
   }
-  const ghLookup = shouldRunGhLookup(normalizedCwd, nowMs);
+  if (!ghLookup.ghEnabled) {
+    const ghInflight = inflight.get(`${normalizedCwd}:gh`);
+    if (ghInflight) {
+      return ghInflight;
+    }
+  }
   if (ghLookup.ghEnabled) {
     markGhLookupAt(ghLookup.key, nowMs);
   }
@@ -292,15 +359,15 @@ export const resolveVwWorktreeSnapshotCached = async (
         trackRepoRoot(normalizedCwd, snapshot.repoRoot);
         if (ghLookup.ghEnabled) {
           setMapEntryWithLimit(
-            mergedStateByRepoRoot,
+            cachedWorktreeStateByRepoRoot,
             snapshot.repoRoot ?? normalizedCwd,
-            buildMergedStateByBranch(snapshot.entries),
+            buildCachedStateByBranch(snapshot.entries),
             VW_GH_LOOKUP_CACHE_MAX_ENTRIES,
           );
         } else {
           resolvedSnapshot = {
             ...snapshot,
-            entries: applyCachedMergedState(snapshot.repoRoot, snapshot.entries),
+            entries: applyCachedWorktreeState(snapshot.repoRoot, snapshot.entries),
           };
         }
       }
@@ -311,11 +378,11 @@ export const resolveVwWorktreeSnapshotCached = async (
         { snapshot: resolvedSnapshot, at: Date.now() },
         VW_SNAPSHOT_CACHE_MAX_ENTRIES,
       );
-      inflight.delete(normalizedCwd);
+      inflight.delete(inflightKey);
       return resolvedSnapshot;
     },
   );
-  inflight.set(normalizedCwd, request);
+  inflight.set(inflightKey, request);
   return request;
 };
 
@@ -337,6 +404,5 @@ export const resolveWorktreeStatusFromSnapshot = (
     worktreeLockOwner: matched.locked.owner,
     worktreeLockReason: matched.locked.reason,
     worktreeMerged: matched.merged.overall,
-    worktreePrCreated: matched.merged.byPR,
   };
 };

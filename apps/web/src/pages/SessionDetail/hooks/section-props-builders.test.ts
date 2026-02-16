@@ -382,6 +382,7 @@ describe("section props builders", () => {
     const closeTitleEditor = vi.fn();
     const handleTouchSession = vi.fn();
     const handleFocusPane = vi.fn();
+    const handleLaunchAgentInSession = vi.fn(async () => undefined);
     const handleTouchPane = vi.fn();
     const handleTouchRepoPin = vi.fn();
     const handleSendText = vi.fn(async () => undefined);
@@ -392,6 +393,8 @@ describe("section props builders", () => {
     const toggleShift = vi.fn();
     const toggleCtrl = vi.fn();
     const handleSendKey = vi.fn(async () => undefined);
+    const handleKillPane = vi.fn(async () => undefined);
+    const handleKillWindow = vi.fn(async () => undefined);
     const handleRawBeforeInput = vi.fn();
     const handleRawInput = vi.fn();
     const handleRawKeyDown = vi.fn();
@@ -399,6 +402,17 @@ describe("section props builders", () => {
     const handleRawCompositionEnd = vi.fn();
     const requestStateTimeline = vi.fn();
     const requestScreen = vi.fn();
+    const requestWorktrees = vi.fn(async () => ({
+      repoRoot: null,
+      currentPath: null,
+      entries: [],
+    }));
+    const launchConfig = {
+      agents: {
+        codex: { options: [] },
+        claude: { options: ["--dangerously-skip-permissions"] },
+      },
+    };
     const getRepoSortAnchorAt = vi.fn(() => null);
 
     const session = {
@@ -468,17 +482,23 @@ describe("section props builders", () => {
       nowMs: 1,
       connected: true,
       sidebarConnectionIssue: null,
+      launchConfig,
+      requestWorktrees,
       requestStateTimeline,
       requestScreen,
       highlightCorrections: { codex: false, claude: false },
       resolvedTheme: "latte",
       paneId: "%1",
       handleFocusPane,
+      handleLaunchAgentInSession,
       handleTouchPane,
       handleTouchRepoPin,
     });
     expect(sidebar.state.currentPaneId).toBe("%1");
+    expect(sidebar.state.launchConfig).toEqual(launchConfig);
+    expect(sidebar.state.requestWorktrees).toBe(requestWorktrees);
     expect(sidebar.actions.onFocusPane).toBe(handleFocusPane);
+    expect(sidebar.actions.onLaunchAgentInSession).toBe(handleLaunchAgentInSession);
 
     const controls = buildControlsPanelProps({
       interactive: true,
@@ -497,6 +517,8 @@ describe("section props builders", () => {
       toggleShift,
       toggleCtrl,
       handleSendKey,
+      handleKillPane,
+      handleKillWindow,
       handleRawBeforeInput,
       handleRawInput,
       handleRawKeyDown,

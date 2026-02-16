@@ -58,6 +58,123 @@ export const commandResponseSchema = z.object({
   error: apiErrorSchema.optional(),
 });
 
+export const launchAgentSchema = z.enum(["codex", "claude"]);
+
+const containsNulOrLineBreak = (value: string) =>
+  value.includes("\0") || value.includes("\r") || value.includes("\n") || value.includes("\t");
+
+const launchOptionSchema = z
+  .string()
+  .min(1)
+  .max(256)
+  .refine((value) => value.trim().length > 0, {
+    message: "launch option must not be empty",
+  })
+  .refine((value) => !containsNulOrLineBreak(value), {
+    message: "launch option contains forbidden control characters",
+  });
+
+export const launchAgentRequestSchema = z
+  .object({
+    sessionName: z.string().trim().min(1).max(128),
+    agent: launchAgentSchema,
+    requestId: z.string().trim().min(1).max(128),
+    windowName: z.string().trim().min(1).max(64).optional(),
+    cwd: z.string().trim().min(1).max(512).optional(),
+    agentOptions: z.array(launchOptionSchema).max(32).optional(),
+    worktreePath: z.string().trim().min(1).max(1024).optional(),
+    worktreeBranch: z.string().trim().min(1).max(256).optional(),
+    worktreeCreateIfMissing: z.boolean().optional(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.windowName && containsNulOrLineBreak(value.windowName)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["windowName"],
+        message: "windowName must not include control characters",
+      });
+    }
+    if (value.cwd && (value.worktreePath || value.worktreeBranch)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["cwd"],
+        message: "cwd cannot be combined with worktreePath/worktreeBranch",
+      });
+    }
+    if (value.worktreeCreateIfMissing && !value.worktreeBranch) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["worktreeBranch"],
+        message: "worktreeBranch is required when worktreeCreateIfMissing is true",
+      });
+    }
+    if (value.worktreeCreateIfMissing && value.worktreePath) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["worktreePath"],
+        message: "worktreePath cannot be combined with worktreeCreateIfMissing",
+      });
+    }
+  });
+
+export const launchRollbackSchema = z.object({
+  attempted: z.boolean(),
+  ok: z.boolean(),
+  message: z.string().optional(),
+});
+
+export const launchVerificationSchema = z.object({
+  status: z.enum(["verified", "timeout", "mismatch", "skipped"]),
+  observedCommand: z.string().nullable(),
+  attempts: z.number().int().min(0),
+});
+
+export const launchAgentResultSchema = z.object({
+  sessionName: z.string(),
+  agent: launchAgentSchema,
+  windowId: z.string(),
+  windowIndex: z.number(),
+  windowName: z.string(),
+  paneId: z.string(),
+  launchedCommand: launchAgentSchema,
+  resolvedOptions: z.array(z.string()),
+  verification: launchVerificationSchema,
+});
+
+export const launchCommandResponseSchema = z.discriminatedUnion("ok", [
+  z.object({
+    ok: z.literal(true),
+    result: launchAgentResultSchema,
+    rollback: launchRollbackSchema,
+  }),
+  z.object({
+    ok: z.literal(false),
+    error: apiErrorSchema,
+    rollback: launchRollbackSchema,
+  }),
+]);
+
+export const launchConfigSchema = z.object({
+  agents: z
+    .object({
+      codex: z
+        .object({
+          options: z.array(launchOptionSchema).max(32).default([]),
+        })
+        .default({ options: [] }),
+      claude: z
+        .object({
+          options: z.array(launchOptionSchema).max(32).default([]),
+        })
+        .default({ options: [] }),
+    })
+    .default({
+      codex: { options: [] },
+      claude: { options: [] },
+    }),
+});
+
 export const imageAttachmentSchema = z.object({
   path: z.string(),
   mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]),
@@ -94,7 +211,6 @@ export const sessionSummarySchema = z.object({
   worktreeLockOwner: z.string().nullable().optional(),
   worktreeLockReason: z.string().nullable().optional(),
   worktreeMerged: z.boolean().nullable().optional(),
-  worktreePrCreated: z.boolean().nullable().optional(),
   repoRoot: z.string().nullable(),
   agent: z.enum(["codex", "claude", "unknown"]),
   state: sessionStateSchema,
@@ -369,6 +485,12 @@ export const configSchema = z.object({
         target: "auto",
       },
     }),
+  launch: launchConfigSchema.default({
+    agents: {
+      codex: { options: [] },
+      claude: { options: [] },
+    },
+  }),
   fileNavigator: z
     .object({
       includeIgnoredPaths: z.array(includeIgnoredPatternSchema).default([]),
@@ -453,6 +575,16 @@ export const configOverrideSchema = strictObject({
     wezterm: strictObject({
       cliPath: z.string().optional(),
       target: z.string().nullable().optional(),
+    }).optional(),
+  }).optional(),
+  launch: strictObject({
+    agents: strictObject({
+      codex: strictObject({
+        options: z.array(launchOptionSchema).max(32).optional(),
+      }).optional(),
+      claude: strictObject({
+        options: z.array(launchOptionSchema).max(32).optional(),
+      }).optional(),
     }).optional(),
   }).optional(),
   fileNavigator: strictObject({

@@ -46,6 +46,7 @@ describe("DiffSection", () => {
     render(<DiffSection state={state} actions={actions} />, { wrapper });
 
     expect(screen.getByText("Changes")).toBeTruthy();
+    expect(screen.getByText("1 file")).toBeTruthy();
     expect(screen.getByText("src/index.ts")).toBeTruthy();
     expect(screen.getByText("M 1")).toBeTruthy();
     expect(screen.queryByText("A 0")).toBeNull();
@@ -66,7 +67,41 @@ describe("DiffSection", () => {
     const wrapper = createWrapper();
     render(<DiffSection state={state} actions={actions} />, { wrapper });
 
-    expect(screen.getByText("feature/changes-tab")).toBeTruthy();
+    const branch = screen.getByTestId("diff-branch-text");
+    expect(branch.textContent).toContain("feature/changes-tab");
+    expect(branch.getAttribute("title")).toBe("feature/changes-tab");
+  });
+
+  it("pins refresh button to top-right in header", () => {
+    const state = buildState({
+      diffSummary: createDiffSummary(),
+      diffBranch: "feature/a-very-long-branch-name-to-verify-header-layout",
+    });
+    const actions = buildActions();
+    const wrapper = createWrapper();
+    render(<DiffSection state={state} actions={actions} />, { wrapper });
+
+    const header = screen.getByTestId("changes-header");
+    const refresh = screen.getByRole("button", { name: "Refresh changes" });
+    expect(header.className).toContain("items-start");
+    expect(refresh.className).toContain("self-start");
+  });
+
+  it("uses shared truncation component for long branch labels", () => {
+    const state = buildState({
+      diffSummary: createDiffSummary(),
+      diffBranch: "feature/very/long/branch/name/for/start-truncation",
+    });
+    const actions = buildActions();
+    const wrapper = createWrapper();
+    render(<DiffSection state={state} actions={actions} />, { wrapper });
+
+    const branch = screen.getByTestId("diff-branch-text");
+    const summaryLine = screen.getByTestId("diff-summary-line");
+    expect(branch.className).toContain("overflow-hidden");
+    expect(branch.className).toContain("flex-1");
+    expect(branch.className).not.toContain("[direction:rtl]");
+    expect(summaryLine.className).toContain("w-full");
   });
 
   it("shows A/M/D categories to the left of line totals in header summary", () => {

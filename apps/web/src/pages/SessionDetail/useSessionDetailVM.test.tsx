@@ -81,6 +81,8 @@ vi.mock("./hooks/useSessionControls", () => ({
     allowDangerKeys: false,
     isSendingText: false,
     handleSendKey: vi.fn(),
+    handleKillPane: vi.fn(),
+    handleKillWindow: vi.fn(),
     handleSendText: vi.fn(),
     handleUploadImage: vi.fn(),
     handleRawBeforeInput: vi.fn(),
@@ -246,6 +248,7 @@ describe("useSessionDetailVM", () => {
   it("reads base state from atoms", () => {
     const sessionApi = {
       reconnect: vi.fn(),
+      refreshSessions: vi.fn(),
       requestDiffSummary: vi.fn(),
       requestDiffFile: vi.fn(),
       requestCommitLog: vi.fn(),
@@ -258,6 +261,9 @@ describe("useSessionDetailVM", () => {
       requestRepoFileContent: vi.fn(),
       requestScreen: vi.fn(),
       focusPane: vi.fn(),
+      killPane: vi.fn(),
+      killWindow: vi.fn(),
+      launchAgentInSession: vi.fn(),
       uploadImageAttachment: vi.fn(),
       sendText: vi.fn(),
       sendKeys: vi.fn(),
@@ -300,6 +306,7 @@ describe("useSessionDetailVM", () => {
     });
     const sessionApi = {
       reconnect: vi.fn(),
+      refreshSessions: vi.fn(),
       requestDiffSummary: vi.fn(),
       requestDiffFile: vi.fn(),
       requestCommitLog: vi.fn(),
@@ -312,6 +319,9 @@ describe("useSessionDetailVM", () => {
       requestRepoFileContent: vi.fn(),
       requestScreen: vi.fn(),
       focusPane,
+      killPane: vi.fn(),
+      killWindow: vi.fn(),
+      launchAgentInSession: vi.fn(),
       uploadImageAttachment: vi.fn(),
       sendText: vi.fn(),
       sendKeys: vi.fn(),
@@ -351,6 +361,7 @@ describe("useSessionDetailVM", () => {
     const touchSession = vi.fn().mockResolvedValue(undefined);
     const sessionApi = {
       reconnect: vi.fn(),
+      refreshSessions: vi.fn(),
       requestDiffSummary: vi.fn(),
       requestDiffFile: vi.fn(),
       requestCommitLog: vi.fn(),
@@ -363,6 +374,9 @@ describe("useSessionDetailVM", () => {
       requestRepoFileContent: vi.fn(),
       requestScreen: vi.fn(),
       focusPane: vi.fn().mockResolvedValue({ ok: true }),
+      killPane: vi.fn(),
+      killWindow: vi.fn(),
+      launchAgentInSession: vi.fn(),
       uploadImageAttachment: vi.fn(),
       sendText: vi.fn(),
       sendKeys: vi.fn(),
@@ -400,6 +414,7 @@ describe("useSessionDetailVM", () => {
   it("derives latest codex context-left label from screen text", () => {
     const sessionApi = {
       reconnect: vi.fn(),
+      refreshSessions: vi.fn(),
       requestDiffSummary: vi.fn(),
       requestDiffFile: vi.fn(),
       requestCommitLog: vi.fn(),
@@ -412,6 +427,9 @@ describe("useSessionDetailVM", () => {
       requestRepoFileContent: vi.fn(),
       requestScreen: vi.fn(),
       focusPane: vi.fn(),
+      killPane: vi.fn(),
+      killWindow: vi.fn(),
+      launchAgentInSession: vi.fn(),
       uploadImageAttachment: vi.fn(),
       sendText: vi.fn(),
       sendKeys: vi.fn(),
@@ -446,6 +464,7 @@ describe("useSessionDetailVM", () => {
   it("ignores context-left label for non-codex sessions", () => {
     const sessionApi = {
       reconnect: vi.fn(),
+      refreshSessions: vi.fn(),
       requestDiffSummary: vi.fn(),
       requestDiffFile: vi.fn(),
       requestCommitLog: vi.fn(),
@@ -458,6 +477,9 @@ describe("useSessionDetailVM", () => {
       requestRepoFileContent: vi.fn(),
       requestScreen: vi.fn(),
       focusPane: vi.fn(),
+      killPane: vi.fn(),
+      killWindow: vi.fn(),
+      launchAgentInSession: vi.fn(),
       uploadImageAttachment: vi.fn(),
       sendText: vi.fn(),
       sendKeys: vi.fn(),

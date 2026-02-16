@@ -1,9 +1,11 @@
 import type {
   HighlightCorrectionConfig,
+  LaunchConfig,
   ScreenResponse,
   SessionStateTimeline,
   SessionStateTimelineRange,
   SessionStateTimelineScope,
+  WorktreeList,
 } from "@vde-monitor/shared";
 import { memo, useCallback } from "react";
 
@@ -11,6 +13,7 @@ import { Card } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { SessionGroup } from "@/lib/session-group";
 import type { Theme } from "@/lib/theme";
+import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
 
 import { useSessionSidebarActions } from "../hooks/useSessionSidebarActions";
 import { useSessionSidebarGroups } from "../hooks/useSessionSidebarGroups";
@@ -25,6 +28,8 @@ type SessionSidebarState = {
   nowMs: number;
   connected: boolean;
   connectionIssue: string | null;
+  launchConfig: LaunchConfig;
+  requestWorktrees: (paneId: string) => Promise<WorktreeList>;
   requestStateTimeline: (
     paneId: string,
     options?: {
@@ -46,6 +51,11 @@ type SessionSidebarState = {
 type SessionSidebarActions = {
   onSelectSession?: (paneId: string) => void;
   onFocusPane?: (paneId: string) => Promise<void> | void;
+  onLaunchAgentInSession?: (
+    sessionName: string,
+    agent: "codex" | "claude",
+    options?: LaunchAgentRequestOptions,
+  ) => Promise<void> | void;
   onTouchSession?: (paneId: string) => void;
   onTouchRepoPin?: (repoRoot: string | null) => void;
 };
@@ -73,6 +83,8 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
     nowMs,
     connected,
     connectionIssue,
+    launchConfig,
+    requestWorktrees,
     requestStateTimeline,
     requestScreen,
     highlightCorrections,
@@ -80,19 +92,23 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
     currentPaneId,
     className,
   } = state;
-  const { onSelectSession, onFocusPane, onTouchSession, onTouchRepoPin } = actions;
+  const { onSelectSession, onFocusPane, onLaunchAgentInSession, onTouchSession, onTouchRepoPin } =
+    actions;
 
   const {
     filter,
     focusPendingPaneIds,
+    launchPendingSessions,
     handleSelectSession,
     handleFocusPane,
+    handleLaunchAgentInSession,
     handleFilterChange,
     handleTouchRepoPin,
     handleTouchPane,
   } = useSessionSidebarActions({
     onSelectSession,
     onFocusPane,
+    onLaunchAgentInSession,
     onTouchSession,
     onTouchRepoPin,
   });
@@ -154,12 +170,16 @@ export const SessionSidebar = ({ state, actions }: SessionSidebarProps) => {
         nowMs={nowMs}
         currentPaneId={currentPaneId}
         focusPendingPaneIds={focusPendingPaneIds}
+        launchPendingSessions={launchPendingSessions}
+        launchConfig={launchConfig}
+        requestWorktrees={requestWorktrees}
         onHoverStart={handleHoverStart}
         onHoverEnd={handleHoverEnd}
         onFocus={handleFocus}
         onBlur={handleBlur}
         onSelect={handleSelect}
         onFocusPane={handleFocusPane}
+        onLaunchAgentInSession={handleLaunchAgentInSession}
         onTouchSession={handleTouchPane}
         onTouchRepoPin={handleTouchRepoPin}
         registerItemRef={registerItemRef}

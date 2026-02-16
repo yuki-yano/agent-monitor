@@ -13,6 +13,7 @@ export type SessionDetailAtomSnapshot = {
   connectionIssue: string | null;
   highlightCorrections: ReturnType<typeof useSessions>["highlightCorrections"];
   fileNavigatorConfig: ReturnType<typeof useSessions>["fileNavigatorConfig"];
+  launchConfig: ReturnType<typeof useSessions>["launchConfig"];
   resolvedTheme: ReturnType<typeof useTheme>["resolvedTheme"];
   sessionApi: SessionApi;
 };
@@ -25,6 +26,8 @@ export const useSessionDetailAtomSnapshot = (paneId: string): SessionDetailAtomS
     connectionIssue,
     highlightCorrections,
     fileNavigatorConfig,
+    launchConfig,
+    refreshSessions,
     reconnect,
     requestWorktrees,
     requestDiffSummary,
@@ -39,6 +42,9 @@ export const useSessionDetailAtomSnapshot = (paneId: string): SessionDetailAtomS
     requestRepoFileContent,
     requestScreen,
     focusPane,
+    killPane,
+    killWindow,
+    launchAgentInSession,
     uploadImageAttachment,
     sendText,
     sendKeys,
@@ -54,6 +60,7 @@ export const useSessionDetailAtomSnapshot = (paneId: string): SessionDetailAtomS
   const sessionApi = useMemo<SessionApi>(
     () => ({
       reconnect,
+      refreshSessions,
       requestWorktrees,
       requestDiffSummary,
       requestDiffFile,
@@ -67,6 +74,9 @@ export const useSessionDetailAtomSnapshot = (paneId: string): SessionDetailAtomS
       requestRepoFileContent,
       requestScreen,
       focusPane,
+      killPane,
+      killWindow,
+      launchAgentInSession,
       uploadImageAttachment,
       sendText,
       sendKeys,
@@ -79,6 +89,7 @@ export const useSessionDetailAtomSnapshot = (paneId: string): SessionDetailAtomS
     }),
     [
       reconnect,
+      refreshSessions,
       requestWorktrees,
       requestDiffSummary,
       requestDiffFile,
@@ -92,6 +103,9 @@ export const useSessionDetailAtomSnapshot = (paneId: string): SessionDetailAtomS
       requestRepoFileContent,
       requestScreen,
       focusPane,
+      killPane,
+      killWindow,
+      launchAgentInSession,
       uploadImageAttachment,
       sendText,
       sendKeys,
@@ -113,6 +127,7 @@ export const useSessionDetailAtomSnapshot = (paneId: string): SessionDetailAtomS
       connectionIssue,
       highlightCorrections,
       fileNavigatorConfig,
+      launchConfig,
       resolvedTheme,
       sessionApi,
     }),
@@ -124,6 +139,7 @@ export const useSessionDetailAtomSnapshot = (paneId: string): SessionDetailAtomS
       connectionIssue,
       highlightCorrections,
       fileNavigatorConfig,
+      launchConfig,
       resolvedTheme,
       sessionApi,
     ],

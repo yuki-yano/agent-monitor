@@ -95,12 +95,11 @@ describe("SessionCard", () => {
     expect(text.indexOf("feature/worktree-branch")).toBeLessThan(text.indexOf("Pane pane-1"));
   });
 
-  it("hides worktree flags when session is outside vw worktree", () => {
+  it("does not show worktree flags when session is outside vw worktree", () => {
     const session = buildSession({
       worktreePath: "/Users/test/repo",
       worktreeDirty: true,
       worktreeLocked: true,
-      worktreePrCreated: true,
       worktreeMerged: true,
     });
     renderWithRouter(<SessionCard session={session} nowMs={Date.now()} />);
@@ -111,20 +110,19 @@ describe("SessionCard", () => {
     expect(screen.queryByText("M:Y")).toBeNull();
   });
 
-  it("shows worktree flags when session is under vw worktree", () => {
+  it("does not show worktree flags when session is under vw worktree", () => {
     const session = buildSession({
       worktreePath: "/Users/test/repo/.worktree/feature/foo",
       worktreeDirty: true,
       worktreeLocked: false,
-      worktreePrCreated: true,
       worktreeMerged: false,
     });
     renderWithRouter(<SessionCard session={session} nowMs={Date.now()} />);
 
-    expect(screen.getByText("D:Y")).toBeTruthy();
-    expect(screen.getByText("L:N")).toBeTruthy();
-    expect(screen.getByText("PR:Y")).toBeTruthy();
-    expect(screen.getByText("M:N")).toBeTruthy();
+    expect(screen.queryByText("D:Y")).toBeNull();
+    expect(screen.queryByText("L:N")).toBeNull();
+    expect(screen.queryByText("PR:Y")).toBeNull();
+    expect(screen.queryByText("M:N")).toBeNull();
   });
 
   it("shows EDITOR badge for unknown state with nvim command", () => {

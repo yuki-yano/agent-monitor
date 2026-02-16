@@ -4,6 +4,8 @@ import { parseArgs as parseCittyArgs } from "citty";
 
 const multiplexerBackends = ["tmux", "wezterm"] as const;
 const imageBackends = ["alacritty", "terminal", "iterm", "wezterm", "ghostty"] as const;
+const launchAgents = ["codex", "claude"] as const;
+const launchOutputModes = ["json", "text"] as const;
 
 const cliArgDefinitions = {
   command: { type: "positional", required: false },
@@ -21,6 +23,14 @@ const cliArgDefinitions = {
   backend: { type: "enum", options: [...imageBackends] },
   weztermCli: { type: "string" },
   weztermTarget: { type: "string" },
+  session: { type: "string" },
+  agent: { type: "enum", options: [...launchAgents] },
+  requestId: { type: "string" },
+  windowName: { type: "string" },
+  cwd: { type: "string" },
+  worktreePath: { type: "string" },
+  worktreeBranch: { type: "string" },
+  output: { type: "enum", options: [...launchOutputModes] },
 } satisfies ArgsDef;
 
 export type ParsedArgs = CittyParsedArgs<typeof cliArgDefinitions>;
@@ -35,6 +45,17 @@ export type MultiplexerOverrides = {
   screenImageBackend?: AgentMonitorConfig["screen"]["image"]["backend"];
   weztermCliPath?: string;
   weztermTarget?: string;
+};
+
+export type LaunchAgentArgs = {
+  sessionName: string;
+  agent: (typeof launchAgents)[number];
+  requestId?: string;
+  windowName?: string;
+  cwd?: string;
+  worktreePath?: string;
+  worktreeBranch?: string;
+  output: (typeof launchOutputModes)[number];
 };
 
 type ResolveHostsOptions = {
@@ -71,6 +92,26 @@ const readOptionalString = (value: unknown, flag: string): string | null => {
     return null;
   }
   return value;
+};
+
+const readOptionalTrimmedString = (value: unknown, flag: string): string | undefined => {
+  const resolved = readOptionalString(value, flag);
+  if (resolved == null) {
+    return undefined;
+  }
+  const trimmed = resolved.trim();
+  if (trimmed.length === 0) {
+    throw new Error(`${flag} must not be empty.`);
+  }
+  return trimmed;
+};
+
+const readRequiredString = (value: unknown, flag: string): string => {
+  const resolved = readOptionalTrimmedString(value, flag);
+  if (resolved == null) {
+    throw new Error(`${flag} is required.`);
+  }
+  return resolved;
 };
 
 const isIPv4 = (value: string) => {
@@ -208,4 +249,29 @@ export const resolveMultiplexerOverrides = (args: ParsedArgs): MultiplexerOverri
   }
 
   return overrides;
+};
+
+export const resolveLaunchAgentArgs = (args: ParsedArgs): LaunchAgentArgs => {
+  const sessionName = readRequiredString(args.session, "--session");
+  const agent = readRequiredString(args.agent, "--agent") as LaunchAgentArgs["agent"];
+  const requestId = readOptionalTrimmedString(args.requestId, "--request-id");
+  const windowName = readOptionalTrimmedString(args.windowName, "--window-name");
+  const cwd = readOptionalTrimmedString(args.cwd, "--cwd");
+  const worktreePath = readOptionalTrimmedString(args.worktreePath, "--worktree-path");
+  const worktreeBranch = readOptionalTrimmedString(args.worktreeBranch, "--worktree-branch");
+  if (cwd && (worktreePath || worktreeBranch)) {
+    throw new Error("--cwd cannot be combined with --worktree-path/--worktree-branch.");
+  }
+  const output = (args.output ?? "json") as LaunchAgentArgs["output"];
+
+  return {
+    sessionName,
+    agent,
+    requestId,
+    windowName,
+    cwd,
+    worktreePath,
+    worktreeBranch,
+    output,
+  };
 };

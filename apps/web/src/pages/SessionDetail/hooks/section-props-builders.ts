@@ -5,6 +5,7 @@ import type {
   DiffFile,
   DiffSummary,
   HighlightCorrectionConfig,
+  LaunchConfig,
   RepoFileContent,
   RepoFileSearchPage,
   RepoNote,
@@ -13,6 +14,7 @@ import type {
   SessionStateTimelineRange,
   SessionStateTimelineScope,
   SessionSummary,
+  WorktreeList,
   WorktreeListEntry,
 } from "@vde-monitor/shared";
 import type { CompositionEvent, FormEvent, KeyboardEvent, RefObject } from "react";
@@ -21,6 +23,7 @@ import type { VirtuosoHandle } from "react-virtuoso";
 import type { ScreenMode } from "@/lib/screen-loading";
 import type { SessionGroup } from "@/lib/session-group";
 import type { Theme } from "@/lib/theme";
+import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
 
 import type { FileTreeRenderNode } from "./useSessionFiles";
 
@@ -244,6 +247,8 @@ type BuildSessionSidebarPropsArgs = {
   nowMs: number;
   connected: boolean;
   sidebarConnectionIssue: string | null;
+  launchConfig: LaunchConfig;
+  requestWorktrees: (paneId: string) => Promise<WorktreeList>;
   requestStateTimeline: (
     paneId: string,
     options?: {
@@ -259,7 +264,12 @@ type BuildSessionSidebarPropsArgs = {
   highlightCorrections: HighlightCorrectionConfig;
   resolvedTheme: Theme;
   paneId: string;
-  handleFocusPane: (paneId: string) => void;
+  handleFocusPane: (paneId: string) => Promise<void> | void;
+  handleLaunchAgentInSession: (
+    sessionName: string,
+    agent: "codex" | "claude",
+    options?: LaunchAgentRequestOptions,
+  ) => Promise<void>;
   handleTouchPane: (paneId: string) => void;
   handleTouchRepoPin: (repoRoot: string | null) => void;
 };
@@ -281,6 +291,8 @@ type BuildControlsPanelPropsArgs = {
   toggleShift: () => void;
   toggleCtrl: () => void;
   handleSendKey: (key: string) => Promise<void>;
+  handleKillPane: () => Promise<void>;
+  handleKillWindow: () => Promise<void>;
   handleRawBeforeInput: (event: FormEvent<HTMLTextAreaElement>) => void;
   handleRawInput: (event: FormEvent<HTMLTextAreaElement>) => void;
   handleRawKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -722,12 +734,15 @@ export const buildSessionSidebarProps = ({
   nowMs,
   connected,
   sidebarConnectionIssue,
+  launchConfig,
+  requestWorktrees,
   requestStateTimeline,
   requestScreen,
   highlightCorrections,
   resolvedTheme,
   paneId,
   handleFocusPane,
+  handleLaunchAgentInSession,
   handleTouchPane,
   handleTouchRepoPin,
 }: BuildSessionSidebarPropsArgs) => ({
@@ -737,6 +752,8 @@ export const buildSessionSidebarProps = ({
     nowMs,
     connected,
     connectionIssue: sidebarConnectionIssue,
+    launchConfig,
+    requestWorktrees,
     requestStateTimeline,
     requestScreen,
     highlightCorrections,
@@ -746,6 +763,7 @@ export const buildSessionSidebarProps = ({
   },
   actions: {
     onFocusPane: handleFocusPane,
+    onLaunchAgentInSession: handleLaunchAgentInSession,
     onTouchSession: handleTouchPane,
     onTouchRepoPin: handleTouchRepoPin,
   },
@@ -768,6 +786,8 @@ export const buildControlsPanelProps = ({
   toggleShift,
   toggleCtrl,
   handleSendKey,
+  handleKillPane,
+  handleKillWindow,
   handleRawBeforeInput,
   handleRawInput,
   handleRawKeyDown,
@@ -793,6 +813,8 @@ export const buildControlsPanelProps = ({
     onToggleShift: toggleShift,
     onToggleCtrl: toggleCtrl,
     onSendKey: handleSendKey,
+    onKillPane: handleKillPane,
+    onKillWindow: handleKillWindow,
     onRawBeforeInput: handleRawBeforeInput,
     onRawInput: handleRawInput,
     onRawKeyDown: handleRawKeyDown,

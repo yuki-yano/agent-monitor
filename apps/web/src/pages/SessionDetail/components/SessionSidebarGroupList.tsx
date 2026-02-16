@@ -1,9 +1,13 @@
+import type { LaunchConfig, WorktreeList } from "@vde-monitor/shared";
 import { Pin } from "lucide-react";
 
+import { LaunchAgentButton } from "@/components/launch-agent-button";
 import { IconButton, TagPill } from "@/components/ui";
 import { formatRepoDirLabel } from "@/lib/quick-panel-utils";
+import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
 
 import type { SidebarRepoGroup } from "../hooks/useSessionSidebarGroups";
+import { isVwManagedWorktreePath } from "../sessionDetailUtils";
 import { SessionSidebarItem } from "./SessionSidebarItem";
 
 type SessionSidebarGroupListProps = {
@@ -11,12 +15,20 @@ type SessionSidebarGroupListProps = {
   nowMs: number;
   currentPaneId?: string | null;
   focusPendingPaneIds: Set<string>;
+  launchPendingSessions: Set<string>;
+  launchConfig: LaunchConfig;
+  requestWorktrees: (paneId: string) => Promise<WorktreeList>;
   onHoverStart: (paneId: string) => void;
   onHoverEnd: (paneId: string) => void;
   onFocus: (paneId: string) => void;
   onBlur: (paneId: string) => void;
   onSelect: (paneId: string) => void;
   onFocusPane: (paneId: string) => Promise<void> | void;
+  onLaunchAgentInSession: (
+    sessionName: string,
+    agent: "codex" | "claude",
+    options?: LaunchAgentRequestOptions,
+  ) => Promise<void> | void;
   onTouchSession: (paneId: string) => void;
   onTouchRepoPin: (repoRoot: string | null) => void;
   registerItemRef: (paneId: string, node: HTMLDivElement | null) => void;
@@ -27,16 +39,22 @@ export const SessionSidebarGroupList = ({
   nowMs,
   currentPaneId,
   focusPendingPaneIds,
+  launchPendingSessions,
+  launchConfig,
+  requestWorktrees,
   onHoverStart,
   onHoverEnd,
   onFocus,
   onBlur,
   onSelect,
   onFocusPane,
+  onLaunchAgentInSession,
   onTouchSession,
   onTouchRepoPin,
   registerItemRef,
 }: SessionSidebarGroupListProps) => {
+  const launchedSessions = new Set<string>();
+
   return (
     <div className="space-y-5">
       {sidebarGroups.length === 0 && (
@@ -76,45 +94,80 @@ export const SessionSidebarGroupList = ({
               </div>
             </div>
             <div className="space-y-4 pl-2.5">
-              {group.windowGroups.map((windowGroup) => (
-                <div
-                  key={`${windowGroup.sessionName}:${windowGroup.windowIndex}`}
-                  className="border-latte-surface2/60 bg-latte-crust/70 rounded-2xl border px-3 py-3"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-latte-text truncate text-[12px] font-semibold uppercase tracking-wider">
-                        Window {windowGroup.windowIndex}
-                      </p>
-                      <p className="text-latte-subtext0 truncate text-[10px]">
-                        Session {windowGroup.sessionName}
-                      </p>
+              {group.windowGroups.map((windowGroup) => {
+                const shouldRenderLaunchButtons = !launchedSessions.has(windowGroup.sessionName);
+                if (shouldRenderLaunchButtons) {
+                  launchedSessions.add(windowGroup.sessionName);
+                }
+                const sessionPaneCandidates = group.windowGroups
+                  .filter((candidate) => candidate.sessionName === windowGroup.sessionName)
+                  .flatMap((candidate) => candidate.sessions);
+                const repoRootPane = sessionPaneCandidates.find((session) => {
+                  const repoRoot = session.repoRoot?.trim();
+                  const worktreePath = session.worktreePath?.trim();
+                  return Boolean(repoRoot && worktreePath && repoRoot === worktreePath);
+                });
+                const nonWorktreePane = sessionPaneCandidates.find(
+                  (session) => !isVwManagedWorktreePath(session.worktreePath),
+                );
+                const launchSourceSession =
+                  repoRootPane ??
+                  nonWorktreePane ??
+                  sessionPaneCandidates.find((session) => session.paneActive) ??
+                  sessionPaneCandidates[0];
+
+                return (
+                  <div
+                    key={`${windowGroup.sessionName}:${windowGroup.windowIndex}`}
+                    className="border-latte-surface2/60 bg-latte-crust/70 rounded-2xl border px-3 py-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-latte-text truncate text-[12px] font-semibold uppercase tracking-wider">
+                          Window {windowGroup.windowIndex}
+                        </p>
+                        <p className="text-latte-subtext0 truncate text-[10px]">
+                          Session {windowGroup.sessionName}
+                        </p>
+                      </div>
+                      <TagPill tone="neutral" className="text-[9px]">
+                        {windowGroup.sessions.length} / {groupTotalPanes} panes
+                      </TagPill>
                     </div>
-                    <TagPill tone="neutral" className="text-[9px]">
-                      {windowGroup.sessions.length} / {groupTotalPanes} panes
-                    </TagPill>
+                    {shouldRenderLaunchButtons ? (
+                      <div className="mt-2 flex items-center gap-1.5">
+                        <LaunchAgentButton
+                          sessionName={windowGroup.sessionName}
+                          sourceSession={launchSourceSession}
+                          launchConfig={launchConfig}
+                          launchPendingSessions={launchPendingSessions}
+                          requestWorktrees={requestWorktrees}
+                          onLaunchAgentInSession={onLaunchAgentInSession}
+                        />
+                      </div>
+                    ) : null}
+                    <div className="mt-3 space-y-2">
+                      {windowGroup.sessions.map((item) => (
+                        <SessionSidebarItem
+                          key={item.paneId}
+                          item={item}
+                          nowMs={nowMs}
+                          isCurrent={currentPaneId === item.paneId}
+                          isFocusPending={focusPendingPaneIds.has(item.paneId)}
+                          onHoverStart={onHoverStart}
+                          onHoverEnd={onHoverEnd}
+                          onFocus={onFocus}
+                          onBlur={onBlur}
+                          onSelect={() => onSelect(item.paneId)}
+                          onFocusPane={onFocusPane}
+                          onTouchSession={onTouchSession}
+                          registerItemRef={registerItemRef}
+                        />
+                      ))}
+                    </div>
                   </div>
-                  <div className="mt-3 space-y-2">
-                    {windowGroup.sessions.map((item) => (
-                      <SessionSidebarItem
-                        key={item.paneId}
-                        item={item}
-                        nowMs={nowMs}
-                        isCurrent={currentPaneId === item.paneId}
-                        isFocusPending={focusPendingPaneIds.has(item.paneId)}
-                        onHoverStart={onHoverStart}
-                        onHoverEnd={onHoverEnd}
-                        onFocus={onFocus}
-                        onBlur={onBlur}
-                        onSelect={() => onSelect(item.paneId)}
-                        onFocusPane={onFocusPane}
-                        onTouchSession={onTouchSession}
-                        registerItemRef={registerItemRef}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         );

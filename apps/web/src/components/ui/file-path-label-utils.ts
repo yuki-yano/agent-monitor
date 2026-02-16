@@ -31,6 +31,7 @@ const buildSegmentedLabel = (segments: string[], count: number) => {
 
 const SEGMENT_RETRY_LIMIT = 5;
 const SEGMENT_RETRY_DELAY_MS = 60;
+const LEADING_ELLIPSIS = "…";
 
 const measureElementWidth = (element: HTMLElement) =>
   element.getBoundingClientRect().width || element.scrollWidth || element.clientWidth;
@@ -64,11 +65,39 @@ const scheduleRetry = (
   setTimeoutId(timeoutId);
 };
 
+const buildLeadingCharLabel = (value: string, available: number, measureEl: HTMLSpanElement) => {
+  measureEl.textContent = value;
+  if (measureElementWidth(measureEl) <= available) {
+    return value;
+  }
+  measureEl.textContent = LEADING_ELLIPSIS;
+  if (measureElementWidth(measureEl) > available) {
+    return "";
+  }
+  let low = 0;
+  let high = value.length;
+  let best = LEADING_ELLIPSIS;
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const suffix = value.slice(mid);
+    const candidate = suffix.length > 0 ? `${LEADING_ELLIPSIS}${suffix}` : LEADING_ELLIPSIS;
+    measureEl.textContent = candidate;
+    if (measureElementWidth(measureEl) <= available) {
+      best = candidate;
+      high = mid - 1;
+      continue;
+    }
+    low = mid + 1;
+  }
+  return best;
+};
+
 const findSegmentLabel = (
   text: string,
   segments: string[],
   available: number,
   measureEl: HTMLSpanElement,
+  minVisibleSegments: number,
 ) => {
   measureEl.textContent = text;
   const fullWidth = measureElementWidth(measureEl);
@@ -78,14 +107,23 @@ const findSegmentLabel = (
   if (fullWidth <= available) {
     return text;
   }
-  let next = buildSegmentedLabel(segments, 1);
-  for (let count = segments.length; count >= 1; count -= 1) {
+  const boundedMinVisibleSegments = Math.min(
+    segments.length,
+    Math.max(1, Math.floor(minVisibleSegments)),
+  );
+  let next = buildSegmentedLabel(segments, boundedMinVisibleSegments);
+  let foundFittingSegmentCount = false;
+  for (let count = segments.length; count >= boundedMinVisibleSegments; count -= 1) {
     const candidate = buildSegmentedLabel(segments, count);
     measureEl.textContent = candidate;
     if (measureElementWidth(measureEl) <= available) {
       next = candidate;
+      foundFittingSegmentCount = true;
       break;
     }
+  }
+  if (!foundFittingSegmentCount) {
+    return buildLeadingCharLabel(next, available, measureEl);
   }
   return next;
 };
@@ -144,12 +182,14 @@ export const useSegmentTruncate = ({
   text,
   segments,
   reservePx,
+  minVisibleSegments = 1,
   containerRef,
   fallbackRef,
 }: {
   text: string;
   segments: string[];
   reservePx: number;
+  minVisibleSegments?: number;
   containerRef: RefObject<HTMLElement | null>;
   fallbackRef?: RefObject<HTMLElement | null>;
 }) => {
@@ -182,7 +222,7 @@ export const useSegmentTruncate = ({
       }
       retryRef.current = 0;
       const available = Math.max(0, containerWidth - reservePx);
-      const nextLabel = findSegmentLabel(text, segments, available, measureEl);
+      const nextLabel = findSegmentLabel(text, segments, available, measureEl, minVisibleSegments);
       if (nextLabel == null) {
         scheduleRetry(retryRef, update, setRetryTimeout);
         return;
@@ -209,7 +249,16 @@ export const useSegmentTruncate = ({
         window.clearTimeout(timeoutId);
       }
     };
-  }, [containerRef, fallbackRef, reservePx, segments, segments.length, segmentsKey, text]);
+  }, [
+    containerRef,
+    fallbackRef,
+    minVisibleSegments,
+    reservePx,
+    segments,
+    segments.length,
+    segmentsKey,
+    text,
+  ]);
 
   return { measureRef, label };
 };

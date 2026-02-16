@@ -9,6 +9,8 @@ import type {
   DiffSummary,
   HighlightCorrectionConfig,
   ImageAttachment,
+  LaunchCommandResponse,
+  LaunchConfig,
   RawItem,
   RepoFileContent,
   RepoFileSearchPage,
@@ -24,6 +26,7 @@ import type {
 } from "@vde-monitor/shared";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 
+import { defaultLaunchConfig, type LaunchAgentRequestOptions } from "./launch-agent-options";
 import { useSessionApi } from "./use-session-api";
 import { useSessionConnectionState } from "./use-session-connection-state";
 import { useSessionPolling } from "./use-session-polling";
@@ -38,6 +41,7 @@ type SessionContextValue = {
   connectionIssue: string | null;
   highlightCorrections: HighlightCorrectionConfig;
   fileNavigatorConfig: ClientFileNavigatorConfig;
+  launchConfig: LaunchConfig;
   reconnect: () => void;
   refreshSessions: () => Promise<void>;
   requestWorktrees: (paneId: string) => Promise<WorktreeList>;
@@ -94,6 +98,14 @@ type SessionContextValue = {
     options: { lines?: number; mode?: "text" | "image"; cursor?: string },
   ) => Promise<ScreenResponse>;
   focusPane: (paneId: string) => Promise<CommandResponse>;
+  killPane: (paneId: string) => Promise<CommandResponse>;
+  killWindow: (paneId: string) => Promise<CommandResponse>;
+  launchAgentInSession: (
+    sessionName: string,
+    agent: "codex" | "claude",
+    requestId: string,
+    options?: LaunchAgentRequestOptions,
+  ) => Promise<LaunchCommandResponse>;
   uploadImageAttachment: (paneId: string, file: File) => Promise<ImageAttachment>;
   sendText: (
     paneId: string,
@@ -131,6 +143,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const [fileNavigatorConfig, setFileNavigatorConfig] = useState<ClientFileNavigatorConfig>({
     autoExpandMatchLimit: 100,
   });
+  const [launchConfig, setLaunchConfig] = useState<LaunchConfig>(defaultLaunchConfig);
   const {
     connectionIssue,
     setConnectionIssue,
@@ -163,6 +176,9 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     requestRepoFileContent,
     requestScreen,
     focusPane,
+    killPane,
+    killWindow,
+    launchAgentInSession,
     uploadImageAttachment,
     sendText,
     sendKeys,
@@ -181,6 +197,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     onSessionRemoved: removeSession,
     onHighlightCorrections: applyHighlightCorrections,
     onFileNavigatorConfig: setFileNavigatorConfig,
+    onLaunchConfig: setLaunchConfig,
   });
 
   const refreshSessions = useCallback(async () => {
@@ -203,6 +220,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     setFileNavigatorConfig({ autoExpandMatchLimit: 100 });
+    setLaunchConfig(defaultLaunchConfig);
   }, [token]);
 
   return (
@@ -215,6 +233,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         connectionIssue,
         highlightCorrections,
         fileNavigatorConfig,
+        launchConfig,
         reconnect,
         refreshSessions,
         requestWorktrees,
@@ -230,6 +249,9 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         requestRepoFileContent,
         requestScreen,
         focusPane,
+        killPane,
+        killWindow,
+        launchAgentInSession,
         uploadImageAttachment,
         sendText,
         sendKeys,

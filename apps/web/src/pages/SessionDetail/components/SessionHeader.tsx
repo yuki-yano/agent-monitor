@@ -12,6 +12,7 @@ import {
   LastInputPill,
   TagPill,
   TextButton,
+  TruncatedPathText,
 } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { buildGitHubRepoUrl } from "@/lib/github-repo-url";
@@ -26,13 +27,10 @@ import {
   formatPath,
   formatRelativeTime,
   formatStateLabel,
-  formatWorktreeFlag,
   getLastInputTone,
   isEditorCommand,
   isKnownAgent,
-  isVwManagedWorktreePath,
   stateTone,
-  worktreeFlagClass,
 } from "../sessionDetailUtils";
 
 type SessionHeaderState = {
@@ -202,6 +200,7 @@ const SessionTitleArea = ({
   onCloseTitleEditor,
 }: SessionTitleAreaProps) => {
   const showResetTitle = canResetTitle && !titleEditing;
+  const formattedCurrentPath = formatPath(currentPath);
   return (
     <>
       <div className="flex flex-wrap items-center gap-1">
@@ -233,9 +232,13 @@ const SessionTitleArea = ({
             <X className="h-3.5 w-3.5" />
           </IconButton>
         ) : null}
-        <span className="text-latte-subtext0 max-w-full truncate text-xs sm:max-w-[360px] sm:text-sm">
-          {formatPath(currentPath)}
-        </span>
+        <TruncatedPathText
+          data-testid="session-header-current-path"
+          path={formattedCurrentPath}
+          reservePx={12}
+          minVisibleSegments={2}
+          className="text-latte-subtext0 min-w-0 basis-full text-xs sm:max-w-[360px] sm:flex-1 sm:basis-auto sm:text-sm"
+        />
       </div>
       {titleError ? <p className="text-latte-red text-xs">{titleError}</p> : null}
     </>
@@ -267,7 +270,6 @@ export const SessionHeader = ({ state, actions }: SessionHeaderProps) => {
   const showEditorState = session.state === "UNKNOWN" && isEditorCommand(session.currentCommand);
   const stateBadgeTone = showEditorState ? "editor" : stateTone(session.state);
   const stateBadgeLabel = showEditorState ? "EDITOR" : formatStateLabel(session.state);
-  const showWorktreeFlags = isVwManagedWorktreePath(session.worktreePath);
   const backToListSearch = { filter: readStoredSessionListFilter() };
   const repoGitHubUrl = buildGitHubRepoUrl(session.repoRoot ?? session.currentPath);
 
@@ -338,39 +340,6 @@ export const SessionHeader = ({ state, actions }: SessionHeaderProps) => {
                     {formatBranchLabel(session.branch)}
                   </span>
                 </TagPill>
-                {showWorktreeFlags ? (
-                  <>
-                    <TagPill
-                      tone="meta"
-                      className={worktreeFlagClass("dirty", session.worktreeDirty ?? null)}
-                    >
-                      Dirty:{formatWorktreeFlag(session.worktreeDirty)}
-                    </TagPill>
-                    <TagPill
-                      tone="meta"
-                      className={worktreeFlagClass("locked", session.worktreeLocked ?? null)}
-                      title={
-                        session.worktreeLockOwner || session.worktreeLockReason
-                          ? `owner:${session.worktreeLockOwner ?? "-"} reason:${session.worktreeLockReason ?? "-"}`
-                          : undefined
-                      }
-                    >
-                      Lock:{formatWorktreeFlag(session.worktreeLocked)}
-                    </TagPill>
-                    <TagPill
-                      tone="meta"
-                      className={worktreeFlagClass("pr", session.worktreePrCreated ?? null)}
-                    >
-                      PR:{formatWorktreeFlag(session.worktreePrCreated)}
-                    </TagPill>
-                    <TagPill
-                      tone="meta"
-                      className={worktreeFlagClass("merged", session.worktreeMerged ?? null)}
-                    >
-                      Merged:{formatWorktreeFlag(session.worktreeMerged)}
-                    </TagPill>
-                  </>
-                ) : null}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <TagPill tone="meta">Session {session.sessionName}</TagPill>

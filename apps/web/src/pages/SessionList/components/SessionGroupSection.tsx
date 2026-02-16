@@ -1,11 +1,17 @@
-import type { SessionSummary } from "@vde-monitor/shared";
+import type { LaunchConfig, SessionSummary, WorktreeList } from "@vde-monitor/shared";
 import { Clock, FolderGit2, Github, Pin } from "lucide-react";
 
+import { LaunchAgentButton } from "@/components/launch-agent-button";
 import { GlassPanel, GlowCard, IconButton, LastInputPill, TagPill } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { buildGitHubRepoUrl } from "@/lib/github-repo-url";
-import { formatRelativeTime, getLastInputTone } from "@/lib/session-format";
+import {
+  formatRelativeTime,
+  getLastInputTone,
+  isVwManagedWorktreePath,
+} from "@/lib/session-format";
 import type { SessionGroup } from "@/lib/session-group";
+import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
 
 import { buildSessionWindowGroups, type SessionWindowGroup } from "../session-window-group";
 import { formatRepoName, formatRepoPath } from "../sessionListFormat";
@@ -15,6 +21,14 @@ type SessionGroupSectionProps = {
   group: SessionGroup;
   nowMs: number;
   allSessions: SessionSummary[];
+  launchPendingSessions: Set<string>;
+  launchConfig: LaunchConfig;
+  requestWorktrees: (paneId: string) => Promise<WorktreeList>;
+  onLaunchAgentInSession: (
+    sessionName: string,
+    agent: "codex" | "claude",
+    options?: LaunchAgentRequestOptions,
+  ) => Promise<void> | void;
   onTouchRepoPin: (repoRoot: string | null) => void;
   onTouchPanePin: (paneId: string) => void;
   onRegisterPaneScrollTarget?: (paneId: string, element: HTMLAnchorElement | null) => void;
@@ -24,6 +38,10 @@ export const SessionGroupSection = ({
   group,
   nowMs,
   allSessions,
+  launchPendingSessions,
+  launchConfig,
+  requestWorktrees,
+  onLaunchAgentInSession,
   onTouchRepoPin,
   onTouchPanePin,
   onRegisterPaneScrollTarget,
@@ -127,6 +145,41 @@ export const SessionGroupSection = ({
               key={sessionSection.sessionName}
               className={cn(sessionIndex > 0 ? "pt-2.5 sm:pt-4" : null)}
             >
+              {(() => {
+                const sessionPaneCandidates = sessionSection.windowGroups.flatMap(
+                  (windowGroup) => windowGroup.sessions,
+                );
+                const repoRootPane = sessionPaneCandidates.find((session) => {
+                  const repoRoot = session.repoRoot?.trim();
+                  const worktreePath = session.worktreePath?.trim();
+                  return Boolean(repoRoot && worktreePath && repoRoot === worktreePath);
+                });
+                const nonWorktreePane = sessionPaneCandidates.find(
+                  (session) => !isVwManagedWorktreePath(session.worktreePath),
+                );
+                const launchSourceSession =
+                  repoRootPane ??
+                  nonWorktreePane ??
+                  sessionPaneCandidates.find((session) => session.paneActive) ??
+                  sessionPaneCandidates[0];
+                return (
+                  <div className="mb-2.5 flex flex-wrap items-center gap-2.5 px-1">
+                    <TagPill tone="neutral" className="text-[10px]">
+                      Session {sessionSection.sessionName}
+                    </TagPill>
+                    <div className="ml-auto flex items-center gap-1.5">
+                      <LaunchAgentButton
+                        sessionName={sessionSection.sessionName}
+                        sourceSession={launchSourceSession}
+                        launchConfig={launchConfig}
+                        launchPendingSessions={launchPendingSessions}
+                        requestWorktrees={requestWorktrees}
+                        onLaunchAgentInSession={onLaunchAgentInSession}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="space-y-2.5 sm:space-y-4">
                 {sessionSection.windowGroups.map((windowGroup) => (
                   <SessionWindowSection

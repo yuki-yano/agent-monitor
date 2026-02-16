@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { parseArgs, resolveHosts, resolveMultiplexerOverrides } from "./cli";
+import {
+  parseArgs,
+  resolveHosts,
+  resolveLaunchAgentArgs,
+  resolveMultiplexerOverrides,
+} from "./cli";
 
 const baseOptions = {
   configBind: "127.0.0.1" as const,
@@ -160,5 +165,74 @@ describe("resolveMultiplexerOverrides", () => {
     expect(() => resolveMultiplexerOverrides(parseArgs(["--wezterm-target"]))).toThrow(
       /--wezterm-target requires a value/,
     );
+  });
+});
+
+describe("resolveLaunchAgentArgs", () => {
+  it("resolves launch-agent flags", () => {
+    const result = resolveLaunchAgentArgs(
+      parseArgs([
+        "tmux",
+        "launch-agent",
+        "--session",
+        " dev-main ",
+        "--agent",
+        "codex",
+        "--request-id",
+        " launch-1 ",
+        "--window-name",
+        " codex-work ",
+        "--worktree-branch",
+        " feature/launch ",
+        "--output",
+        "text",
+      ]),
+    );
+
+    expect(result).toEqual({
+      sessionName: "dev-main",
+      agent: "codex",
+      requestId: "launch-1",
+      windowName: "codex-work",
+      cwd: undefined,
+      worktreePath: undefined,
+      worktreeBranch: "feature/launch",
+      output: "text",
+    });
+  });
+
+  it("uses default output=json when omitted", () => {
+    const result = resolveLaunchAgentArgs(
+      parseArgs(["tmux", "launch-agent", "--session", "dev-main", "--agent", "claude"]),
+    );
+    expect(result.output).toBe("json");
+  });
+
+  it("rejects missing required flags", () => {
+    expect(() =>
+      resolveLaunchAgentArgs(parseArgs(["tmux", "launch-agent", "--agent", "codex"])),
+    ).toThrow(/--session is required/);
+    expect(() =>
+      resolveLaunchAgentArgs(parseArgs(["tmux", "launch-agent", "--session", "dev-main"])),
+    ).toThrow(/--agent is required/);
+  });
+
+  it("rejects mixed cwd and worktree selectors", () => {
+    expect(() =>
+      resolveLaunchAgentArgs(
+        parseArgs([
+          "tmux",
+          "launch-agent",
+          "--session",
+          "dev-main",
+          "--agent",
+          "codex",
+          "--cwd",
+          "/tmp",
+          "--worktree-path",
+          "/tmp/repo/.worktree/feature/foo",
+        ]),
+      ),
+    ).toThrow(/--cwd cannot be combined/);
   });
 });

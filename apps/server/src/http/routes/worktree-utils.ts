@@ -39,6 +39,7 @@ const buildRootFallbackEntry = (rootPath: string): WorktreeListEntryBase => ({
   lockOwner: null,
   lockReason: null,
   merged: null,
+  prStatus: null,
   ahead: null,
   behind: null,
 });
@@ -55,6 +56,7 @@ const toEntry = (
   lockOwner: entry.locked.owner,
   lockReason: entry.locked.reason,
   merged: entry.merged.overall,
+  prStatus: entry.pr.status,
   ahead: null,
   behind: null,
 });
@@ -195,7 +197,9 @@ const resolveSnapshotEntries = (
 export const resolveWorktreePathValidationPayload = async (
   detail: WorktreeSource,
 ): Promise<WorktreePathValidationPayload> => {
-  const snapshot = await resolveVwWorktreeSnapshotCached(resolveSnapshotCwd(detail));
+  const snapshot = await resolveVwWorktreeSnapshotCached(resolveSnapshotCwd(detail), {
+    ghMode: "never",
+  });
   const repoRoot = normalizePath(snapshot?.repoRoot ?? detail.repoRoot);
   if (!snapshot) {
     return {
@@ -210,7 +214,9 @@ export const resolveWorktreePathValidationPayload = async (
 export const resolveWorktreeListPayload = async (
   detail: WorktreeSource,
 ): Promise<WorktreeListPayload> => {
-  const snapshot = await resolveVwWorktreeSnapshotCached(resolveSnapshotCwd(detail));
+  const snapshot = await resolveVwWorktreeSnapshotCached(resolveSnapshotCwd(detail), {
+    ghMode: "auto",
+  });
   const repoRoot = normalizePath(snapshot?.repoRoot ?? detail.repoRoot);
   const currentPath = normalizePath(detail.currentPath);
 

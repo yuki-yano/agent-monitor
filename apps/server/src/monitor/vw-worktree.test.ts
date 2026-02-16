@@ -52,6 +52,31 @@ describe("resolveVwWorktreeSnapshotCached", () => {
     expect(execaMock).toHaveBeenCalledWith("vw", ["list", "--json"], expect.any(Object));
   });
 
+  it("forces --no-gh when ghMode is never", async () => {
+    const { resolveVwWorktreeSnapshotCached } = await loadModule();
+    execaMock.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: JSON.stringify({
+        status: "ok",
+        repoRoot: "/repo",
+        worktrees: [
+          {
+            branch: "main",
+            path: "/repo",
+            dirty: false,
+            locked: { value: false, owner: null, reason: null },
+            merged: { overall: false },
+          },
+        ],
+      }),
+    });
+
+    const snapshot = await resolveVwWorktreeSnapshotCached("/repo", { ghMode: "never" });
+
+    expect(snapshot?.repoRoot).toBe("/repo");
+    expect(execaMock).toHaveBeenCalledWith("vw", ["list", "--json", "--no-gh"], expect.any(Object));
+  });
+
   it("caches by normalized cwd", async () => {
     const { resolveVwWorktreeSnapshotCached } = await loadModule();
     execaMock.mockResolvedValueOnce({
@@ -99,6 +124,60 @@ describe("resolveVwWorktreeSnapshotCached", () => {
     expect(execaMock).toHaveBeenCalledTimes(1);
   });
 
+  it("runs gh lookup in auto mode even when no-gh cache is fresh", async () => {
+    const { resolveVwWorktreeSnapshotCached } = await loadModule();
+    execaMock
+      .mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          status: "ok",
+          repoRoot: "/repo",
+          worktrees: [
+            {
+              branch: "feature/foo",
+              path: "/repo/.worktree/feature/foo",
+              dirty: false,
+              locked: {},
+              merged: { overall: false, byPR: null },
+              pr: { status: "unknown" },
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          status: "ok",
+          repoRoot: "/repo",
+          worktrees: [
+            {
+              branch: "feature/foo",
+              path: "/repo/.worktree/feature/foo",
+              dirty: false,
+              locked: {},
+              merged: { overall: false, byPR: true },
+              pr: { status: "merged" },
+            },
+          ],
+        }),
+      });
+
+    const first = await resolveVwWorktreeSnapshotCached("/repo", { ghMode: "never" });
+    const second = await resolveVwWorktreeSnapshotCached("/repo", { ghMode: "auto" });
+
+    expect(first?.entries[0]?.merged.byPR).toBeNull();
+    expect(first?.entries[0]?.pr.status).toBe("unknown");
+    expect(second?.entries[0]?.merged.byPR).toBe(true);
+    expect(second?.entries[0]?.pr.status).toBe("merged");
+    expect(execaMock).toHaveBeenNthCalledWith(
+      1,
+      "vw",
+      ["list", "--json", "--no-gh"],
+      expect.any(Object),
+    );
+    expect(execaMock).toHaveBeenNthCalledWith(2, "vw", ["list", "--json"], expect.any(Object));
+  });
+
   it("uses --no-gh within refresh interval and reuses cached merged state", async () => {
     vi.useFakeTimers();
     try {
@@ -117,6 +196,7 @@ describe("resolveVwWorktreeSnapshotCached", () => {
               dirty: false,
               locked: {},
               merged: { overall: true, byPR: true },
+              pr: { status: "merged" },
             },
           ],
         }),
@@ -124,9 +204,6 @@ describe("resolveVwWorktreeSnapshotCached", () => {
 
       const first = await resolveVwWorktreeSnapshotCached("/repo");
       expect(execaMock).toHaveBeenNthCalledWith(1, "vw", ["list", "--json"], expect.any(Object));
-      expect(
-        resolveWorktreeStatusFromSnapshot(first, "/repo/.worktree/feature/foo")?.worktreePrCreated,
-      ).toBe(true);
       expect(
         resolveWorktreeStatusFromSnapshot(first, "/repo/.worktree/feature/foo")?.worktreeMerged,
       ).toBe(true);
@@ -144,6 +221,7 @@ describe("resolveVwWorktreeSnapshotCached", () => {
               dirty: false,
               locked: {},
               merged: { overall: false, byPR: null },
+              pr: { status: "unknown" },
             },
           ],
         }),
@@ -157,11 +235,9 @@ describe("resolveVwWorktreeSnapshotCached", () => {
         expect.any(Object),
       );
       expect(
-        resolveWorktreeStatusFromSnapshot(second, "/repo/.worktree/feature/foo")?.worktreePrCreated,
-      ).toBe(true);
-      expect(
         resolveWorktreeStatusFromSnapshot(second, "/repo/.worktree/feature/foo")?.worktreeMerged,
       ).toBe(true);
+      expect(second?.entries[0]?.pr.status).toBe("merged");
     } finally {
       vi.useRealTimers();
     }
@@ -263,7 +339,6 @@ describe("resolveWorktreeStatusFromSnapshot", () => {
       worktreeLockOwner: "codex",
       worktreeLockReason: "in progress",
       worktreeMerged: true,
-      worktreePrCreated: null,
     });
   });
 });

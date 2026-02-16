@@ -89,32 +89,26 @@ describe("SessionHeader", () => {
     expect(screen.getByText("Pane pane-1")).toBeTruthy();
   });
 
-  it("hides worktree flags when path is outside vw worktree", () => {
+  it("renders current path with shared truncated-path component style", () => {
     const session = createSessionDetail({
-      worktreePath: "/Users/test/repo",
-      worktreeDirty: true,
-      worktreeLocked: true,
-      worktreePrCreated: true,
-      worktreeMerged: true,
+      currentPath: "/tmp/vde-monitor/.worktree/feature/very/long/session/header/path",
     });
     const state = buildState({ session });
     const actions = buildActions();
     renderWithRouter(<SessionHeader state={state} actions={actions} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Show header details" }));
-
-    expect(screen.queryByText("Dirty:Y")).toBeNull();
-    expect(screen.queryByText("Lock:Y")).toBeNull();
-    expect(screen.queryByText("PR:Y")).toBeNull();
-    expect(screen.queryByText("Merged:Y")).toBeNull();
+    const pathElement = screen.getByTestId("session-header-current-path");
+    expect(pathElement.className).toContain("overflow-hidden");
+    expect(pathElement.className).toContain("basis-full");
+    expect(pathElement.textContent).toContain(".worktree/feature/very/long");
+    expect(pathElement.getAttribute("title")).toContain(".worktree/feature/very/long");
   });
 
-  it("shows worktree flags when path is under vw worktree", () => {
+  it("does not render worktree flags in header details", () => {
     const session = createSessionDetail({
       worktreePath: "/Users/test/repo/.worktree/feature/awesome",
       worktreeDirty: true,
       worktreeLocked: false,
-      worktreePrCreated: true,
       worktreeMerged: false,
     });
     const state = buildState({ session });
@@ -123,10 +117,10 @@ describe("SessionHeader", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Show header details" }));
 
-    expect(screen.getByText("Dirty:Y")).toBeTruthy();
-    expect(screen.getByText("Lock:N")).toBeTruthy();
-    expect(screen.getByText("PR:Y")).toBeTruthy();
-    expect(screen.getByText("Merged:N")).toBeTruthy();
+    expect(screen.queryByText("Dirty:Y")).toBeNull();
+    expect(screen.queryByText("Lock:N")).toBeNull();
+    expect(screen.queryByText("PR:Y")).toBeNull();
+    expect(screen.queryByText("Merged:N")).toBeNull();
   });
 
   it("handles title editing interactions", () => {

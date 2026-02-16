@@ -37,6 +37,7 @@ describe("session detail vm section builders", () => {
     const saveTitle = vi.fn();
     const resetTitle = vi.fn();
     const handleFocusPane = vi.fn(async () => undefined);
+    const handleLaunchAgentInSession = vi.fn(async () => undefined);
     const handleTouchPaneWithRepoAnchor = vi.fn();
     const handleTouchRepoPin = vi.fn();
     const handleOpenPaneHere = vi.fn();
@@ -61,6 +62,8 @@ describe("session detail vm section builders", () => {
     const toggleCtrl = vi.fn();
     const toggleRawMode = vi.fn();
     const toggleAllowDangerKeys = vi.fn();
+    const handleKillPane = vi.fn(async () => undefined);
+    const handleKillWindow = vi.fn(async () => undefined);
     const handleTouchCurrentSession = vi.fn();
     const onSearchQueryChange = vi.fn();
     const onSearchMove = vi.fn();
@@ -96,6 +99,17 @@ describe("session detail vm section builders", () => {
       paneId: string,
       options: { lines?: number; mode?: "text" | "image"; cursor?: string },
     ) => Promise<ScreenResponse>;
+    const requestWorktrees = vi.fn(async () => ({
+      repoRoot: null,
+      currentPath: null,
+      entries: [],
+    }));
+    const launchConfig = {
+      agents: {
+        codex: { options: ["--model", "gpt-5"] },
+        claude: { options: [] },
+      },
+    };
 
     const meta = buildMetaSection({
       paneId: "pane-1",
@@ -112,6 +126,8 @@ describe("session detail vm section builders", () => {
       getRepoSortAnchorAt,
       connected: true,
       connectionIssue: null,
+      launchConfig,
+      requestWorktrees,
       requestStateTimeline,
       requestScreen,
       highlightCorrections: { codex: true, claude: false },
@@ -119,6 +135,8 @@ describe("session detail vm section builders", () => {
     });
     expect(sidebar.getRepoSortAnchorAt).toBe(getRepoSortAnchorAt);
     expect(sidebar.resolvedTheme).toBe("latte");
+    expect(sidebar.launchConfig).toEqual(launchConfig);
+    expect(sidebar.requestWorktrees).toBe(requestWorktrees);
 
     const layout = buildLayoutSection({
       is2xlUp: true,
@@ -181,6 +199,8 @@ describe("session detail vm section builders", () => {
       allowDangerKeys: false,
       isSendingText: false,
       handleSendKey,
+      handleKillPane,
+      handleKillWindow,
       handleSendText,
       handleUploadImage,
       handleRawBeforeInput,
@@ -300,6 +320,7 @@ describe("session detail vm section builders", () => {
 
     const actions = buildActionsSection({
       handleFocusPane,
+      handleLaunchAgentInSession,
       handleTouchPaneWithRepoAnchor,
       handleTouchRepoPin,
       handleOpenPaneHere,
@@ -308,6 +329,7 @@ describe("session detail vm section builders", () => {
       handleOpenInNewTab,
     });
     expect(actions.handleTouchPane).toBe(handleTouchPaneWithRepoAnchor);
+    expect(actions.handleLaunchAgentInSession).toBe(handleLaunchAgentInSession);
     expect(actions.handleOpenPaneInNewWindow).toBe(handleOpenPaneInNewWindow);
     expect(actions.handleOpenInNewTab).toBe(handleOpenInNewTab);
   });

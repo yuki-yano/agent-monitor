@@ -147,6 +147,27 @@ const createTestContext = (configOverrides: Partial<AgentMonitorConfig> = {}) =>
     sendKeys: vi.fn(async () => ({ ok: true })),
     sendRaw: vi.fn(async () => ({ ok: true })),
     focusPane: vi.fn(async () => ({ ok: true as const })),
+    killPane: vi.fn(async () => ({ ok: true as const })),
+    killWindow: vi.fn(async () => ({ ok: true as const })),
+    launchAgentInSession: vi.fn(async () => ({
+      ok: true as const,
+      result: {
+        sessionName: "session",
+        agent: "codex" as const,
+        windowId: "@42",
+        windowIndex: 1,
+        windowName: "codex-work",
+        paneId: "%99",
+        launchedCommand: "codex" as const,
+        resolvedOptions: [],
+        verification: {
+          status: "verified" as const,
+          observedCommand: "codex",
+          attempts: 1,
+        },
+      },
+      rollback: { attempted: false, ok: true },
+    })),
   } as unknown as MultiplexerInputActions;
   const api = createApiRouter({ config, monitor, actions });
   return {
@@ -234,6 +255,7 @@ describe("createApiRouter", () => {
     expect(data.clientConfig.fileNavigator.autoExpandMatchLimit).toBe(
       config.fileNavigator.autoExpandMatchLimit,
     );
+    expect(data.clientConfig.launch).toEqual(config.launch);
   });
 
   it("returns 404 when session is missing", async () => {
@@ -562,6 +584,295 @@ describe("createApiRouter", () => {
     expect(actions.sendText).toHaveBeenCalledTimes(1);
   });
 
+  it("launches a new agent window in a session", async () => {
+    const { api, actions } = createTestContext();
+    const res = await api.request("/sessions/launch", {
+      method: "POST",
+      headers: { ...authHeaders, "content-type": "application/json" },
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "launch-req-1",
+        windowName: "codex-work",
+        cwd: "/tmp",
+        agentOptions: ["--model", "gpt-5"],
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.command.ok).toBe(true);
+    expect(actions.launchAgentInSession).toHaveBeenCalledWith({
+      sessionName: "dev-main",
+      agent: "codex",
+      windowName: "codex-work",
+      cwd: "/tmp",
+      agentOptions: ["--model", "gpt-5"],
+      worktreePath: undefined,
+      worktreeBranch: undefined,
+      worktreeCreateIfMissing: undefined,
+    });
+  });
+
+  it("passes worktree creation options to launch action", async () => {
+    const { api, actions } = createTestContext();
+    const res = await api.request("/sessions/launch", {
+      method: "POST",
+      headers: { ...authHeaders, "content-type": "application/json" },
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "claude",
+        requestId: "launch-req-create",
+        worktreeBranch: "feature/new-pane",
+        worktreeCreateIfMissing: true,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(actions.launchAgentInSession).toHaveBeenCalledWith({
+      sessionName: "dev-main",
+      agent: "claude",
+      windowName: undefined,
+      cwd: undefined,
+      agentOptions: undefined,
+      worktreePath: undefined,
+      worktreeBranch: "feature/new-pane",
+      worktreeCreateIfMissing: true,
+    });
+  });
+
+  it("returns 400 for invalid launch payload", async () => {
+    const { api, actions } = createTestContext();
+    const res = await api.request("/sessions/launch", {
+      method: "POST",
+      headers: { ...authHeaders, "content-type": "application/json" },
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "codex",
+      }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(actions.launchAgentInSession).not.toHaveBeenCalled();
+  });
+
+  it("deduplicates launch command by requestId and sessionName", async () => {
+    const { api, actions } = createTestContext();
+    const headers = { ...authHeaders, "content-type": "application/json" };
+    const payload = JSON.stringify({
+      sessionName: "dev-main",
+      agent: "claude",
+      requestId: "launch-req-1",
+      windowName: "claude-work",
+    });
+
+    const first = await api.request("/sessions/launch", {
+      method: "POST",
+      headers,
+      body: payload,
+    });
+    const second = await api.request("/sessions/launch", {
+      method: "POST",
+      headers,
+      body: payload,
+    });
+
+    const firstData = await first.json();
+    const secondData = await second.json();
+    expect(firstData.command.ok).toBe(true);
+    expect(secondData.command.ok).toBe(true);
+    expect(actions.launchAgentInSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects launch requestId reuse with different payload", async () => {
+    const { api, actions } = createTestContext();
+    const headers = { ...authHeaders, "content-type": "application/json" };
+
+    const first = await api.request("/sessions/launch", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "launch-req-mismatch",
+      }),
+    });
+    const second = await api.request("/sessions/launch", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "claude",
+        requestId: "launch-req-mismatch",
+      }),
+    });
+
+    const firstData = await first.json();
+    const secondData = await second.json();
+    expect(firstData.command.ok).toBe(true);
+    expect(secondData.command.ok).toBe(false);
+    expect(secondData.command.error.code).toBe("INVALID_PAYLOAD");
+    expect(secondData.command.error.message).toBe("requestId payload mismatch");
+    expect(actions.launchAgentInSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("replays cached launch response before rate-limit check", async () => {
+    const { api, actions } = createTestContext({
+      rateLimit: { ...defaultConfig.rateLimit, send: { windowMs: 1000, max: 1 } },
+    });
+    const headers = { ...authHeaders, "content-type": "application/json" };
+    const payload = JSON.stringify({
+      sessionName: "dev-main",
+      agent: "codex",
+      requestId: "launch-req-rate-retry",
+    });
+
+    const first = await api.request("/sessions/launch", {
+      method: "POST",
+      headers,
+      body: payload,
+    });
+    const second = await api.request("/sessions/launch", {
+      method: "POST",
+      headers,
+      body: payload,
+    });
+
+    const firstData = await first.json();
+    const secondData = await second.json();
+    expect(firstData.command.ok).toBe(true);
+    expect(secondData.command.ok).toBe(true);
+    expect(actions.launchAgentInSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("deduplicates concurrent launch requests with same idempotency key", async () => {
+    const { api, actions } = createTestContext();
+    const headers = { ...authHeaders, "content-type": "application/json" };
+    const launchResult: Awaited<ReturnType<typeof actions.launchAgentInSession>> = {
+      ok: true,
+      result: {
+        sessionName: "session",
+        agent: "codex",
+        windowId: "@42",
+        windowIndex: 1,
+        windowName: "codex-work",
+        paneId: "%99",
+        launchedCommand: "codex",
+        resolvedOptions: [],
+        verification: {
+          status: "verified",
+          observedCommand: "codex",
+          attempts: 1,
+        },
+      },
+      rollback: { attempted: false, ok: true },
+    };
+    const launchController: {
+      resolve: (value: Awaited<ReturnType<typeof actions.launchAgentInSession>>) => void;
+      pending: boolean;
+    } = {
+      resolve: () => undefined,
+      pending: true,
+    };
+
+    vi.mocked(actions.launchAgentInSession).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          launchController.resolve = resolve;
+          launchController.pending = false;
+        }),
+    );
+
+    const requestBody = JSON.stringify({
+      sessionName: "dev-main",
+      agent: "codex",
+      requestId: "launch-concurrent-1",
+    });
+    const firstPromise = api.request("/sessions/launch", {
+      method: "POST",
+      headers,
+      body: requestBody,
+    });
+    const secondPromise = api.request("/sessions/launch", {
+      method: "POST",
+      headers,
+      body: requestBody,
+    });
+    for (let attempt = 0; attempt < 10 && launchController.pending; attempt += 1) {
+      await Promise.resolve();
+    }
+
+    if (launchController.pending) {
+      throw new Error("launch resolver is missing");
+    }
+    expect(actions.launchAgentInSession).toHaveBeenCalledTimes(1);
+    launchController.resolve(launchResult);
+
+    const [first, second] = await Promise.all([firstPromise, secondPromise]);
+    const firstData = await first.json();
+    const secondData = await second.json();
+    expect(firstData.command.ok).toBe(true);
+    expect(secondData.command.ok).toBe(true);
+    expect(actions.launchAgentInSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns rate limit error on repeated launch requests", async () => {
+    const { api, actions } = createTestContext({
+      rateLimit: { ...defaultConfig.rateLimit, send: { windowMs: 1000, max: 1 } },
+    });
+    const headers = { ...authHeaders, "content-type": "application/json" };
+    const first = await api.request("/sessions/launch", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "launch-rate-limit-1",
+      }),
+    });
+    const second = await api.request("/sessions/launch", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "launch-rate-limit-2",
+      }),
+    });
+
+    const firstData = await first.json();
+    const secondData = await second.json();
+    expect(firstData.command.ok).toBe(true);
+    expect(secondData.command.ok).toBe(false);
+    expect(secondData.command.error.code).toBe("RATE_LIMIT");
+    expect(secondData.command.rollback).toEqual({ attempted: false, ok: true });
+    expect(actions.launchAgentInSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns launch command errors from actions", async () => {
+    const { api, actions } = createTestContext();
+    vi.mocked(actions.launchAgentInSession).mockResolvedValueOnce({
+      ok: false,
+      error: { code: "TMUX_UNAVAILABLE", message: "launch-agent requires tmux backend" },
+      rollback: { attempted: false, ok: true },
+    });
+
+    const res = await api.request("/sessions/launch", {
+      method: "POST",
+      headers: { ...authHeaders, "content-type": "application/json" },
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "launch-req-error",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.command.ok).toBe(false);
+    expect(data.command.error.code).toBe("TMUX_UNAVAILABLE");
+  });
+
   it("focuses pane via focus endpoint", async () => {
     const { api, actions } = createTestContext();
     const res = await api.request("/sessions/pane-1/focus", {
@@ -573,6 +884,32 @@ describe("createApiRouter", () => {
     const data = await res.json();
     expect(data.command.ok).toBe(true);
     expect(actions.focusPane).toHaveBeenCalledWith("pane-1");
+  });
+
+  it("kills pane via kill pane endpoint", async () => {
+    const { api, actions } = createTestContext();
+    const res = await api.request("/sessions/pane-1/kill/pane", {
+      method: "POST",
+      headers: authHeaders,
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.command.ok).toBe(true);
+    expect(actions.killPane).toHaveBeenCalledWith("pane-1");
+  });
+
+  it("kills window via kill window endpoint", async () => {
+    const { api, actions } = createTestContext();
+    const res = await api.request("/sessions/pane-1/kill/window", {
+      method: "POST",
+      headers: authHeaders,
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.command.ok).toBe(true);
+    expect(actions.killWindow).toHaveBeenCalledWith("pane-1");
   });
 
   it("focuses pane for wezterm backend as well", async () => {
@@ -611,6 +948,45 @@ describe("createApiRouter", () => {
     expect(secondData.command.ok).toBe(false);
     expect(secondData.command.error.code).toBe("RATE_LIMIT");
     expect(actions.focusPane).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns rate limit error on repeated kill pane requests", async () => {
+    const { api, actions } = createTestContext({
+      rateLimit: { ...defaultConfig.rateLimit, send: { windowMs: 1000, max: 1 } },
+    });
+    const first = await api.request("/sessions/pane-1/kill/pane", {
+      method: "POST",
+      headers: authHeaders,
+    });
+    const second = await api.request("/sessions/pane-1/kill/pane", {
+      method: "POST",
+      headers: authHeaders,
+    });
+
+    const firstData = await first.json();
+    const secondData = await second.json();
+    expect(firstData.command.ok).toBe(true);
+    expect(secondData.command.ok).toBe(false);
+    expect(secondData.command.error.code).toBe("RATE_LIMIT");
+    expect(actions.killPane).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns kill window command errors from actions", async () => {
+    const { api, actions } = createTestContext();
+    vi.mocked(actions.killWindow).mockResolvedValueOnce({
+      ok: false,
+      error: { code: "INTERNAL", message: "kill-window failed" },
+    });
+
+    const res = await api.request("/sessions/pane-1/kill/window", {
+      method: "POST",
+      headers: authHeaders,
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.command.ok).toBe(false);
+    expect(data.command.error.code).toBe("INTERNAL");
   });
 
   it("returns focus command errors from actions", async () => {
@@ -675,6 +1051,19 @@ describe("createApiRouter", () => {
     const data = await res.json();
     expect(data.error.code).toBe("INVALID_PANE");
     expect(actions.focusPane).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when pane is missing on kill window endpoint", async () => {
+    const { api, actions } = createTestContext();
+    const res = await api.request("/sessions/missing/kill/window", {
+      method: "POST",
+      headers: authHeaders,
+    });
+
+    expect(res.status).toBe(404);
+    const data = await res.json();
+    expect(data.error.code).toBe("INVALID_PANE");
+    expect(actions.killWindow).not.toHaveBeenCalled();
   });
 
   it("returns 400 when diff summary is unavailable", async () => {

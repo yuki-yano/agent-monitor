@@ -1,6 +1,8 @@
 import { zValidator } from "@hono/zod-validator";
 import {
   allowedKeySchema,
+  launchAgentRequestSchema,
+  type LaunchCommandResponse,
   type RawItem,
   type SessionStateTimelineRange,
   type SessionStateTimelineScope,
@@ -8,6 +10,7 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 
+import { setMapEntryWithLimit } from "../../cache";
 import { createScreenResponse } from "../../screen/screen-response";
 import { buildError, nowIso } from "../helpers";
 import {
@@ -55,6 +58,19 @@ const notePayloadSchema = z.object({
 const imageAttachmentFormSchema = z.object({
   image: z.instanceof(File).optional(),
 });
+const launchRequestSchema = launchAgentRequestSchema;
+const LAUNCH_IDEMPOTENCY_TTL_MS = 60_000;
+const LAUNCH_IDEMPOTENCY_MAX_ENTRIES = 500;
+
+type LaunchIdempotencyPayload = {
+  agent: z.infer<typeof launchRequestSchema>["agent"];
+  windowName: string | null;
+  cwd: string | null;
+  agentOptions: string[] | null;
+  worktreePath: string | null;
+  worktreeBranch: string | null;
+  worktreeCreateIfMissing: boolean;
+};
 
 const resolveTimelineRange = (range: string | undefined): SessionStateTimelineRange => {
   if (range === "15m" || range === "1h" || range === "3h" || range === "6h" || range === "24h") {
@@ -92,6 +108,16 @@ export const createSessionRoutes = ({
   executeCommand,
 }: SessionRouteDeps) => {
   const sendTextIdempotency = createSendTextIdempotencyExecutor({});
+  const launchIdempotency = new Map<
+    string,
+    {
+      expiresAtMs: number;
+      payloadFingerprint: string;
+      settled: boolean;
+      wasSuccessful: boolean;
+      promise: Promise<LaunchCommandResponse>;
+    }
+  >();
   type ResolvedPane = Exclude<ReturnType<typeof resolvePane>, Response>;
 
   const withPane = <TReturn>(
@@ -109,6 +135,104 @@ export const createSessionRoutes = ({
     session: monitor.registry.getDetail(pane.paneId) ?? pane.detail,
   });
 
+  const pruneLaunchIdempotency = () => {
+    const nowMs = Date.now();
+    for (const [key, value] of launchIdempotency.entries()) {
+      if (value.expiresAtMs <= nowMs) {
+        launchIdempotency.delete(key);
+      }
+    }
+  };
+
+  const launchResponseWithRollback = (
+    errorCode: "INVALID_PAYLOAD" | "RATE_LIMIT" | "INTERNAL",
+    message: string,
+  ): LaunchCommandResponse => ({
+    ok: false,
+    error: buildError(errorCode, message),
+    rollback: { attempted: false, ok: true },
+  });
+
+  const toLaunchIdempotencyPayload = (
+    body: z.infer<typeof launchRequestSchema>,
+  ): LaunchIdempotencyPayload => ({
+    agent: body.agent,
+    windowName: body.windowName ?? null,
+    cwd: body.cwd ?? null,
+    agentOptions: body.agentOptions ?? null,
+    worktreePath: body.worktreePath ?? null,
+    worktreeBranch: body.worktreeBranch ?? null,
+    worktreeCreateIfMissing: body.worktreeCreateIfMissing === true,
+  });
+
+  const executeLaunchAgentCommand = async (
+    body: z.infer<typeof launchRequestSchema>,
+    limiterKey: string,
+  ): Promise<LaunchCommandResponse> => {
+    pruneLaunchIdempotency();
+    const cacheKey = `${body.sessionName}:${body.requestId}`;
+    const payloadFingerprint = JSON.stringify(toLaunchIdempotencyPayload(body));
+    const nowMs = Date.now();
+    const cached = launchIdempotency.get(cacheKey);
+    if (cached && cached.expiresAtMs > nowMs) {
+      if (cached.payloadFingerprint !== payloadFingerprint) {
+        return launchResponseWithRollback("INVALID_PAYLOAD", "requestId payload mismatch");
+      }
+      if (!cached.settled || cached.wasSuccessful) {
+        return cached.promise;
+      }
+      launchIdempotency.delete(cacheKey);
+    } else if (cached) {
+      launchIdempotency.delete(cacheKey);
+    }
+
+    if (!sendLimiter(limiterKey)) {
+      return launchResponseWithRollback("RATE_LIMIT", "rate limited");
+    }
+
+    const entry: {
+      expiresAtMs: number;
+      payloadFingerprint: string;
+      settled: boolean;
+      wasSuccessful: boolean;
+      promise: Promise<LaunchCommandResponse>;
+    } = {
+      expiresAtMs: nowMs + LAUNCH_IDEMPOTENCY_TTL_MS,
+      payloadFingerprint,
+      settled: false,
+      wasSuccessful: false,
+      promise: actions
+        .launchAgentInSession({
+          sessionName: body.sessionName,
+          agent: body.agent,
+          windowName: body.windowName,
+          cwd: body.cwd,
+          agentOptions: body.agentOptions,
+          worktreePath: body.worktreePath,
+          worktreeBranch: body.worktreeBranch,
+          worktreeCreateIfMissing: body.worktreeCreateIfMissing,
+        })
+        .then((response) => {
+          entry.settled = true;
+          entry.wasSuccessful = response.ok;
+          if (!response.ok) {
+            launchIdempotency.delete(cacheKey);
+          }
+          return response;
+        })
+        .catch((error) => {
+          launchIdempotency.delete(cacheKey);
+          if (error instanceof Error && error.message.trim().length > 0) {
+            return launchResponseWithRollback("INTERNAL", error.message);
+          }
+          return launchResponseWithRollback("INTERNAL", "launch command failed");
+        }),
+    };
+
+    setMapEntryWithLimit(launchIdempotency, cacheKey, entry, LAUNCH_IDEMPOTENCY_MAX_ENTRIES);
+    return entry.promise;
+  };
+
   return new Hono()
     .get("/sessions", (c) => {
       return c.json({
@@ -119,8 +243,14 @@ export const createSessionRoutes = ({
           fileNavigator: {
             autoExpandMatchLimit: config.fileNavigator.autoExpandMatchLimit,
           },
+          launch: config.launch,
         },
       });
+    })
+    .post("/sessions/launch", zValidator("json", launchRequestSchema), async (c) => {
+      const body = c.req.valid("json");
+      const command = await executeLaunchAgentCommand(body, getLimiterKey(c));
+      return c.json({ command });
     })
     .get("/sessions/:paneId", (c) => {
       return withPane(c, (pane) => c.json({ session: pane.detail }));
@@ -324,6 +454,34 @@ export const createSessionRoutes = ({
           items: body.items as RawItem[],
           unsafe: body.unsafe,
         });
+        return c.json({ command });
+      });
+    })
+    .post("/sessions/:paneId/kill/pane", async (c) => {
+      return withPane(c, async (pane) => {
+        if (!sendLimiter(getLimiterKey(c))) {
+          return c.json({
+            command: {
+              ok: false,
+              error: buildError("RATE_LIMIT", "rate limited"),
+            },
+          });
+        }
+        const command = await actions.killPane(pane.paneId);
+        return c.json({ command });
+      });
+    })
+    .post("/sessions/:paneId/kill/window", async (c) => {
+      return withPane(c, async (pane) => {
+        if (!sendLimiter(getLimiterKey(c))) {
+          return c.json({
+            command: {
+              ok: false,
+              error: buildError("RATE_LIMIT", "rate limited"),
+            },
+          });
+        }
+        const command = await actions.killWindow(pane.paneId);
         return c.json({ command });
       });
     })

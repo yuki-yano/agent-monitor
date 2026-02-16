@@ -1,7 +1,9 @@
 import { defaultConfig } from "@vde-monitor/shared";
+import { execa } from "execa";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { markPaneFocus } from "./activity-suppressor";
+import { resolveVwWorktreeSnapshotCached } from "./monitor/vw-worktree";
 import { resolveBackendApp } from "./screen/macos-app";
 import { focusTerminalApp, isAppRunning } from "./screen/macos-applescript";
 import { focusTmuxPane } from "./screen/tmux-geometry";
@@ -22,6 +24,14 @@ vi.mock("./screen/tmux-geometry", () => ({
 
 vi.mock("./activity-suppressor", () => ({
   markPaneFocus: vi.fn(),
+}));
+
+vi.mock("./monitor/vw-worktree", () => ({
+  resolveVwWorktreeSnapshotCached: vi.fn(),
+}));
+
+vi.mock("execa", () => ({
+  execa: vi.fn(),
 }));
 
 const originalPlatformDescriptor = Object.getOwnPropertyDescriptor(process, "platform");
@@ -268,5 +278,778 @@ describe("createTmuxActions.sendRaw", () => {
 
     expect(result.ok).toBe(true);
     expect(adapter.run).toHaveBeenCalledWith(["send-keys", "-t", "%1", "C-c"]);
+  });
+});
+
+describe("createTmuxActions.killPane / killWindow", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("gracefully terminates pane session before kill-pane", async () => {
+    vi.useFakeTimers();
+    const adapter = {
+      run: vi.fn(async () => ({ stdout: "", stderr: "", exitCode: 0 })),
+    };
+    const tmuxActions = createTmuxActions(adapter, {
+      ...defaultConfig,
+      token: "test-token",
+      input: { ...defaultConfig.input, enterKey: "C-m", enterDelayMs: 0 },
+    });
+
+    const promise = tmuxActions.killPane("%1");
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    expect(adapter.run).toHaveBeenNthCalledWith(1, [
+      "if-shell",
+      "-t",
+      "%1",
+      '[ "#{pane_in_mode}" = "1" ]',
+      "copy-mode -q -t %1",
+    ]);
+    expect(adapter.run).toHaveBeenNthCalledWith(2, ["send-keys", "-t", "%1", "C-c"]);
+    expect(adapter.run).toHaveBeenNthCalledWith(3, ["send-keys", "-l", "-t", "%1", "--", "exit"]);
+    expect(adapter.run).toHaveBeenNthCalledWith(4, ["send-keys", "-t", "%1", "C-m"]);
+    expect(adapter.run).toHaveBeenNthCalledWith(5, ["kill-pane", "-t", "%1"]);
+  });
+
+  it("kills pane window after graceful termination", async () => {
+    vi.useFakeTimers();
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "list-panes") {
+          return { stdout: "@42\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const tmuxActions = createTmuxActions(adapter, {
+      ...defaultConfig,
+      token: "test-token",
+      input: { ...defaultConfig.input, enterKey: "C-m", enterDelayMs: 0 },
+    });
+
+    const promise = tmuxActions.killWindow("%1");
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    expect(adapter.run).toHaveBeenNthCalledWith(1, [
+      "list-panes",
+      "-t",
+      "%1",
+      "-F",
+      "#{window_id}",
+    ]);
+    expect(adapter.run).toHaveBeenNthCalledWith(6, ["kill-window", "-t", "@42"]);
+  });
+
+  it("treats already-closed pane as successful kill-pane", async () => {
+    vi.useFakeTimers();
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "kill-pane") {
+          return { stdout: "", stderr: "can't find pane: %1", exitCode: 1 };
+        }
+        return { stdout: "", stderr: "can't find pane: %1", exitCode: 1 };
+      }),
+    };
+    const tmuxActions = createTmuxActions(adapter, {
+      ...defaultConfig,
+      token: "test-token",
+      input: { ...defaultConfig.input, enterKey: "C-m", enterDelayMs: 0 },
+    });
+
+    const promise = tmuxActions.killPane("%1");
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    expect(adapter.run).toHaveBeenCalledWith(["kill-pane", "-t", "%1"]);
+  });
+});
+
+describe("createTmuxActions.launchAgentInSession", () => {
+  beforeEach(() => {
+    vi.mocked(resolveVwWorktreeSnapshotCached).mockReset();
+    vi.mocked(execa).mockReset();
+  });
+
+  it("launches codex in a new detached window", async () => {
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-windows") {
+          return { stdout: "main\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "new-window") {
+          return { stdout: "@42\t3\tcodex-work\t%128\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes") {
+          return { stdout: "codex\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const config = {
+      ...defaultConfig,
+      token: "test-token",
+      launch: {
+        agents: {
+          codex: { options: ["--model", "gpt-5-codex"] },
+          claude: { options: [] },
+        },
+      },
+    };
+    const tmuxActions = createTmuxActions(adapter, config);
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "codex",
+      windowName: "codex-work",
+      cwd: "/tmp",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.result.windowId).toBe("@42");
+    expect(result.result.paneId).toBe("%128");
+    expect(result.result.verification.status).toBe("verified");
+    expect(result.result.resolvedOptions).toEqual(["--model", "gpt-5-codex"]);
+    expect(adapter.run).toHaveBeenCalledWith([
+      "send-keys",
+      "-l",
+      "-t",
+      "%128",
+      "--",
+      "codex --model gpt-5-codex",
+    ]);
+    expect(result.rollback).toEqual({ attempted: false, ok: true });
+  });
+
+  it("overrides configured launch options when agentOptions are provided", async () => {
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-windows") {
+          return { stdout: "main\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "new-window") {
+          return { stdout: "@42\t3\tcodex-work\t%128\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes") {
+          return { stdout: "codex\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const config = {
+      ...defaultConfig,
+      token: "test-token",
+      launch: {
+        agents: {
+          codex: { options: ["--model", "gpt-5-codex"] },
+          claude: { options: [] },
+        },
+      },
+    };
+    const tmuxActions = createTmuxActions(adapter, config);
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "codex",
+      agentOptions: ["--approval-mode", "full-auto"],
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.result.resolvedOptions).toEqual(["--approval-mode", "full-auto"]);
+    expect(adapter.run).toHaveBeenCalledWith([
+      "send-keys",
+      "-l",
+      "-t",
+      "%128",
+      "--",
+      "codex --approval-mode full-auto",
+    ]);
+  });
+
+  it("rejects agentOptions containing tab characters", async () => {
+    const adapter = {
+      run: vi.fn(async () => ({ stdout: "", stderr: "", exitCode: 0 })),
+    };
+    const tmuxActions = createTmuxActions(adapter, { ...defaultConfig, token: "test-token" });
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "codex",
+      agentOptions: ["--model\tgpt-5"],
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe("INVALID_PAYLOAD");
+    expect(adapter.run).not.toHaveBeenCalled();
+  });
+
+  it("passes shell fragments in agentOptions without extra quoting", async () => {
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-windows") {
+          return { stdout: "main\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "new-window") {
+          return { stdout: "@42\t3\tcodex-work\t%128\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes") {
+          return { stdout: "codex\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const config = {
+      ...defaultConfig,
+      token: "test-token",
+      launch: {
+        agents: {
+          codex: { options: ["--model", "gpt-5-codex"] },
+          claude: { options: [] },
+        },
+      },
+    };
+    const tmuxActions = createTmuxActions(adapter, config);
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "codex",
+      agentOptions: ['--message "hello world"', "--verbose"],
+    });
+
+    expect(result.ok).toBe(true);
+    expect(adapter.run).toHaveBeenCalledWith([
+      "send-keys",
+      "-l",
+      "-t",
+      "%128",
+      "--",
+      'codex --message "hello world" --verbose',
+    ]);
+  });
+
+  it("appends suffix when requested window name already exists", async () => {
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-windows") {
+          return {
+            stdout: "codex-work\ncodex-work-2\n",
+            stderr: "",
+            exitCode: 0,
+          };
+        }
+        if (args[0] === "new-window") {
+          return { stdout: "@42\t4\tcodex-work-3\t%129\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes") {
+          return { stdout: "codex\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const tmuxActions = createTmuxActions(adapter, { ...defaultConfig, token: "test-token" });
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "codex",
+      windowName: "codex-work",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(adapter.run).toHaveBeenCalledWith(
+      expect.arrayContaining(["new-window", "-d", "-P", "-F"]),
+    );
+    expect(adapter.run).toHaveBeenCalledWith(
+      expect.arrayContaining(["-n", "codex-work-3", "-t", "dev-main"]),
+    );
+  });
+
+  it("resolves launch cwd from vw worktreePath", async () => {
+    vi.mocked(resolveVwWorktreeSnapshotCached).mockResolvedValueOnce({
+      repoRoot: "/tmp",
+      baseBranch: "main",
+      entries: [
+        {
+          path: "/tmp",
+          branch: "feature/a",
+          dirty: false,
+          locked: { value: false, owner: null, reason: null },
+          merged: { overall: false, byPR: null },
+          pr: { status: "none" },
+        },
+      ],
+    });
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes" && args.includes("#{pane_current_path}")) {
+          return { stdout: "/tmp\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-windows") {
+          return { stdout: "main\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "new-window") {
+          return { stdout: "@55\t4\tcodex-work\t%155\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes" && args.includes("#{pane_current_command}")) {
+          return { stdout: "codex\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const tmuxActions = createTmuxActions(adapter, { ...defaultConfig, token: "test-token" });
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "codex",
+      worktreePath: "/tmp",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(vi.mocked(resolveVwWorktreeSnapshotCached)).toHaveBeenCalledWith("/tmp", {
+      ghMode: "never",
+    });
+    expect(adapter.run).toHaveBeenCalledWith(
+      expect.arrayContaining(["new-window", "-d", "-P", "-F"]),
+    );
+    expect(adapter.run).toHaveBeenCalledWith(expect.arrayContaining(["-c", "/tmp"]));
+  });
+
+  it("returns INVALID_PAYLOAD when vw snapshot is unavailable", async () => {
+    vi.mocked(resolveVwWorktreeSnapshotCached).mockResolvedValueOnce(null);
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes" && args.includes("#{pane_current_path}")) {
+          return { stdout: "/repo\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const tmuxActions = createTmuxActions(adapter, { ...defaultConfig, token: "test-token" });
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "claude",
+      worktreeBranch: "feature/a",
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe("INVALID_PAYLOAD");
+    expect(result.error.message).toContain("vw worktree snapshot is unavailable");
+    expect(adapter.run.mock.calls.some((call) => call[0]?.[0] === "new-window")).toBe(false);
+  });
+
+  it("creates a worktree via vw switch when worktreeCreateIfMissing is true", async () => {
+    vi.mocked(resolveVwWorktreeSnapshotCached).mockResolvedValueOnce({
+      repoRoot: "/tmp",
+      baseBranch: "main",
+      entries: [
+        {
+          path: "/tmp/.worktree/feature/a",
+          branch: "feature/a",
+          dirty: false,
+          locked: { value: false, owner: null, reason: null },
+          merged: { overall: false, byPR: null },
+          pr: { status: "none" },
+        },
+      ],
+    });
+    vi.mocked(execa)
+      .mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: "main\n",
+        stderr: "",
+      } as never)
+      .mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: "",
+        stderr: "",
+      } as never)
+      .mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: "/tmp\n",
+        stderr: "",
+      } as never);
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes" && args.includes("#{pane_current_path}")) {
+          return { stdout: "/tmp\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-windows") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "new-window") {
+          return { stdout: "@51\t2\tclaude-work\t%151\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes" && args.includes("#{pane_current_command}")) {
+          return { stdout: "claude\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const tmuxActions = createTmuxActions(adapter, { ...defaultConfig, token: "test-token" });
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "claude",
+      worktreeBranch: "feature/new-pane",
+      worktreeCreateIfMissing: true,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(vi.mocked(execa)).toHaveBeenNthCalledWith(
+      1,
+      "vw",
+      ["branch", "--show-current"],
+      expect.objectContaining({ cwd: "/tmp" }),
+    );
+    expect(vi.mocked(execa)).toHaveBeenNthCalledWith(
+      2,
+      "vw",
+      ["switch", "feature/new-pane"],
+      expect.objectContaining({ cwd: "/tmp" }),
+    );
+    expect(vi.mocked(execa)).toHaveBeenNthCalledWith(
+      3,
+      "vw",
+      ["path", "feature/new-pane"],
+      expect.objectContaining({ cwd: "/tmp" }),
+    );
+    expect(adapter.run).toHaveBeenCalledWith(
+      expect.arrayContaining(["new-window", "-d", "-P", "-F"]),
+    );
+    expect(adapter.run).toHaveBeenCalledWith(expect.arrayContaining(["-c", "/tmp"]));
+  });
+
+  it("rolls back switched branch when vw path fails after worktree creation", async () => {
+    vi.mocked(resolveVwWorktreeSnapshotCached).mockResolvedValueOnce({
+      repoRoot: "/tmp",
+      baseBranch: "main",
+      entries: [
+        {
+          path: "/tmp/.worktree/feature/a",
+          branch: "feature/a",
+          dirty: false,
+          locked: { value: false, owner: null, reason: null },
+          merged: { overall: false, byPR: null },
+          pr: { status: "none" },
+        },
+      ],
+    });
+    vi.mocked(execa)
+      .mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: "main\n",
+        stderr: "",
+      } as never)
+      .mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: "",
+        stderr: "",
+      } as never)
+      .mockResolvedValueOnce({
+        exitCode: 1,
+        stdout: "",
+        stderr: "path failed",
+      } as never)
+      .mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: "",
+        stderr: "",
+      } as never);
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes" && args.includes("#{pane_current_path}")) {
+          return { stdout: "/tmp\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const tmuxActions = createTmuxActions(adapter, { ...defaultConfig, token: "test-token" });
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "claude",
+      worktreeBranch: "feature/new-pane",
+      worktreeCreateIfMissing: true,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe("INVALID_PAYLOAD");
+    expect(result.error.message).toContain("vw path failed: path failed");
+    expect(vi.mocked(execa)).toHaveBeenNthCalledWith(
+      1,
+      "vw",
+      ["branch", "--show-current"],
+      expect.objectContaining({ cwd: "/tmp" }),
+    );
+    expect(vi.mocked(execa)).toHaveBeenNthCalledWith(
+      2,
+      "vw",
+      ["switch", "feature/new-pane"],
+      expect.objectContaining({ cwd: "/tmp" }),
+    );
+    expect(vi.mocked(execa)).toHaveBeenNthCalledWith(
+      3,
+      "vw",
+      ["path", "feature/new-pane"],
+      expect.objectContaining({ cwd: "/tmp" }),
+    );
+    expect(vi.mocked(execa)).toHaveBeenNthCalledWith(
+      4,
+      "vw",
+      ["switch", "main"],
+      expect.objectContaining({ cwd: "/tmp" }),
+    );
+    expect(adapter.run.mock.calls.some((call) => call[0]?.[0] === "new-window")).toBe(false);
+  });
+
+  it("returns INVALID_PAYLOAD when worktreePath and worktreeCreateIfMissing are combined", async () => {
+    const adapter = {
+      run: vi.fn(async () => ({ stdout: "", stderr: "", exitCode: 0 })),
+    };
+    const tmuxActions = createTmuxActions(adapter, { ...defaultConfig, token: "test-token" });
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "claude",
+      worktreePath: "/repo/.worktree/feature/a",
+      worktreeBranch: "feature/a",
+      worktreeCreateIfMissing: true,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe("INVALID_PAYLOAD");
+    expect(result.error.message).toContain("worktreePath cannot be combined");
+  });
+
+  it("returns INVALID_PAYLOAD when worktreePath and worktreeBranch mismatch", async () => {
+    vi.mocked(resolveVwWorktreeSnapshotCached).mockResolvedValueOnce({
+      repoRoot: "/repo",
+      baseBranch: "main",
+      entries: [
+        {
+          path: "/repo/.worktree/feature/a",
+          branch: "feature/a",
+          dirty: false,
+          locked: { value: false, owner: null, reason: null },
+          merged: { overall: false, byPR: null },
+          pr: { status: "none" },
+        },
+        {
+          path: "/repo/.worktree/feature/b",
+          branch: "feature/b",
+          dirty: false,
+          locked: { value: false, owner: null, reason: null },
+          merged: { overall: false, byPR: null },
+          pr: { status: "none" },
+        },
+      ],
+    });
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes" && args.includes("#{pane_current_path}")) {
+          return { stdout: "/repo\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const tmuxActions = createTmuxActions(adapter, { ...defaultConfig, token: "test-token" });
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "claude",
+      worktreePath: "/repo/.worktree/feature/a",
+      worktreeBranch: "feature/b",
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe("INVALID_PAYLOAD");
+    expect(result.error.message).toContain("resolved to different worktrees");
+    expect(adapter.run.mock.calls.some((call) => call[0]?.[0] === "new-window")).toBe(false);
+  });
+
+  it("returns NOT_FOUND when session does not exist", async () => {
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "missing", exitCode: 1 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const tmuxActions = createTmuxActions(adapter, { ...defaultConfig, token: "test-token" });
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "missing",
+      agent: "claude",
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe("NOT_FOUND");
+    expect(result.rollback).toEqual({ attempted: false, ok: true });
+  });
+
+  it("rolls back created window when send-keys fails", async () => {
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-windows") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "new-window") {
+          return { stdout: "@42\t2\tclaude-work\t%130\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "send-keys" && args[1] === "-l") {
+          return { stdout: "", stderr: "send failed", exitCode: 1 };
+        }
+        if (args[0] === "kill-window") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const tmuxActions = createTmuxActions(adapter, { ...defaultConfig, token: "test-token" });
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "claude",
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe("INTERNAL");
+    expect(result.rollback).toEqual({ attempted: true, ok: true });
+    expect(adapter.run).toHaveBeenCalledWith(["kill-window", "-t", "@42"]);
+  });
+
+  it("reports rollback failure details when kill-window fails", async () => {
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-windows") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "new-window") {
+          return { stdout: "@42\t2\tclaude-work\t%130\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "send-keys" && args[1] === "-l") {
+          return { stdout: "", stderr: "send failed", exitCode: 1 };
+        }
+        if (args[0] === "kill-window") {
+          return { stdout: "", stderr: "kill failed", exitCode: 1 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const tmuxActions = createTmuxActions(adapter, { ...defaultConfig, token: "test-token" });
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "claude",
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.rollback.attempted).toBe(true);
+    expect(result.rollback.ok).toBe(false);
+    expect(result.rollback.message).toContain("kill failed");
+  });
+
+  it("returns mismatch verification when pane_current_command does not match", async () => {
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-windows") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "new-window") {
+          return { stdout: "@42\t3\tclaude-work\t%140\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes") {
+          return { stdout: "zsh\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const tmuxActions = createTmuxActions(adapter, { ...defaultConfig, token: "test-token" });
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "claude",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.result.verification.status).toBe("mismatch");
+    expect(result.result.verification.observedCommand).toBe("zsh");
+    expect(result.result.verification.attempts).toBe(5);
   });
 });

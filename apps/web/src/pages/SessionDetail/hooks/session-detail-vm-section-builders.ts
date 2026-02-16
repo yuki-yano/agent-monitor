@@ -3,6 +3,7 @@ import type {
   CommitFileDiff,
   CommitLog,
   HighlightCorrectionConfig,
+  LaunchConfig,
   RepoFileContent,
   RepoFileSearchPage,
   RepoNote,
@@ -11,6 +12,7 @@ import type {
   SessionStateTimelineRange,
   SessionStateTimelineScope,
   SessionSummary,
+  WorktreeList,
   WorktreeListEntry,
 } from "@vde-monitor/shared";
 import type { CompositionEvent, FormEvent, KeyboardEvent, PointerEvent, RefObject } from "react";
@@ -19,6 +21,7 @@ import type { VirtuosoHandle } from "react-virtuoso";
 import type { ScreenMode } from "@/lib/screen-loading";
 import type { SessionGroup } from "@/lib/session-group";
 import type { Theme } from "@/lib/theme";
+import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
 
 import type { LogFileCandidateItem } from "./useSessionFiles-log-resolve-state";
 import type { FileTreeRenderNode } from "./useSessionFiles-tree-utils";
@@ -51,6 +54,8 @@ type BuildSidebarSectionArgs = {
   getRepoSortAnchorAt: (repoRoot: string | null) => number | null;
   connected: boolean;
   connectionIssue: string | null;
+  launchConfig: LaunchConfig;
+  requestWorktrees: (paneId: string) => Promise<WorktreeList>;
   requestStateTimeline: (
     paneId: string,
     options?: {
@@ -119,6 +124,8 @@ type BuildControlsSectionArgs = {
   allowDangerKeys: boolean;
   isSendingText: boolean;
   handleSendKey: (key: string) => Promise<void>;
+  handleKillPane: () => Promise<void>;
+  handleKillWindow: () => Promise<void>;
   handleSendText: () => Promise<void>;
   handleUploadImage: (file: File) => Promise<void>;
   handleRawBeforeInput: (event: FormEvent<HTMLTextAreaElement>) => void;
@@ -250,6 +257,11 @@ type BuildTitleSectionArgs = {
 
 type BuildActionsSectionArgs = {
   handleFocusPane: (targetPaneId: string) => Promise<void>;
+  handleLaunchAgentInSession: (
+    sessionName: string,
+    agent: "codex" | "claude",
+    options?: LaunchAgentRequestOptions,
+  ) => Promise<void>;
   handleTouchPaneWithRepoAnchor: (targetPaneId: string) => void;
   handleTouchRepoPin: (repoRoot: string | null) => void;
   handleOpenPaneHere: (targetPaneId: string) => void;
@@ -305,6 +317,8 @@ export const buildSidebarSection = ({
   getRepoSortAnchorAt,
   connected,
   connectionIssue,
+  launchConfig,
+  requestWorktrees,
   requestStateTimeline,
   requestScreen,
   highlightCorrections,
@@ -314,6 +328,8 @@ export const buildSidebarSection = ({
   getRepoSortAnchorAt,
   connected,
   connectionIssue,
+  launchConfig,
+  requestWorktrees,
   requestStateTimeline,
   requestScreen,
   highlightCorrections,
@@ -410,6 +426,8 @@ export const buildControlsSection = ({
   allowDangerKeys,
   isSendingText,
   handleSendKey,
+  handleKillPane,
+  handleKillWindow,
   handleSendText,
   handleUploadImage,
   handleRawBeforeInput,
@@ -433,6 +451,8 @@ export const buildControlsSection = ({
   allowDangerKeys,
   isSendingText,
   handleSendKey,
+  handleKillPane,
+  handleKillWindow,
   handleSendText,
   handleUploadImage,
   handleRawBeforeInput,
@@ -652,6 +672,7 @@ export const buildTitleSection = ({
 
 export const buildActionsSection = ({
   handleFocusPane,
+  handleLaunchAgentInSession,
   handleTouchPaneWithRepoAnchor,
   handleTouchRepoPin,
   handleOpenPaneHere,
@@ -660,6 +681,7 @@ export const buildActionsSection = ({
   handleOpenInNewTab,
 }: BuildActionsSectionArgs) => ({
   handleFocusPane,
+  handleLaunchAgentInSession,
   handleTouchPane: handleTouchPaneWithRepoAnchor,
   handleTouchRepoPin,
   handleOpenPaneHere,

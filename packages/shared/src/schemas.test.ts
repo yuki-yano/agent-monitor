@@ -7,6 +7,8 @@ import {
   configOverrideSchema,
   configSchema,
   imageAttachmentSchema,
+  launchAgentRequestSchema,
+  launchCommandResponseSchema,
   screenResponseSchema,
   sessionStateSchema,
   wsClientMessageSchema,
@@ -259,7 +261,6 @@ describe("wsServerMessageSchema", () => {
           worktreeLockOwner: "codex",
           worktreeLockReason: "in progress",
           worktreeMerged: false,
-          worktreePrCreated: true,
           repoRoot: "/tmp",
           agent: "codex",
           state: "RUNNING",
@@ -303,7 +304,6 @@ describe("wsServerMessageSchema", () => {
             worktreeLockOwner: null,
             worktreeLockReason: null,
             worktreeMerged: null,
-            worktreePrCreated: null,
             repoRoot: null,
             agent: "unknown",
             state: "UNKNOWN",
@@ -435,6 +435,100 @@ describe("claudeHookEventSchema", () => {
   });
 });
 
+describe("launch schemas", () => {
+  it("accepts launch agent request payload", () => {
+    const result = launchAgentRequestSchema.safeParse({
+      sessionName: "dev-main",
+      agent: "codex",
+      requestId: "req-1",
+      windowName: "codex-work",
+      cwd: "/tmp/work",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts launch request with vw worktree selector", () => {
+    const result = launchAgentRequestSchema.safeParse({
+      sessionName: "dev-main",
+      agent: "codex",
+      requestId: "req-1",
+      agentOptions: ["--model", "gpt-5"],
+      worktreeBranch: "feature/foo",
+      worktreeCreateIfMissing: true,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects launch request windowName with control characters", () => {
+    const result = launchAgentRequestSchema.safeParse({
+      sessionName: "dev-main",
+      agent: "codex",
+      requestId: "req-1",
+      windowName: "bad\tname",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects launch request when cwd and worktree selectors are mixed", () => {
+    const result = launchAgentRequestSchema.safeParse({
+      sessionName: "dev-main",
+      agent: "codex",
+      requestId: "req-1",
+      cwd: "/tmp/work",
+      worktreePath: "/tmp/worktree",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects createIfMissing launch request without worktreeBranch", () => {
+    const result = launchAgentRequestSchema.safeParse({
+      sessionName: "dev-main",
+      agent: "codex",
+      requestId: "req-1",
+      worktreeCreateIfMissing: true,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects createIfMissing launch request when worktreePath is also provided", () => {
+    const result = launchAgentRequestSchema.safeParse({
+      sessionName: "dev-main",
+      agent: "codex",
+      requestId: "req-1",
+      worktreePath: "/repo/.worktree/feature/foo",
+      worktreeBranch: "feature/foo",
+      worktreeCreateIfMissing: true,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts launch command response payload", () => {
+    const result = launchCommandResponseSchema.safeParse({
+      ok: true,
+      result: {
+        sessionName: "dev-main",
+        agent: "claude",
+        windowId: "@42",
+        windowIndex: 3,
+        windowName: "claude-work",
+        paneId: "%128",
+        launchedCommand: "claude",
+        resolvedOptions: ["--dangerously-skip-permissions"],
+        verification: {
+          status: "verified",
+          observedCommand: "claude",
+          attempts: 1,
+        },
+      },
+      rollback: {
+        attempted: false,
+        ok: true,
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
 describe("configSchema", () => {
   it("fills default includeTruncated when missing", () => {
     const screen = { ...defaultConfig.screen };
@@ -465,6 +559,75 @@ describe("configSchema", () => {
     if (result.success) {
       expect(result.data.multiplexer).toEqual(defaultConfig.multiplexer);
     }
+  });
+
+  it("fills default launch config when missing", () => {
+    const result = configSchema.safeParse({
+      ...defaultConfig,
+      launch: undefined,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.launch).toEqual(defaultConfig.launch);
+    }
+  });
+
+  it("preserves launch agent options text", () => {
+    const result = configSchema.safeParse({
+      ...defaultConfig,
+      launch: {
+        agents: {
+          codex: { options: ["  --model  ", "--approval-mode"] },
+          claude: { options: ["  --dangerously-skip-permissions  "] },
+        },
+      },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.launch.agents.codex.options).toEqual(["  --model  ", "--approval-mode"]);
+      expect(result.data.launch.agents.claude.options).toEqual([
+        "  --dangerously-skip-permissions  ",
+      ]);
+    }
+  });
+
+  it("rejects launch options with only whitespace", () => {
+    const result = configSchema.safeParse({
+      ...defaultConfig,
+      launch: {
+        agents: {
+          codex: { options: ["   "] },
+          claude: { options: [] },
+        },
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects launch options with forbidden control characters", () => {
+    const result = configSchema.safeParse({
+      ...defaultConfig,
+      launch: {
+        agents: {
+          codex: { options: ["--model\ngpt"] },
+          claude: { options: [] },
+        },
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects launch options with tab characters", () => {
+    const result = configSchema.safeParse({
+      ...defaultConfig,
+      launch: {
+        agents: {
+          codex: { options: ["--model\tgpt"] },
+          claude: { options: [] },
+        },
+      },
+    });
+    expect(result.success).toBe(false);
   });
 
   it("accepts multiplexer backend values", () => {
@@ -668,6 +831,48 @@ describe("configOverrideSchema", () => {
     const result = configOverrideSchema.safeParse({
       fileNavigator: {
         includeIgnoredPaths: ["!dist/**"],
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts launch options override", () => {
+    const result = configOverrideSchema.safeParse({
+      launch: {
+        agents: {
+          codex: {
+            options: [" --model "],
+          },
+        },
+      },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.launch?.agents?.codex?.options).toEqual([" --model "]);
+    }
+  });
+
+  it("rejects launch options override with newline", () => {
+    const result = configOverrideSchema.safeParse({
+      launch: {
+        agents: {
+          claude: {
+            options: ["--flag\nbad"],
+          },
+        },
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects launch options override with tab", () => {
+    const result = configOverrideSchema.safeParse({
+      launch: {
+        agents: {
+          claude: {
+            options: ["--flag\tbad"],
+          },
+        },
       },
     });
     expect(result.success).toBe(false);

@@ -30,7 +30,9 @@ export const SessionListView = ({
   connectionIssue,
   requestStateTimeline,
   requestScreen,
+  requestWorktrees,
   highlightCorrections,
+  launchConfig,
   resolvedTheme,
   nowMs,
   sidebarWidth,
@@ -52,12 +54,17 @@ export const SessionListView = ({
   onOpenPaneInNewWindow,
   onOpenHere,
   onOpenNewTab,
+  screenError,
+  launchPendingSessions,
+  onLaunchAgentInSession,
   onTouchRepoPin,
   onTouchPanePin,
 }: SessionListViewProps) => {
   const [reorderScrollTarget, setReorderScrollTarget] = useState<ReorderScrollTarget | null>(null);
   const repoScrollTargetsRef = useRef(new Map<string, HTMLElement>());
   const paneScrollTargetsRef = useRef(new Map<string, HTMLAnchorElement>());
+  const isDiscoveringSessions =
+    sessions.length === 0 && connectionStatus === "degraded" && connectionIssue == null;
 
   const registerRepoScrollTarget = useCallback((key: string, element: HTMLElement | null) => {
     const targetMap = repoScrollTargetsRef.current;
@@ -150,6 +157,8 @@ export const SessionListView = ({
             nowMs,
             connected,
             connectionIssue,
+            launchConfig,
+            requestWorktrees,
             requestStateTimeline,
             requestScreen,
             highlightCorrections,
@@ -160,6 +169,7 @@ export const SessionListView = ({
           actions={{
             onSelectSession: onOpenPaneHere,
             onFocusPane: onOpenPaneHere,
+            onLaunchAgentInSession,
             onTouchSession: handleTouchPanePinWithScroll,
             onTouchRepoPin: handleTouchRepoPinWithScroll,
           }}
@@ -192,10 +202,29 @@ export const SessionListView = ({
             onSearchQueryChange={onSearchQueryChange}
             onRefresh={onRefresh}
           />
+          {screenError ? (
+            <div
+              role="alert"
+              className="border-latte-red/30 bg-latte-red/10 text-latte-red rounded-xl border px-3 py-2 text-sm"
+            >
+              {screenError}
+            </div>
+          ) : null}
 
           <div className="flex flex-col gap-4 sm:gap-6">
             <div className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
-              {sessions.length === 0 && (
+              {isDiscoveringSessions && (
+                <EmptyCard
+                  icon={<RefreshCw className="text-latte-overlay1 h-10 w-10 animate-spin" />}
+                  title="Loading Sessions..."
+                  description="Checking tmux sessions in the background. This should finish shortly."
+                  className="py-12 sm:py-16"
+                  iconWrapperClassName="bg-latte-surface1/50 h-20 w-20"
+                  titleClassName="text-xl"
+                  descriptionClassName="max-w-sm"
+                />
+              )}
+              {sessions.length === 0 && !isDiscoveringSessions && (
                 <EmptyCard
                   icon={<MonitorX className="text-latte-overlay1 h-10 w-10" />}
                   title="No Active Sessions"
@@ -259,6 +288,10 @@ export const SessionListView = ({
                       group={group}
                       allSessions={sessions}
                       nowMs={nowMs}
+                      launchPendingSessions={launchPendingSessions}
+                      launchConfig={launchConfig}
+                      requestWorktrees={requestWorktrees}
+                      onLaunchAgentInSession={onLaunchAgentInSession}
                       onTouchRepoPin={handleTouchRepoPinWithScroll}
                       onTouchPanePin={handleTouchPanePinWithScroll}
                       onRegisterPaneScrollTarget={registerPaneScrollTarget}

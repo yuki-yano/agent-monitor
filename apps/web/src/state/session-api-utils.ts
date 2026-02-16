@@ -4,6 +4,7 @@ import type {
   ClientConfig,
   ClientFileNavigatorConfig,
   HighlightCorrectionConfig,
+  LaunchConfig,
   ScreenResponse,
   SessionSummary,
 } from "@vde-monitor/shared";
@@ -17,6 +18,7 @@ import type {
   CommitLogQuery,
   DiffFileQuery,
   ForceQuery,
+  LaunchAgentJson,
   NoteIdParam,
   PaneHashParam,
   PaneParam,
@@ -115,6 +117,63 @@ export const buildSendRawJson = (items: SendRawJson["items"], unsafe: boolean): 
   unsafe,
 });
 
+export const buildLaunchAgentJson = ({
+  sessionName,
+  agent,
+  requestId,
+  windowName,
+  cwd,
+  agentOptions,
+  worktreePath,
+  worktreeBranch,
+  worktreeCreateIfMissing,
+}: {
+  sessionName: string;
+  agent: "codex" | "claude";
+  requestId: string;
+  windowName?: string;
+  cwd?: string;
+  agentOptions?: string[];
+  worktreePath?: string;
+  worktreeBranch?: string;
+  worktreeCreateIfMissing?: boolean;
+}): LaunchAgentJson => {
+  if (cwd && (worktreePath || worktreeBranch || worktreeCreateIfMissing)) {
+    throw new Error("cwd cannot be combined with worktreePath/worktreeBranch");
+  }
+  if (worktreeCreateIfMissing && worktreePath) {
+    throw new Error("worktreePath cannot be combined with worktreeCreateIfMissing");
+  }
+  if (worktreeCreateIfMissing && !worktreeBranch) {
+    throw new Error("worktreeBranch is required when worktreeCreateIfMissing is true");
+  }
+
+  const json: LaunchAgentJson = {
+    sessionName,
+    agent,
+    requestId,
+  };
+  if (windowName) {
+    json.windowName = windowName;
+  }
+  if (cwd) {
+    json.cwd = cwd;
+  }
+  if (agentOptions) {
+    json.agentOptions = agentOptions;
+  }
+  if (worktreePath) {
+    json.worktreePath = worktreePath;
+  }
+  if (worktreeBranch) {
+    json.worktreeBranch = worktreeBranch;
+  }
+  if (worktreeCreateIfMissing) {
+    json.worktreeCreateIfMissing = true;
+  }
+  return json;
+};
+
 export const buildSessionTitleJson = (title: string | null): SessionTitleJson => ({
   title,
 });
@@ -137,6 +196,7 @@ export const applyRefreshSessionsSuccess = ({
   onSessions,
   onHighlightCorrections,
   onFileNavigatorConfig,
+  onLaunchConfig,
   onConnectionIssue,
 }: {
   res: Response;
@@ -144,6 +204,7 @@ export const applyRefreshSessionsSuccess = ({
   onSessions: (sessions: SessionSummary[]) => void;
   onHighlightCorrections: (config: HighlightCorrectionConfig) => void;
   onFileNavigatorConfig: (config: ClientFileNavigatorConfig) => void;
+  onLaunchConfig?: (config: LaunchConfig) => void;
   onConnectionIssue: (message: string | null) => void;
 }): RefreshSessionsResult => {
   onSessions(data.sessions ?? []);
@@ -154,6 +215,10 @@ export const applyRefreshSessionsSuccess = ({
   const nextFileNavigator = data.clientConfig?.fileNavigator;
   if (nextFileNavigator) {
     onFileNavigatorConfig(nextFileNavigator);
+  }
+  const nextLaunchConfig = data.clientConfig?.launch;
+  if (nextLaunchConfig && onLaunchConfig) {
+    onLaunchConfig(nextLaunchConfig);
   }
   onConnectionIssue(null);
   return { ok: true, status: res.status };
