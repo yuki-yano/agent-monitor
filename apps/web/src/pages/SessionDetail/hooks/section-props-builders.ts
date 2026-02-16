@@ -26,6 +26,7 @@ import type { Theme } from "@/lib/theme";
 import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
 
 import type { FileTreeRenderNode } from "./useSessionFiles";
+import type { LogFileCandidateItem } from "./useSessionFiles-log-resolve-state";
 
 type BuildDiffSectionPropsArgs = {
   diffSummary: DiffSummary | null;
@@ -209,12 +210,6 @@ type BuildLogModalPropsArgs = {
   closeLogModal: () => void;
   handleOpenHere: () => void;
   handleOpenInNewTab: () => void;
-};
-
-type LogFileCandidateItem = {
-  path: string;
-  name: string;
-  isIgnored?: boolean;
 };
 
 type BuildLogFileCandidateModalPropsArgs = {
