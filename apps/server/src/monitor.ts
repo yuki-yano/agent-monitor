@@ -163,7 +163,7 @@ export const createSessionMonitor = (runtime: MultiplexerRuntime, config: AgentM
   const getStateTimeline = (
     paneId: string,
     range: SessionStateTimelineRange = "1h",
-    limit = 200,
+    limit?: number,
   ) => {
     return stateTimeline.getTimeline({ paneId, range, limit });
   };
@@ -171,7 +171,7 @@ export const createSessionMonitor = (runtime: MultiplexerRuntime, config: AgentM
   const getRepoStateTimeline = (
     paneId: string,
     range: SessionStateTimelineRange = "1h",
-    limit = 200,
+    limit?: number,
   ) => {
     const detail = registry.getDetail(paneId);
     const repoRoot = detail?.repoRoot;

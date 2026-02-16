@@ -266,7 +266,7 @@ export const createSessionRoutes = ({
         const query = c.req.valid("query");
         const range = resolveTimelineRange(query.range);
         const scope = resolveTimelineScope(query.scope);
-        const limit = query.limit ?? 200;
+        const limit = query.limit;
         const timeline =
           scope === "repo"
             ? monitor.getRepoStateTimeline(pane.paneId, range, limit)

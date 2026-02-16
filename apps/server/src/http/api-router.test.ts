@@ -319,6 +319,16 @@ describe("createApiRouter", () => {
     expect(getStateTimeline).toHaveBeenCalledWith("pane-1", "24h", 20);
   });
 
+  it("forwards undefined limit when query limit is omitted", async () => {
+    const { api, getStateTimeline } = createTestContext();
+    const res = await api.request("/sessions/pane-1/timeline?range=3h", {
+      headers: authHeaders,
+    });
+
+    expect(res.status).toBe(200);
+    expect(getStateTimeline).toHaveBeenCalledWith("pane-1", "3h", undefined);
+  });
+
   it("returns repo timeline when scope=repo", async () => {
     const { api, getRepoStateTimeline } = createTestContext();
     const res = await api.request("/sessions/pane-1/timeline?scope=repo&range=3h&limit=40", {

@@ -142,6 +142,29 @@ describe("createSessionTimelineStore", () => {
     expect(timeline.totalsMs.WAITING_INPUT).toBe(10 * 60 * 60 * 1000);
   });
 
+  it("uses range-aware default limit for pane timeline", () => {
+    const clock = nowAt;
+    clock.set("2026-02-06T03:00:00.000Z");
+    const store = createSessionTimelineStore({ now: clock.now });
+
+    const startMs = Date.parse("2026-02-06T00:00:00.000Z");
+    for (let index = 0; index < 250; index += 1) {
+      store.record({
+        paneId: "%pane-range-default",
+        state: index % 2 === 0 ? "RUNNING" : "WAITING_INPUT",
+        reason: `event:${index}`,
+        at: new Date(startMs + index * 30_000).toISOString(),
+        source: "hook",
+      });
+    }
+
+    const timeline = store.getTimeline({ paneId: "%pane-range-default", range: "3h" });
+
+    expect(timeline.items).toHaveLength(250);
+    expect(timeline.items[0]?.reason).toBe("event:249");
+    expect(timeline.items[249]?.reason).toBe("event:0");
+  });
+
   it("aggregates repo timeline across panes with state priority", () => {
     const clock = nowAt;
     clock.set("2026-02-06T00:00:00.000Z");
@@ -196,6 +219,33 @@ describe("createSessionTimelineStore", () => {
     expect(timeline.totalsMs.RUNNING).toBe(5 * 60 * 1000);
     expect(timeline.totalsMs.WAITING_PERMISSION).toBe(15 * 60 * 1000);
     expect(timeline.totalsMs.WAITING_INPUT).toBe(10 * 60 * 1000);
+  });
+
+  it("uses range-aware default limit for repo timeline", () => {
+    const clock = nowAt;
+    clock.set("2026-02-06T10:00:00.000Z");
+    const store = createSessionTimelineStore({ now: clock.now });
+
+    const startMs = Date.parse("2026-02-06T07:00:00.000Z");
+    for (let index = 0; index < 260; index += 1) {
+      store.record({
+        paneId: "%repo-a",
+        state: index % 2 === 0 ? "RUNNING" : "WAITING_INPUT",
+        reason: `repo-event:${index}`,
+        at: new Date(startMs + index * 20_000).toISOString(),
+        source: "hook",
+      });
+    }
+
+    const timeline = store.getRepoTimeline({
+      paneId: "%repo-a",
+      paneIds: ["%repo-a"],
+      range: "3h",
+    });
+
+    expect(timeline.items).toHaveLength(260);
+    expect(timeline.items[0]?.reason).toBe("repo:aggregate");
+    expect(timeline.items[259]?.reason).toBe("repo:aggregate");
   });
 
   it("returns empty repo timeline when no pane ids are provided", () => {

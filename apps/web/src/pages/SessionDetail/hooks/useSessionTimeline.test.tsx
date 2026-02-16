@@ -48,7 +48,7 @@ describe("useSessionTimeline", () => {
     );
 
     await waitFor(() => {
-      expect(requestStateTimeline).toHaveBeenCalledWith("pane-1", { range: "1h", limit: 200 });
+      expect(requestStateTimeline).toHaveBeenCalledWith("pane-1", { range: "1h" });
     });
   });
 
@@ -69,7 +69,7 @@ describe("useSessionTimeline", () => {
     );
 
     await waitFor(() => {
-      expect(requestStateTimeline).toHaveBeenCalledWith("pane-1", { range: "1h", limit: 200 });
+      expect(requestStateTimeline).toHaveBeenCalledWith("pane-1", { range: "1h" });
     });
 
     act(() => {
@@ -79,7 +79,6 @@ describe("useSessionTimeline", () => {
     await waitFor(() => {
       expect(requestStateTimeline).toHaveBeenLastCalledWith("pane-1", {
         range: "15m",
-        limit: 200,
       });
     });
   });
@@ -202,7 +201,7 @@ describe("useSessionTimeline", () => {
     );
 
     await waitFor(() => {
-      expect(requestStateTimeline).toHaveBeenCalledWith("pane-1", { range: "1h", limit: 200 });
+      expect(requestStateTimeline).toHaveBeenCalledWith("pane-1", { range: "1h" });
     });
 
     act(() => {
@@ -213,7 +212,6 @@ describe("useSessionTimeline", () => {
       expect(requestStateTimeline).toHaveBeenLastCalledWith("pane-1", {
         scope: "repo",
         range: "1h",
-        limit: 200,
       });
     });
   });

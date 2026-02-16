@@ -29,7 +29,6 @@ type LoadTimelineOptions = {
 
 const DEFAULT_RANGE: SessionStateTimelineRange = "1h";
 const DEFAULT_SCOPE: SessionStateTimelineScope = "pane";
-const DEFAULT_LIMIT = 200;
 const TIMELINE_POLL_INTERVAL_MS = 5000;
 
 const resolveTimelineError = (err: unknown) =>
@@ -72,7 +71,6 @@ export const useSessionTimeline = ({
         const nextTimeline = await requestStateTimeline(targetPaneId, {
           scope: requestedScope,
           range: timelineRange,
-          limit: DEFAULT_LIMIT,
         });
         if (
           timelineRequestIdRef.current !== requestId ||

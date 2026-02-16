@@ -15,8 +15,15 @@ const RANGE_MS: Record<SessionStateTimelineRange, number> = {
 };
 
 const DEFAULT_RETENTION_MS = RANGE_MS["24h"];
-const DEFAULT_LIMIT = 200;
 const DEFAULT_MAX_ITEMS_PER_PANE = 1000;
+const MAX_TIMELINE_ITEMS = 10_000;
+const DEFAULT_LIMIT_BY_RANGE: Record<SessionStateTimelineRange, number> = {
+  "15m": 200,
+  "1h": 300,
+  "3h": 700,
+  "6h": 1_500,
+  "24h": 5_000,
+};
 
 type TimelineEvent = Omit<SessionStateTimelineItem, "durationMs">;
 type SessionTimelinePersistedEvent = TimelineEvent;
@@ -91,6 +98,14 @@ const parseSequenceFromId = (id: string) => {
     return 0;
   }
   return parsed;
+};
+
+const resolveTimelineLimit = (range: SessionStateTimelineRange, limit: number | undefined) => {
+  const fallback = DEFAULT_LIMIT_BY_RANGE[range];
+  if (limit == null || !Number.isFinite(limit)) {
+    return fallback;
+  }
+  return Math.min(MAX_TIMELINE_ITEMS, Math.max(1, Math.floor(limit)));
 };
 
 const TIMELINE_STATE_PRIORITY: SessionStateValue[] = [
@@ -209,18 +224,14 @@ export const createSessionTimelineStore = (options: StoreOptions = {}) => {
     prunePane(paneId, nowMs);
   };
 
-  const getTimeline = ({
-    paneId,
-    range = "1h",
-    limit = DEFAULT_LIMIT,
-  }: GetTimelineInput): SessionStateTimeline => {
+  const getTimeline = ({ paneId, range = "1h", limit }: GetTimelineInput): SessionStateTimeline => {
     const nowMs = now().getTime();
     const nowIso = toIso(nowMs);
     prunePane(paneId, nowMs);
 
     const rangeMs = RANGE_MS[range];
     const rangeStartMs = nowMs - rangeMs;
-    const resolvedLimit = Number.isFinite(limit) ? Math.max(1, Math.floor(limit)) : DEFAULT_LIMIT;
+    const resolvedLimit = resolveTimelineLimit(range, limit);
 
     const events = eventsByPane.get(paneId) ?? [];
     const totals = createEmptyTotals();
@@ -283,13 +294,13 @@ export const createSessionTimelineStore = (options: StoreOptions = {}) => {
     paneId,
     paneIds,
     range = "1h",
-    limit = DEFAULT_LIMIT,
+    limit,
   }: GetRepoTimelineInput): SessionStateTimeline => {
     const nowMs = now().getTime();
     const nowIso = toIso(nowMs);
     const rangeMs = RANGE_MS[range];
     const rangeStartMs = nowMs - rangeMs;
-    const resolvedLimit = Number.isFinite(limit) ? Math.max(1, Math.floor(limit)) : DEFAULT_LIMIT;
+    const resolvedLimit = resolveTimelineLimit(range, limit);
     const totals = createEmptyTotals();
 
     const uniquePaneIds = Array.from(new Set(paneIds.filter(Boolean)));
