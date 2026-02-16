@@ -32,11 +32,8 @@ import { sanitizeLogCopyText } from "@/lib/clipboard";
 import type { ScreenMode } from "@/lib/screen-loading";
 
 import { usePromptContextLayout } from "../hooks/usePromptContextLayout";
+import { useScreenPanelLogReferenceLinking } from "../hooks/useScreenPanelLogReferenceLinking";
 import { useStableVirtuosoScroll } from "../hooks/useStableVirtuosoScroll";
-import {
-  extractLogReferenceTokensFromLine,
-  linkifyLogLineFileReferences,
-} from "../log-file-reference";
 import { DISCONNECTED_MESSAGE, formatBranchLabel } from "../sessionDetailUtils";
 import { ScreenPanelWorktreeSelectorPanel } from "./ScreenPanelWorktreeSelectorPanel";
 import { buildVisibleFileChangeCategories, formatGitMetric } from "./worktree-view-model";
@@ -126,8 +123,6 @@ const pollingPauseLabelMap: Record<
   },
 };
 
-const VISIBLE_REFERENCE_LINE_PADDING = 20;
-const FALLBACK_VISIBLE_REFERENCE_WINDOW = 120;
 const WORKTREE_SELECTOR_OPEN_BODY_DATASET_KEY = "vdeWorktreeSelectorOpen";
 const WORKTREE_SELECTOR_REFRESH_INTERVAL_MS = 10_000;
 
@@ -384,60 +379,6 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     isVirtualActive,
     visibleFileChangeCategoriesKey,
   });
-  const [linkableTokens, setLinkableTokens] = useState<Set<string>>(new Set());
-  const [visibleRange, setVisibleRange] = useState<{ startIndex: number; endIndex: number } | null>(
-    null,
-  );
-  const activeResolveCandidatesRequestIdRef = useRef(0);
-  const referenceCandidateTokens = useMemo(() => {
-    if (mode !== "text") {
-      return [];
-    }
-    if (screenLines.length === 0) {
-      return [];
-    }
-    const seen = new Set<string>();
-    const ordered: string[] = [];
-    const maxIndex = screenLines.length - 1;
-    const fallbackStart = Math.max(0, maxIndex - FALLBACK_VISIBLE_REFERENCE_WINDOW);
-    const startIndex =
-      visibleRange == null
-        ? fallbackStart
-        : Math.max(0, visibleRange.startIndex - VISIBLE_REFERENCE_LINE_PADDING);
-    const endIndex =
-      visibleRange == null
-        ? maxIndex
-        : Math.min(maxIndex, visibleRange.endIndex + VISIBLE_REFERENCE_LINE_PADDING);
-
-    for (let index = endIndex; index >= startIndex; index -= 1) {
-      const line = screenLines[index];
-      if (!line) {
-        continue;
-      }
-      const tokens = extractLogReferenceTokensFromLine(line);
-      const pathTokens: string[] = [];
-      const filenameTokens: string[] = [];
-      for (const token of tokens) {
-        if (seen.has(token)) {
-          continue;
-        }
-        if (token.includes("/") || token.includes("\\")) {
-          pathTokens.push(token);
-          continue;
-        }
-        filenameTokens.push(token);
-      }
-      for (const token of [...pathTokens, ...filenameTokens]) {
-        seen.add(token);
-        ordered.push(token);
-      }
-    }
-    return ordered;
-  }, [mode, screenLines, visibleRange]);
-  const referenceCandidateTokenSet = useMemo(
-    () => new Set(referenceCandidateTokens),
-    [referenceCandidateTokens],
-  );
   const refreshWorktrees = useCallback(() => {
     if (onRefreshWorktrees) {
       onRefreshWorktrees();
@@ -506,63 +447,6 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     };
   }, [branchPillContainerRef, isWorktreeSelectorOpen]);
 
-  const linkifiedScreenLines = useMemo(() => {
-    if (mode !== "text" || linkableTokens.size === 0) {
-      return screenLines;
-    }
-    return screenLines.map((line) =>
-      linkifyLogLineFileReferences(line, {
-        isLinkableToken: (rawToken) => linkableTokens.has(rawToken),
-      }),
-    );
-  }, [linkableTokens, mode, screenLines]);
-
-  useEffect(() => {
-    const requestId = activeResolveCandidatesRequestIdRef.current + 1;
-    activeResolveCandidatesRequestIdRef.current = requestId;
-
-    if (referenceCandidateTokens.length === 0) {
-      setLinkableTokens((previous) => (previous.size === 0 ? previous : new Set()));
-      return;
-    }
-
-    void onResolveFileReferenceCandidates(referenceCandidateTokens)
-      .then((resolvedTokens) => {
-        if (activeResolveCandidatesRequestIdRef.current !== requestId) {
-          return;
-        }
-        const resolvedTokenSet = new Set(resolvedTokens);
-        setLinkableTokens((previous) => {
-          const next = new Set<string>();
-          referenceCandidateTokens.forEach((token) => {
-            if (resolvedTokenSet.has(token) || previous.has(token)) {
-              next.add(token);
-            }
-          });
-          if (next.size === previous.size && [...next].every((token) => previous.has(token))) {
-            return previous;
-          }
-          return next;
-        });
-      })
-      .catch(() => {
-        if (activeResolveCandidatesRequestIdRef.current !== requestId) {
-          return;
-        }
-        setLinkableTokens((previous) => {
-          const next = new Set<string>();
-          previous.forEach((token) => {
-            if (referenceCandidateTokenSet.has(token)) {
-              next.add(token);
-            }
-          });
-          if (next.size === previous.size && [...next].every((token) => previous.has(token))) {
-            return previous;
-          }
-          return next;
-        });
-      });
-  }, [onResolveFileReferenceCandidates, referenceCandidateTokenSet, referenceCandidateTokens]);
   const { scrollerRef: stableScrollerRef, handleRangeChanged } = useStableVirtuosoScroll({
     items: screenLines,
     isAtBottom,
@@ -571,13 +455,12 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     isUserScrolling: forceFollow,
     onUserScrollStateChange,
   });
-  const handleScreenRangeChanged = useCallback(
-    (range: { startIndex: number; endIndex: number }) => {
-      setVisibleRange(range);
-      handleRangeChanged(range);
-    },
-    [handleRangeChanged],
-  );
+  const { linkifiedScreenLines, handleScreenRangeChanged } = useScreenPanelLogReferenceLinking({
+    mode,
+    screenLines,
+    onResolveFileReferenceCandidates,
+    onRangeChanged: handleRangeChanged,
+  });
 
   const VirtuosoScroller = useMemo(() => {
     const Component = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
