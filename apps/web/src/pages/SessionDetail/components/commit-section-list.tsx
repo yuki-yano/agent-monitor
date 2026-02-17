@@ -227,10 +227,12 @@ const CommitFileRow = memo(
           role="button"
           tabIndex={0}
           aria-expanded={fileOpen}
-          aria-label={fileOpen ? `Collapse file diff ${file.path}` : `Expand file diff ${file.path}`}
+          aria-label={
+            fileOpen ? `Collapse file diff ${file.path}` : `Expand file diff ${file.path}`
+          }
           onClick={toggleFile}
           onKeyDown={handleFileKeyDown}
-          className="focus-visible:ring-latte-lavender/30 focus-visible:outline-none grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md focus-visible:ring-2"
+          className="focus-visible:ring-latte-lavender/30 grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2"
         >
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <TagPill tone="status" className={cn(diffStatusClass(statusLabel), "shrink-0")}>
@@ -404,8 +406,10 @@ const CommitItem = memo(
           role="button"
           tabIndex={0}
           aria-expanded={isOpen}
-          aria-label={isOpen ? `Collapse commit ${commit.shortHash}` : `Expand commit ${commit.shortHash}`}
-          className="focus-visible:ring-latte-lavender/30 focus-visible:outline-none flex w-full cursor-pointer flex-wrap items-start gap-2.5 rounded-md px-2.5 py-1.5 focus-visible:ring-2 sm:gap-3 sm:px-3 sm:py-2"
+          aria-label={
+            isOpen ? `Collapse commit ${commit.shortHash}` : `Expand commit ${commit.shortHash}`
+          }
+          className="focus-visible:ring-latte-lavender/30 flex w-full cursor-pointer flex-wrap items-start gap-2.5 rounded-md px-2.5 py-1.5 focus-visible:outline-none focus-visible:ring-2 sm:gap-3 sm:px-3 sm:py-2"
           onClick={toggleCommit}
           onKeyDown={handleCommitKeyDown}
         >
@@ -431,7 +435,10 @@ const CommitItem = memo(
                 {commit.authorName} · {formatTimestamp(commit.authoredAt)}
               </p>
             </div>
-            <span className="text-latte-overlay1 ml-auto flex items-center self-center px-2" aria-hidden="true">
+            <span
+              className="text-latte-overlay1 ml-auto flex items-center self-center px-2"
+              aria-hidden="true"
+            >
               {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </span>
           </div>

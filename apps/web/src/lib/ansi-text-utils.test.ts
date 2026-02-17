@@ -236,12 +236,7 @@ describe("ansi-text-utils", () => {
   });
 
   it("does not treat prose as continuation for complete rows without trailing pipe", () => {
-    const lines = [
-      "| ID | Name |",
-      "|---|---|",
-      "| 1 | Alice",
-      "This is prose after table.",
-    ];
+    const lines = ["| ID | Name |", "|---|---|", "| 1 | Alice", "This is prose after table."];
     const normalized = normalizeMarkdownPipeTableLines(lines);
 
     expect(normalized).toHaveLength(2);
