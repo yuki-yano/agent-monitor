@@ -132,6 +132,57 @@ type RequestCommandParams = {
   onSessionRemoved: (paneId: string) => void;
 };
 
+type CommandEnvelope<TCommand> = ApiEnvelope<{ command?: TCommand }>;
+
+type RequestCommandEnvelopeParams<TCommand> = {
+  request: (signal?: AbortSignal) => Promise<Response>;
+  fallbackMessage: string;
+  requestTimeoutMs?: number;
+  ensureToken: EnsureToken;
+  onConnectionIssue: OnConnectionIssue;
+};
+
+type RequestCommandEnvelopeResult<TCommand> =
+  | { ok: true; command: TCommand }
+  | {
+      ok: false;
+      message: string;
+      res?: Response;
+      data?: CommandEnvelope<TCommand> | null;
+    };
+
+const requestCommandEnvelope = async <TCommand>({
+  request,
+  fallbackMessage,
+  requestTimeoutMs,
+  ensureToken,
+  onConnectionIssue,
+}: RequestCommandEnvelopeParams<TCommand>): Promise<RequestCommandEnvelopeResult<TCommand>> => {
+  ensureToken();
+  try {
+    const { res, data } = await requestJson<CommandEnvelope<TCommand>>(request, {
+      timeoutMs: requestTimeoutMs,
+      timeoutMessage: API_ERROR_MESSAGES.requestTimeout,
+    });
+    if (!res.ok) {
+      const message = extractErrorMessage(res, data, fallbackMessage, { includeStatus: true });
+      onConnectionIssue(message);
+      return { ok: false, message, res, data };
+    }
+    if (!data?.command) {
+      const message = API_ERROR_MESSAGES.invalidResponse;
+      onConnectionIssue(message);
+      return { ok: false, message, res, data };
+    }
+    onConnectionIssue(null);
+    return { ok: true, command: data.command };
+  } catch (error) {
+    const message = resolveUnknownErrorMessage(error, fallbackMessage);
+    onConnectionIssue(message);
+    return { ok: false, message };
+  }
+};
+
 export const requestCommand = async ({
   paneId,
   request,
@@ -144,36 +195,26 @@ export const requestCommand = async ({
   isPaneMissingError,
   onSessionRemoved,
 }: RequestCommandParams): Promise<CommandResponse> => {
-  ensureToken();
-  try {
-    const { res, data } = await requestJson<ApiEnvelope<{ command?: CommandResponse }>>(request, {
-      timeoutMs: requestTimeoutMs,
-      timeoutMessage: API_ERROR_MESSAGES.requestTimeout,
-    });
-    if (!res.ok) {
-      const message = extractErrorMessage(res, data, fallbackMessage, { includeStatus: true });
-      onConnectionIssue(message);
-      handleSessionMissing(paneId, res, data);
-      return {
-        ok: false,
-        error: data?.error ?? buildApiError("INTERNAL", message),
-      };
+  const result = await requestCommandEnvelope<CommandResponse>({
+    request,
+    fallbackMessage,
+    requestTimeoutMs,
+    ensureToken,
+    onConnectionIssue,
+  });
+  if (!result.ok) {
+    if (result.res) {
+      handleSessionMissing(paneId, result.res, result.data ?? null);
     }
-    if (!data?.command) {
-      const message = API_ERROR_MESSAGES.invalidResponse;
-      onConnectionIssue(message);
-      return { ok: false, error: buildApiError("INTERNAL", message) };
-    }
-    if (isPaneMissingError(data.command.error)) {
-      onSessionRemoved(paneId);
-    }
-    onConnectionIssue(null);
-    return data.command;
-  } catch (error) {
-    const message = resolveUnknownErrorMessage(error, fallbackMessage);
-    onConnectionIssue(message);
-    return { ok: false, error: buildApiError("INTERNAL", message) };
+    return {
+      ok: false,
+      error: result.data?.error ?? buildApiError("INTERNAL", result.message),
+    };
   }
+  if (isPaneMissingError(result.command.error)) {
+    onSessionRemoved(paneId);
+  }
+  return result.command;
 };
 
 type RequestLaunchCommandParams = {
@@ -193,44 +234,21 @@ export const requestLaunchCommand = async ({
   onConnectionIssue,
   buildApiError,
 }: RequestLaunchCommandParams): Promise<LaunchCommandResponse> => {
-  ensureToken();
-  try {
-    const { res, data } = await requestJson<ApiEnvelope<{ command?: LaunchCommandResponse }>>(
-      request,
-      {
-        timeoutMs: requestTimeoutMs,
-        timeoutMessage: API_ERROR_MESSAGES.requestTimeout,
-      },
-    );
-    if (!res.ok) {
-      const message = extractErrorMessage(res, data, fallbackMessage, { includeStatus: true });
-      onConnectionIssue(message);
-      return {
-        ok: false,
-        error: data?.error ?? buildApiError("INTERNAL", message),
-        rollback: { attempted: false, ok: true },
-      };
-    }
-    if (!data?.command) {
-      const message = API_ERROR_MESSAGES.invalidResponse;
-      onConnectionIssue(message);
-      return {
-        ok: false,
-        error: buildApiError("INTERNAL", message),
-        rollback: { attempted: false, ok: true },
-      };
-    }
-    onConnectionIssue(null);
-    return data.command;
-  } catch (error) {
-    const message = resolveUnknownErrorMessage(error, fallbackMessage);
-    onConnectionIssue(message);
+  const result = await requestCommandEnvelope<LaunchCommandResponse>({
+    request,
+    fallbackMessage,
+    requestTimeoutMs,
+    ensureToken,
+    onConnectionIssue,
+  });
+  if (!result.ok) {
     return {
       ok: false,
-      error: buildApiError("INTERNAL", message),
+      error: result.data?.error ?? buildApiError("INTERNAL", result.message),
       rollback: { attempted: false, ok: true },
     };
   }
+  return result.command;
 };
 
 type RequestScreenResponseParams = {

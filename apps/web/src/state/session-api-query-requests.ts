@@ -49,17 +49,62 @@ type CreateSessionQueryRequestsParams = {
   requestPaneHashField: RequestPaneHashField;
 };
 
+type PaneQueryValueParams<T, K extends keyof T> = {
+  paneId: string;
+  field: K;
+  fallbackMessage: string;
+  request: (param: PaneParam) => Promise<Response>;
+};
+
+type PaneHashQueryValueParams<T, K extends keyof T> = {
+  paneId: string;
+  hash: string;
+  field: K;
+  fallbackMessage: string;
+  request: (param: PaneHashParam) => Promise<Response>;
+};
+
 export const createSessionQueryRequests = ({
   apiClient,
   requestPaneQueryField,
   requestPaneHashField,
 }: CreateSessionQueryRequestsParams) => {
+  const requestPaneQueryValue = <T, K extends keyof T>({
+    paneId,
+    field,
+    fallbackMessage,
+    request,
+  }: PaneQueryValueParams<T, K>) => {
+    return requestPaneQueryField<T, K>({
+      paneId,
+      request,
+      field,
+      fallbackMessage,
+    });
+  };
+
+  const requestPaneHashValue = <T, K extends keyof T>({
+    paneId,
+    hash,
+    field,
+    fallbackMessage,
+    request,
+  }: PaneHashQueryValueParams<T, K>) => {
+    return requestPaneHashField<T, K>({
+      paneId,
+      hash,
+      request,
+      field,
+      fallbackMessage,
+    });
+  };
+
   const requestDiffSummary = async (
     paneId: string,
     options?: { force?: boolean; worktreePath?: string },
   ) => {
     const query = buildForceQuery(options);
-    return requestPaneQueryField<{ summary?: DiffSummary }, "summary">({
+    return requestPaneQueryValue<{ summary?: DiffSummary }, "summary">({
       paneId,
       request: (param) => apiClient.sessions[":paneId"].diff.$get({ param, query }),
       field: "summary",
@@ -74,7 +119,7 @@ export const createSessionQueryRequests = ({
     options?: { force?: boolean; worktreePath?: string },
   ) => {
     const query = buildDiffFileQuery(filePath, rev, options);
-    return requestPaneQueryField<{ file?: DiffFile }, "file">({
+    return requestPaneQueryValue<{ file?: DiffFile }, "file">({
       paneId,
       request: (param) => apiClient.sessions[":paneId"].diff.file.$get({ param, query }),
       field: "file",
@@ -87,7 +132,7 @@ export const createSessionQueryRequests = ({
     options?: { limit?: number; skip?: number; force?: boolean; worktreePath?: string },
   ) => {
     const query = buildCommitLogQuery(options);
-    return requestPaneQueryField<{ log?: CommitLog }, "log">({
+    return requestPaneQueryValue<{ log?: CommitLog }, "log">({
       paneId,
       request: (param) => apiClient.sessions[":paneId"].commits.$get({ param, query }),
       field: "log",
@@ -101,7 +146,7 @@ export const createSessionQueryRequests = ({
     options?: { force?: boolean; worktreePath?: string },
   ) => {
     const query = buildForceQuery(options);
-    return requestPaneHashField<{ commit?: CommitDetail }, "commit">({
+    return requestPaneHashValue<{ commit?: CommitDetail }, "commit">({
       paneId,
       hash,
       request: (param) => apiClient.sessions[":paneId"].commits[":hash"].$get({ param, query }),
@@ -117,7 +162,7 @@ export const createSessionQueryRequests = ({
     options?: { force?: boolean; worktreePath?: string },
   ) => {
     const query = buildCommitFileQuery(path, options);
-    return requestPaneHashField<{ file?: CommitFileDiff }, "file">({
+    return requestPaneHashValue<{ file?: CommitFileDiff }, "file">({
       paneId,
       hash,
       request: (param) =>
@@ -136,7 +181,7 @@ export const createSessionQueryRequests = ({
     },
   ): Promise<SessionStateTimeline> => {
     const query = buildTimelineQuery(options);
-    return requestPaneQueryField<{ timeline?: SessionStateTimeline }, "timeline">({
+    return requestPaneQueryValue<{ timeline?: SessionStateTimeline }, "timeline">({
       paneId,
       request: (param) => apiClient.sessions[":paneId"].timeline.$get({ param, query }),
       field: "timeline",
@@ -145,7 +190,7 @@ export const createSessionQueryRequests = ({
   };
 
   const requestRepoNotes = async (paneId: string): Promise<RepoNote[]> => {
-    return requestPaneQueryField<{ notes?: RepoNote[] }, "notes">({
+    return requestPaneQueryValue<{ notes?: RepoNote[] }, "notes">({
       paneId,
       request: (param) => apiClient.sessions[":paneId"].notes.$get({ param }),
       field: "notes",
@@ -158,7 +203,7 @@ export const createSessionQueryRequests = ({
     options?: { path?: string; cursor?: string; limit?: number; worktreePath?: string },
   ): Promise<RepoFileTreePage> => {
     const query = buildRepoFileTreeQuery(options);
-    return requestPaneQueryField<{ tree?: RepoFileTreePage }, "tree">({
+    return requestPaneQueryValue<{ tree?: RepoFileTreePage }, "tree">({
       paneId,
       request: (param) => apiClient.sessions[":paneId"].files.tree.$get({ param, query }),
       field: "tree",
@@ -172,7 +217,7 @@ export const createSessionQueryRequests = ({
     options?: { cursor?: string; limit?: number; worktreePath?: string },
   ): Promise<RepoFileSearchPage> => {
     const query = buildRepoFileSearchQuery(queryValue, options);
-    return requestPaneQueryField<{ result?: RepoFileSearchPage }, "result">({
+    return requestPaneQueryValue<{ result?: RepoFileSearchPage }, "result">({
       paneId,
       request: (param) => apiClient.sessions[":paneId"].files.search.$get({ param, query }),
       field: "result",
@@ -186,7 +231,7 @@ export const createSessionQueryRequests = ({
     options?: { maxBytes?: number; worktreePath?: string },
   ): Promise<RepoFileContent> => {
     const query = buildRepoFileContentQuery(path, options);
-    return requestPaneQueryField<{ file?: RepoFileContent }, "file">({
+    return requestPaneQueryValue<{ file?: RepoFileContent }, "file">({
       paneId,
       request: (param) => apiClient.sessions[":paneId"].files.content.$get({ param, query }),
       field: "file",
@@ -195,7 +240,7 @@ export const createSessionQueryRequests = ({
   };
 
   const requestWorktrees = async (paneId: string): Promise<WorktreeList> => {
-    return requestPaneQueryField<{ worktrees?: WorktreeList }, "worktrees">({
+    return requestPaneQueryValue<{ worktrees?: WorktreeList }, "worktrees">({
       paneId,
       request: (param) => apiClient.sessions[":paneId"].worktrees.$get({ param }),
       field: "worktrees",
