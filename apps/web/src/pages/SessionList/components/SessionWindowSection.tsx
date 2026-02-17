@@ -1,6 +1,7 @@
 import { LayoutGrid } from "lucide-react";
 
 import { InsetPanel, TagPill } from "@/components/ui";
+import { PaneGridLayout } from "@/features/shared-session-ui/components/PaneGridLayout";
 
 import { type SessionWindowGroup } from "../session-window-group";
 import { SessionCard } from "./SessionCard";
@@ -41,7 +42,7 @@ export const SessionWindowSection = ({
           {group.sessions.length} / {totalPanes} panes
         </TagPill>
       </div>
-      <div className="mt-1.5 grid gap-2.5 sm:mt-2 sm:gap-4 md:grid-cols-2 lg:gap-5 xl:grid-cols-3 2xl:grid-cols-4">
+      <PaneGridLayout responsivePreset="session-list" className="mt-1.5 sm:mt-2">
         {group.sessions.map((session) => (
           <SessionCard
             key={session.paneId}
@@ -51,7 +52,7 @@ export const SessionWindowSection = ({
             onRegisterScrollTarget={onRegisterPaneScrollTarget}
           />
         ))}
-      </div>
+      </PaneGridLayout>
     </InsetPanel>
   );
 };
