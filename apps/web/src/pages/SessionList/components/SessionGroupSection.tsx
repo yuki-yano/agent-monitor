@@ -3,13 +3,10 @@ import { Clock, FolderGit2, Github, Pin } from "lucide-react";
 
 import { LaunchAgentButton } from "@/components/launch-agent-button";
 import { GlassPanel, GlowCard, IconButton, LastInputPill, TagPill } from "@/components/ui";
+import { selectLaunchSourceSession } from "@/features/shared-session-ui/model/launch-source-session";
 import { cn } from "@/lib/cn";
 import { buildGitHubRepoUrl } from "@/lib/github-repo-url";
-import {
-  formatRelativeTime,
-  getLastInputTone,
-  isVwManagedWorktreePath,
-} from "@/lib/session-format";
+import { formatRelativeTime, getLastInputTone } from "@/lib/session-format";
 import type { SessionGroup } from "@/lib/session-group";
 import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
 
@@ -145,41 +142,23 @@ export const SessionGroupSection = ({
               key={sessionSection.sessionName}
               className={cn(sessionIndex > 0 ? "pt-2.5 sm:pt-4" : null)}
             >
-              {(() => {
-                const sessionPaneCandidates = sessionSection.windowGroups.flatMap(
-                  (windowGroup) => windowGroup.sessions,
-                );
-                const repoRootPane = sessionPaneCandidates.find((session) => {
-                  const repoRoot = session.repoRoot?.trim();
-                  const worktreePath = session.worktreePath?.trim();
-                  return Boolean(repoRoot && worktreePath && repoRoot === worktreePath);
-                });
-                const nonWorktreePane = sessionPaneCandidates.find(
-                  (session) => !isVwManagedWorktreePath(session.worktreePath),
-                );
-                const launchSourceSession =
-                  repoRootPane ??
-                  nonWorktreePane ??
-                  sessionPaneCandidates.find((session) => session.paneActive) ??
-                  sessionPaneCandidates[0];
-                return (
-                  <div className="mb-2.5 flex flex-wrap items-center gap-2.5 px-1">
-                    <TagPill tone="neutral" className="text-[10px]">
-                      Session {sessionSection.sessionName}
-                    </TagPill>
-                    <div className="ml-auto flex items-center gap-1.5">
-                      <LaunchAgentButton
-                        sessionName={sessionSection.sessionName}
-                        sourceSession={launchSourceSession}
-                        launchConfig={launchConfig}
-                        launchPendingSessions={launchPendingSessions}
-                        requestWorktrees={requestWorktrees}
-                        onLaunchAgentInSession={onLaunchAgentInSession}
-                      />
-                    </div>
-                  </div>
-                );
-              })()}
+              <div className="mb-2.5 flex flex-wrap items-center gap-2.5 px-1">
+                <TagPill tone="neutral" className="text-[10px]">
+                  Session {sessionSection.sessionName}
+                </TagPill>
+                <div className="ml-auto flex items-center gap-1.5">
+                  <LaunchAgentButton
+                    sessionName={sessionSection.sessionName}
+                    sourceSession={selectLaunchSourceSession(
+                      sessionSection.windowGroups.flatMap((windowGroup) => windowGroup.sessions),
+                    )}
+                    launchConfig={launchConfig}
+                    launchPendingSessions={launchPendingSessions}
+                    requestWorktrees={requestWorktrees}
+                    onLaunchAgentInSession={onLaunchAgentInSession}
+                  />
+                </div>
+              </div>
               <div className="space-y-2.5 sm:space-y-4">
                 {sessionSection.windowGroups.map((windowGroup) => (
                   <SessionWindowSection

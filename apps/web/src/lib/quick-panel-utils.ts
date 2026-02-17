@@ -1,6 +1,8 @@
 import { AlertTriangle, Circle, Clock, Loader2, Sparkles, Zap } from "lucide-react";
 import type { ComponentType } from "react";
 
+import { formatRepoDisplayName } from "./repo-display";
+
 type IconMeta = {
   icon: ComponentType<{ className?: string }>;
   className: string;
@@ -8,14 +10,7 @@ type IconMeta = {
   label: string;
 };
 
-export const formatRepoDirLabel = (value: string | null) => {
-  if (!value) return "No repo";
-  const trimmed = value.replace(/\/+$/, "");
-  if (!trimmed) return "No repo";
-  const parts = trimmed.split("/");
-  const last = parts[parts.length - 1] ?? trimmed;
-  return last || trimmed;
-};
+export const formatRepoDirLabel = (value: string | null) => formatRepoDisplayName(value);
 
 export const statusIconMeta = (state: string): IconMeta => {
   switch (state) {

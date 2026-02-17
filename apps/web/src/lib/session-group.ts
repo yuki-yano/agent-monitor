@@ -1,5 +1,7 @@
 import type { SessionSummary } from "@vde-monitor/shared";
 
+import { compareTimeDesc, parseTime, pickLatestInputAt } from "./session-time";
+
 export type SessionGroup = {
   repoRoot: string | null;
   sessions: SessionSummary[];
@@ -10,24 +12,11 @@ type BuildSessionGroupOptions = {
   getRepoSortAnchorAt?: (repoRoot: string | null) => number | null;
 };
 
-const parseTime = (value: string | null) => {
-  if (!value) return null;
-  const ts = Date.parse(value);
-  return Number.isNaN(ts) ? null : ts;
-};
-
-const resolveComparableTime = (value: string | null) =>
-  parseTime(value) ?? Number.NEGATIVE_INFINITY;
-
-const compareTimeDesc = (a: string | null, b: string | null) => {
-  const aTs = resolveComparableTime(a);
-  const bTs = resolveComparableTime(b);
-  if (aTs === bTs) return 0;
-  return bTs - aTs;
-};
-
 const resolveComparableSortAnchorTime = (value: number | null | undefined) =>
   typeof value === "number" && Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
+
+const resolveComparableInputTime = (value: string | null) =>
+  parseTime(value) ?? Number.NEGATIVE_INFINITY;
 
 const resolveComparableGroupActivityTime = ({
   lastInputAt,
@@ -36,7 +25,7 @@ const resolveComparableGroupActivityTime = ({
   lastInputAt: string | null;
   sortAnchorAt: number | null | undefined;
 }) => {
-  const inputTs = resolveComparableTime(lastInputAt);
+  const inputTs = resolveComparableInputTime(lastInputAt);
   const sortAnchorTs = resolveComparableSortAnchorTime(sortAnchorAt);
   return Math.max(inputTs, sortAnchorTs);
 };
@@ -61,20 +50,6 @@ const compareSessions = (a: SessionSummary, b: SessionSummary) => {
   const sessionCompare = a.sessionName.localeCompare(b.sessionName);
   if (sessionCompare !== 0) return sessionCompare;
   return a.paneId.localeCompare(b.paneId);
-};
-
-const pickLatestInputAt = (sessions: SessionSummary[]) => {
-  let latestValue: string | null = null;
-  let latestTs: number | null = null;
-  sessions.forEach((session) => {
-    const ts = parseTime(session.lastInputAt);
-    if (ts == null) return;
-    if (latestTs == null || ts > latestTs) {
-      latestTs = ts;
-      latestValue = session.lastInputAt ?? null;
-    }
-  });
-  return latestValue;
 };
 
 export const buildSessionGroups = (

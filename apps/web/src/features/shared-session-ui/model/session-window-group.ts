@@ -1,40 +1,12 @@
 import type { SessionSummary } from "@vde-monitor/shared";
 
+import { compareTimeDesc, pickLatestInputAt } from "@/lib/session-time";
+
 export type SessionWindowGroup = {
   sessionName: string;
   windowIndex: number;
   sessions: SessionSummary[];
   lastInputAt: string | null;
-};
-
-const parseTime = (value: string | null) => {
-  if (!value) return null;
-  const ts = Date.parse(value);
-  return Number.isNaN(ts) ? null : ts;
-};
-
-const resolveComparableTime = (value: string | null) =>
-  parseTime(value) ?? Number.NEGATIVE_INFINITY;
-
-const compareTimeDesc = (a: string | null, b: string | null) => {
-  const aTs = resolveComparableTime(a);
-  const bTs = resolveComparableTime(b);
-  if (aTs === bTs) return 0;
-  return bTs - aTs;
-};
-
-const pickLatestInputAt = (sessions: SessionSummary[]) => {
-  let latestValue: string | null = null;
-  let latestTs: number | null = null;
-  sessions.forEach((session) => {
-    const ts = parseTime(session.lastInputAt);
-    if (ts == null) return;
-    if (latestTs == null || ts > latestTs) {
-      latestTs = ts;
-      latestValue = session.lastInputAt ?? null;
-    }
-  });
-  return latestValue;
 };
 
 const comparePanes = (a: SessionSummary, b: SessionSummary) => {

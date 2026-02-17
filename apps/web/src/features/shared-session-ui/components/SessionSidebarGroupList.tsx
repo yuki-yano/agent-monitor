@@ -3,8 +3,8 @@ import { Pin } from "lucide-react";
 
 import { LaunchAgentButton } from "@/components/launch-agent-button";
 import { IconButton, TagPill } from "@/components/ui";
+import { selectLaunchSourceSession } from "@/features/shared-session-ui/model/launch-source-session";
 import { formatRepoDirLabel } from "@/lib/quick-panel-utils";
-import { isVwManagedWorktreePath } from "@/lib/session-format";
 import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
 
 import type { SidebarRepoGroup } from "../hooks/useSessionSidebarGroups";
@@ -103,19 +103,7 @@ export const SessionSidebarGroupList = ({
                 const sessionPaneCandidates = group.windowGroups
                   .filter((candidate) => candidate.sessionName === windowGroup.sessionName)
                   .flatMap((candidate) => candidate.sessions);
-                const repoRootPane = sessionPaneCandidates.find((session) => {
-                  const repoRoot = session.repoRoot?.trim();
-                  const worktreePath = session.worktreePath?.trim();
-                  return Boolean(repoRoot && worktreePath && repoRoot === worktreePath);
-                });
-                const nonWorktreePane = sessionPaneCandidates.find(
-                  (session) => !isVwManagedWorktreePath(session.worktreePath),
-                );
-                const launchSourceSession =
-                  repoRootPane ??
-                  nonWorktreePane ??
-                  sessionPaneCandidates.find((session) => session.paneActive) ??
-                  sessionPaneCandidates[0];
+                const launchSourceSession = selectLaunchSourceSession(sessionPaneCandidates);
 
                 return (
                   <div
