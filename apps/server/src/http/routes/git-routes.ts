@@ -70,10 +70,7 @@ const resolveRequestedCwd = async (
         400,
       );
     }
-    return c.json(
-      { error: buildError("INVALID_PAYLOAD", "invalid worktree path") },
-      400,
-    );
+    return c.json({ error: buildError("INVALID_PAYLOAD", "invalid worktree path") }, 400);
   }
   return resolved.path;
 };

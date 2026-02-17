@@ -16,7 +16,7 @@ describe("repo-notes service", () => {
   it("returns null when pane has no repo root", () => {
     const service = createRepoNotesService({
       registry: {
-        getDetail: () => ({ repoRoot: null } as unknown as SessionDetail),
+        getDetail: () => ({ repoRoot: null }) as unknown as SessionDetail,
       },
       repoNotes: {
         list: vi.fn(() => []),
@@ -37,7 +37,7 @@ describe("repo-notes service", () => {
     const savePersistedState = vi.fn();
     const service = createRepoNotesService({
       registry: {
-        getDetail: () => ({ repoRoot: "/repo/a" } as unknown as SessionDetail),
+        getDetail: () => ({ repoRoot: "/repo/a" }) as unknown as SessionDetail,
       },
       repoNotes: {
         list: vi.fn(() => [createNote("note-1")]),

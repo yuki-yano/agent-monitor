@@ -11,6 +11,14 @@ import type { TmuxAdapter } from "@vde-monitor/tmux";
 import { buildError } from "../errors";
 import type { ActionResult, ActionResultHelpers } from "./action-results";
 import {
+  assertSessionExists,
+  createDetachedWindow,
+  resolveUniqueWindowName,
+  rollbackCreatedWindow,
+  sendLaunchCommand,
+  verifyLaunch,
+} from "./launch-tmux-ops";
+import {
   normalizeLaunchOptions,
   normalizeOptionalText,
   resolveConfiguredLaunchOptions,
@@ -20,14 +28,6 @@ import {
   validateWindowName,
 } from "./launch-validation";
 import { resolveWorktreeCwd } from "./launch-worktree-resolver";
-import {
-  assertSessionExists,
-  createDetachedWindow,
-  resolveUniqueWindowName,
-  rollbackCreatedWindow,
-  sendLaunchCommand,
-  verifyLaunch,
-} from "./launch-tmux-ops";
 
 type CreateLaunchActionsParams = {
   adapter: TmuxAdapter;

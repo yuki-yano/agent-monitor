@@ -106,7 +106,9 @@ export const aggregateRepoTimelineSegments = ({
     }
 
     const dominantState = resolveDominantState(activeIntervals.map((interval) => interval.state));
-    const dominantSource = resolveDominantSource(activeIntervals.map((interval) => interval.source));
+    const dominantSource = resolveDominantSource(
+      activeIntervals.map((interval) => interval.source),
+    );
     const isOpen =
       segmentEndMs === nowMs &&
       activeIntervals.some((interval) => interval.isOpen && interval.endedAtMs === nowMs);

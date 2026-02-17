@@ -1,4 +1,8 @@
-import { isEditorCommand, type TextCaptureOptions, type TextCaptureResult } from "@vde-monitor/shared";
+import {
+  isEditorCommand,
+  type TextCaptureOptions,
+  type TextCaptureResult,
+} from "@vde-monitor/shared";
 
 import type { TmuxAdapter } from "./adapter";
 

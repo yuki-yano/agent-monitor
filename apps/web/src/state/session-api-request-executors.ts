@@ -134,7 +134,7 @@ type RequestCommandParams = {
 
 type CommandEnvelope<TCommand> = ApiEnvelope<{ command?: TCommand }>;
 
-type RequestCommandEnvelopeParams<TCommand> = {
+type RequestCommandEnvelopeParams = {
   request: (signal?: AbortSignal) => Promise<Response>;
   fallbackMessage: string;
   requestTimeoutMs?: number;
@@ -157,7 +157,7 @@ const requestCommandEnvelope = async <TCommand>({
   requestTimeoutMs,
   ensureToken,
   onConnectionIssue,
-}: RequestCommandEnvelopeParams<TCommand>): Promise<RequestCommandEnvelopeResult<TCommand>> => {
+}: RequestCommandEnvelopeParams): Promise<RequestCommandEnvelopeResult<TCommand>> => {
   ensureToken();
   try {
     const { res, data } = await requestJson<CommandEnvelope<TCommand>>(request, {

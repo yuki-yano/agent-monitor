@@ -22,13 +22,7 @@ export const resolveSessionSnapshotCwd = async ({
   adapter: TmuxAdapter;
   sessionName: string;
 }): Promise<{ ok: true; cwd: string } | { ok: false; error: ApiError }> => {
-  const listed = await adapter.run([
-    "list-panes",
-    "-t",
-    sessionName,
-    "-F",
-    "#{pane_current_path}",
-  ]);
+  const listed = await adapter.run(["list-panes", "-t", sessionName, "-F", "#{pane_current_path}"]);
   if (listed.exitCode !== 0) {
     return {
       ok: false,
@@ -63,7 +57,9 @@ export const resolveWorktreeCwd = async ({
   worktreePath,
   worktreeBranch,
   worktreeCreateIfMissing,
-}: ResolveWorktreeCwdInput): Promise<{ ok: true; cwd?: string } | { ok: false; error: ApiError }> => {
+}: ResolveWorktreeCwdInput): Promise<
+  { ok: true; cwd?: string } | { ok: false; error: ApiError }
+> => {
   if (!worktreePath && !worktreeBranch && !worktreeCreateIfMissing) {
     return { ok: true, cwd: undefined };
   }

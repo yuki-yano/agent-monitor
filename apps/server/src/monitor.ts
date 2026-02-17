@@ -2,10 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import {
-  type AgentMonitorConfig,
-  type SessionStateTimelineRange,
-} from "@vde-monitor/shared";
+import { type AgentMonitorConfig, type SessionStateTimelineRange } from "@vde-monitor/shared";
 
 import { createJsonlTailer, createLogActivityPoller, ensureDir } from "./logs";
 import { handleHookLine, type HookEventContext } from "./monitor/hook-tailer";

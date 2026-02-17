@@ -433,7 +433,7 @@ export const useSessionFiles = ({
       setSelectedFilePath(targetPath);
       revealFilePath(targetPath);
     },
-    [revealFilePath],
+    [revealFilePath, setSelectedFilePath],
   );
 
   const {
@@ -489,7 +489,13 @@ export const useSessionFiles = ({
       setLogFileCandidateLine,
       setLogFileCandidateItems,
     });
-  }, []);
+  }, [
+    setLogFileCandidateItems,
+    setLogFileCandidateLine,
+    setLogFileCandidateModalOpen,
+    setLogFileCandidatePaneId,
+    setLogFileCandidateReference,
+  ]);
 
   const { hasExactPathMatch, findExactNameMatches, tryOpenExistingPath } =
     useSessionFilesLogResolveSearch({
