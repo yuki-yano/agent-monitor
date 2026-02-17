@@ -1,6 +1,7 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useSessionListPins } from "@/features/shared-session-ui/hooks/useSessionListPins";
 import { useSessionLogs } from "@/features/shared-session-ui/hooks/useSessionLogs";
 import {
   DEFAULT_SESSION_LIST_FILTER,
@@ -9,12 +10,6 @@ import {
   SESSION_LIST_FILTER_VALUES,
   storeSessionListFilter,
 } from "@/features/shared-session-ui/model/session-list-filters";
-import {
-  createRepoPinKey,
-  readStoredSessionListPins,
-  storeSessionListPins,
-  touchSessionListPin,
-} from "@/features/shared-session-ui/model/session-list-pins";
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import { resolveUnknownErrorMessage } from "@/lib/api-utils";
 import { buildSessionGroups } from "@/lib/session-group";
@@ -60,24 +55,17 @@ export const useSessionListVM = () => {
   const navigate = useNavigate({ from: "/" });
   const { resolvedTheme } = useTheme();
   const { sidebarWidth, handlePointerDown } = useSidebarWidth();
-  const [pins, setPins] = useState(() => readStoredSessionListPins());
   const [launchPendingSessions, setLaunchPendingSessions] = useState<Set<string>>(() => new Set());
   const [screenError, setScreenError] = useState<string | null>(null);
   const launchPendingRef = useRef<Set<string>>(new Set());
-  const repoPinValues = pins.repos;
+  const { getRepoSortAnchorAt, touchRepoPin, touchPanePin } = useSessionListPins({
+    sessions,
+    onTouchPane: touchSession,
+  });
 
   useEffect(() => {
     storeSessionListFilter(filter);
   }, [filter]);
-
-  useEffect(() => {
-    storeSessionListPins(pins);
-  }, [pins]);
-
-  const getRepoSortAnchorAt = useCallback(
-    (repoRoot: string | null) => repoPinValues[createRepoPinKey(repoRoot)] ?? null,
-    [repoPinValues],
-  );
 
   const visibleSessions = useMemo(() => {
     return sessions.filter(
@@ -85,10 +73,6 @@ export const useSessionListVM = () => {
         matchesSessionListFilter(session, filter) && matchesSessionListSearch(session, searchQuery),
     );
   }, [filter, searchQuery, sessions]);
-  const paneRepoRootMap = useMemo(
-    () => new Map(sessions.map((session) => [session.paneId, session.repoRoot ?? null] as const)),
-    [sessions],
-  );
 
   const groups = useMemo(
     () => buildSessionGroups(visibleSessions, { getRepoSortAnchorAt }),
@@ -187,22 +171,6 @@ export const useSessionListVM = () => {
     refreshSessions();
   }, [refreshSessions]);
 
-  const handleTouchRepoPin = useCallback((repoRoot: string | null) => {
-    const key = createRepoPinKey(repoRoot);
-    setPins((prev) => touchSessionListPin(prev, "repos", key));
-  }, []);
-
-  const handleTouchPanePin = useCallback(
-    (paneId: string) => {
-      if (paneRepoRootMap.has(paneId)) {
-        const repoRoot = paneRepoRootMap.get(paneId) ?? null;
-        setPins((prev) => touchSessionListPin(prev, "repos", createRepoPinKey(repoRoot)));
-      }
-      void touchSession(paneId).catch(() => null);
-    },
-    [paneRepoRootMap, touchSession],
-  );
-
   const handleLaunchAgentInSession = useCallback(
     async (sessionName: string, agent: "codex" | "claude", options?: LaunchAgentRequestOptions) => {
       const key = sessionName;
@@ -276,8 +244,8 @@ export const useSessionListVM = () => {
     screenError,
     launchPendingSessions,
     onLaunchAgentInSession: handleLaunchAgentInSession,
-    onTouchRepoPin: handleTouchRepoPin,
-    onTouchPanePin: handleTouchPanePin,
+    onTouchRepoPin: touchRepoPin,
+    onTouchPanePin: touchPanePin,
   };
 };
 
