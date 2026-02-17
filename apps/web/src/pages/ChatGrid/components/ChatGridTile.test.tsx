@@ -159,4 +159,42 @@ describe("ChatGridTile", () => {
       expect(sendKeys).toHaveBeenCalledWith("pane-1", ["Enter"]);
     });
   });
+
+  it("does not show empty fallback while screen is loading", () => {
+    renderWithRouter(
+      <ChatGridTile
+        session={buildSession()}
+        nowMs={Date.parse("2026-02-17T00:10:00.000Z")}
+        connected
+        screenLines={[]}
+        screenLoading
+        screenError={null}
+        onTouchSession={vi.fn(async () => undefined)}
+        sendText={vi.fn(async () => ({ ok: true }))}
+        sendKeys={vi.fn(async () => ({ ok: true }))}
+        sendRaw={vi.fn(async () => ({ ok: true }))}
+      />,
+    );
+
+    expect(screen.queryByText("No screen data yet.")).toBeNull();
+  });
+
+  it("shows empty fallback when screen is idle with no lines", () => {
+    renderWithRouter(
+      <ChatGridTile
+        session={buildSession()}
+        nowMs={Date.parse("2026-02-17T00:10:00.000Z")}
+        connected
+        screenLines={[]}
+        screenLoading={false}
+        screenError={null}
+        onTouchSession={vi.fn(async () => undefined)}
+        sendText={vi.fn(async () => ({ ok: true }))}
+        sendKeys={vi.fn(async () => ({ ok: true }))}
+        sendRaw={vi.fn(async () => ({ ok: true }))}
+      />,
+    );
+
+    expect(screen.getByText("No screen data yet.")).toBeTruthy();
+  });
 });

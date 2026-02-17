@@ -258,6 +258,38 @@ describe("LaunchAgentButton", () => {
     expect(screen.queryByPlaceholderText("feature/new-worktree")).toBeNull();
   });
 
+  it("keeps existing mode when no managed worktrees are returned", async () => {
+    const requestWorktrees = vi.fn(async () => ({
+      repoRoot: "/repo",
+      currentPath: "/repo",
+      entries: [],
+    }));
+    const onLaunchAgentInSession = vi.fn(async () => undefined);
+
+    render(
+      <LaunchAgentButton
+        sessionName="dev-main"
+        sourceSession={buildSession({ paneId: "pane-root", worktreePath: "/repo", branch: "main" })}
+        launchConfig={defaultLaunchConfig}
+        launchPendingSessions={new Set()}
+        requestWorktrees={requestWorktrees}
+        onLaunchAgentInSession={onLaunchAgentInSession}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Launch Agent" }));
+    fireEvent.click(screen.getByLabelText("Use vw worktree"));
+
+    await waitFor(() => {
+      expect(requestWorktrees).toHaveBeenCalledWith("pane-root");
+      expect(
+        screen.getByText("No existing vw worktree found. Switch to New mode to create one."),
+      ).toBeTruthy();
+    });
+
+    expect(screen.queryByPlaceholderText("feature/new-worktree")).toBeNull();
+  });
+
   it("keeps launch location selection while modal is open even if source session updates", async () => {
     const requestWorktrees = vi.fn(async () => ({
       repoRoot: "/repo",
@@ -279,7 +311,9 @@ describe("LaunchAgentButton", () => {
     fireEvent.click(screen.getByRole("button", { name: "Launch Agent" }));
     fireEvent.click(screen.getByLabelText("Use vw worktree"));
     await waitFor(() => {
-      expect(screen.getByPlaceholderText("feature/new-worktree")).toBeTruthy();
+      expect(
+        screen.getByText("No existing vw worktree found. Switch to New mode to create one."),
+      ).toBeTruthy();
     });
 
     rerender(
@@ -297,7 +331,12 @@ describe("LaunchAgentButton", () => {
       />,
     );
 
-    expect(screen.getByPlaceholderText("feature/new-worktree")).toBeTruthy();
+    expect(
+      screen.getByText("No existing vw worktree found. Switch to New mode to create one."),
+    ).toBeTruthy();
+    expect(screen.queryByPlaceholderText("feature/new-worktree")).toBeNull();
+    expect(requestWorktrees).toHaveBeenCalledTimes(1);
+    expect(requestWorktrees).toHaveBeenCalledWith("pane-root");
     expect(screen.queryByText("repo root: /repo")).toBeNull();
   });
 

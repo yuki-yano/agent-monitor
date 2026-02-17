@@ -286,6 +286,12 @@ describe("SessionListView", () => {
     renderWithRouter(<SessionListView {...props} />);
 
     expect(screen.getByText("Loading Sessions...")).toBeTruthy();
+    expect(screen.getByTestId("session-list-header-loading-skeleton")).toBeTruthy();
+    expect(screen.getByTestId("session-list-loading-skeleton")).toBeTruthy();
+    expect(
+      screen.queryByText("Checking tmux sessions in the background. This should finish shortly."),
+    ).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Live Sessions" })).toBeNull();
     expect(screen.queryByText("No Active Sessions")).toBeNull();
   });
 

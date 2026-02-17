@@ -285,6 +285,7 @@ export const SessionDetailView = ({
         backToListSearch={backToListSearch}
         missingSessionState={missingSessionState}
         loading={isInitialSessionLoading || !showMissingState}
+        sidebarWidth={sidebarWidth}
       />
     );
   }

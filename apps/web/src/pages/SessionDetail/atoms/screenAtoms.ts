@@ -28,11 +28,15 @@ export const screenLinesAtom = atom((get) => {
   if (mode !== "text") {
     return [];
   }
-  const text = get(screenTextAtom) || "No screen data";
+  const text = get(screenTextAtom);
+  const screenLoading = get(screenLoadingAtom);
+  if (text.length === 0 && screenLoading.loading && screenLoading.mode === "text") {
+    return [];
+  }
   const theme = get(resolvedThemeAtom);
   const session = get(currentSessionAtom);
   const agent =
     session?.agent === "codex" || session?.agent === "claude" ? session.agent : "unknown";
   const highlightCorrections = get(highlightCorrectionsAtom);
-  return renderAnsiLines(text, theme, { agent, highlightCorrections });
+  return renderAnsiLines(text || "No screen data", theme, { agent, highlightCorrections });
 });

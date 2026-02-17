@@ -14,6 +14,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  LoadingOverlay,
   PillToggle,
   SettingCheckbox,
   SettingRadioGroup,
@@ -172,7 +173,6 @@ export const LaunchAgentButton = ({
         );
         setExistingWorktrees(managedEntries);
         if (managedEntries.length === 0) {
-          setWorktreeMode("new");
           setSelectedWorktreePath("");
           return;
         }
@@ -305,7 +305,7 @@ export const LaunchAgentButton = ({
         Launch Agent
       </button>
       <Dialog open={open} onOpenChange={(nextOpen) => (nextOpen ? setOpen(true) : closeModal())}>
-        <DialogContent className="w-[min(760px,calc(100vw-1rem))] max-w-none sm:w-[min(760px,calc(100vw-1.5rem))]">
+        <DialogContent className="max-h-[calc(100dvh-1rem)] w-[min(760px,calc(100vw-1rem))] max-w-none overflow-y-auto sm:max-h-[calc(100dvh-1.5rem)] sm:w-[min(760px,calc(100vw-1.5rem))]">
           <DialogHeader>
             <DialogTitle>Launch Agent</DialogTitle>
             <DialogDescription>
@@ -342,28 +342,29 @@ export const LaunchAgentButton = ({
                 checked={overrideAgentOptions}
                 onCheckedChange={setOverrideAgentOptions}
               />
-              {!overrideAgentOptions ? (
-                <p className="text-latte-subtext1 border-latte-surface2/80 bg-latte-base/60 rounded-xl border border-dashed px-3 py-2 font-mono text-xs">
-                  {launchOptionsDefaultOneLine(launchAgent) || "(no default options)"}
-                </p>
-              ) : null}
-              {overrideAgentOptions ? (
-                <div className="space-y-2">
-                  <p className="border-latte-lavender/30 bg-latte-lavender/10 text-latte-lavender rounded-lg border px-2.5 py-1.5 font-mono text-[11px]">
-                    Override format: each line is evaluated by shell as-is (quote/escape manually as
-                    needed)
+              <div className="border-latte-surface2/80 bg-latte-base/55 rounded-2xl border p-3">
+                {!overrideAgentOptions ? (
+                  <p className="text-latte-subtext1 border-latte-surface2/80 bg-latte-base/60 w-full rounded-xl border border-dashed px-3 py-2 font-mono text-xs">
+                    {launchOptionsDefaultOneLine(launchAgent) || "(no default options)"}
                   </p>
-                  <div className="border-latte-surface2 bg-latte-base/80 text-latte-text focus-within:border-latte-lavender focus-within:ring-latte-lavender/25 overflow-hidden rounded-2xl border transition focus-within:ring-2">
-                    <ZoomSafeTextarea
-                      aria-label="Agent options override"
-                      className="min-h-[112px] w-full resize-y bg-transparent px-3 py-2 font-mono text-base outline-none"
-                      value={agentOptionsText}
-                      onChange={(event) => setAgentOptionsText(event.target.value)}
-                      spellCheck={false}
-                    />
+                ) : (
+                  <div className="space-y-2">
+                    <p className="border-latte-lavender/30 bg-latte-lavender/10 text-latte-lavender rounded-lg border px-2.5 py-1.5 font-mono text-[11px]">
+                      Override format: each line is evaluated by shell as-is (quote/escape manually
+                      as needed)
+                    </p>
+                    <div className="border-latte-surface2 bg-latte-base/80 text-latte-text focus-within:border-latte-lavender focus-within:ring-latte-lavender/25 overflow-hidden rounded-2xl border transition focus-within:ring-2">
+                      <ZoomSafeTextarea
+                        aria-label="Agent options override"
+                        className="min-h-[112px] w-full resize-y bg-transparent px-3 py-2 font-mono text-base outline-none"
+                        value={agentOptionsText}
+                        onChange={(event) => setAgentOptionsText(event.target.value)}
+                        spellCheck={false}
+                      />
+                    </div>
                   </div>
-                </div>
-              ) : null}
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -377,74 +378,88 @@ export const LaunchAgentButton = ({
                 checked={useWorktree}
                 onCheckedChange={handleUseWorktreeChange}
               />
-              {!useWorktree ? (
-                <p className="text-latte-subtext1 border-latte-surface2/80 bg-latte-base/60 rounded-xl border border-dashed px-3 py-2 font-mono text-xs">
-                  {repoRootForModal
-                    ? `repo root: ${formatPath(repoRootForModal)}`
-                    : "repo root is unavailable for this session"}
-                </p>
-              ) : (
-                <div className="border-latte-surface2/80 bg-latte-base/55 space-y-3 rounded-2xl border p-3">
-                  <div className="flex items-center gap-2">
-                    <PillToggle
-                      type="button"
-                      active={worktreeMode === "existing"}
-                      onClick={() => setWorktreeMode("existing")}
-                      disabled={existingWorktrees.length === 0}
-                    >
-                      Existing
-                    </PillToggle>
-                    <PillToggle
-                      type="button"
-                      active={worktreeMode === "new"}
-                      onClick={() => setWorktreeMode("new")}
-                    >
-                      New
-                    </PillToggle>
-                  </div>
+              <div className="border-latte-surface2/80 bg-latte-base/55 rounded-2xl border p-3">
+                {!useWorktree ? (
+                  <p className="text-latte-subtext1 border-latte-surface2/80 bg-latte-base/60 w-full rounded-xl border border-dashed px-3 py-2 font-mono text-xs">
+                    {repoRootForModal
+                      ? `repo root: ${formatPath(repoRootForModal)}`
+                      : "repo root is unavailable for this session"}
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <PillToggle
+                        type="button"
+                        active={worktreeMode === "existing"}
+                        onClick={() => setWorktreeMode("existing")}
+                        disabled={existingWorktrees.length === 0}
+                      >
+                        Existing
+                      </PillToggle>
+                      <PillToggle
+                        type="button"
+                        active={worktreeMode === "new"}
+                        onClick={() => setWorktreeMode("new")}
+                      >
+                        New
+                      </PillToggle>
+                    </div>
 
-                  {worktreeMode === "existing" ? (
-                    <div className="space-y-2">
-                      {worktreeLoading ? (
-                        <p className="text-latte-subtext0 text-xs">Loading worktrees...</p>
-                      ) : null}
-                      {worktreeError ? (
-                        <p className="text-latte-red text-xs">{worktreeError}</p>
-                      ) : null}
-                      {!worktreeLoading && existingWorktrees.length === 0 ? (
-                        <p className="text-latte-subtext1 text-xs">
-                          No existing vw worktree found. Switch to New mode to create one.
-                        </p>
-                      ) : (
-                        <SettingRadioGroup
-                          ariaLabel="Existing worktrees"
-                          name={`worktree-${sessionName}`}
-                          className="custom-scrollbar max-h-40 overflow-y-auto pr-1"
-                          optionClassName="py-1.5"
-                          value={selectedWorktreePath}
-                          onValueChange={setSelectedWorktreePath}
-                          options={existingWorktreeOptions}
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-latte-subtext1 text-xs">
-                        Enter a branch name. `vw switch &lt;branch&gt;` will create the worktree if
-                        missing.
-                      </p>
-                      <div className="border-latte-surface2 bg-latte-base/70 text-latte-text focus-within:border-latte-lavender focus-within:ring-latte-lavender/30 shadow-elev-1 overflow-hidden rounded-2xl border transition focus-within:ring-2">
-                        <ZoomSafeInput
-                          value={newWorktreeBranch}
-                          onChange={(event) => setNewWorktreeBranch(event.target.value)}
-                          placeholder="feature/new-worktree"
-                          className="border-none bg-transparent font-mono shadow-none focus:ring-0"
-                        />
+                    {worktreeMode === "existing" ? (
+                      <div className="space-y-2">
+                        <div className="relative min-h-[96px]">
+                          {worktreeLoading ? (
+                            <LoadingOverlay
+                              label="Loading worktrees..."
+                              size="sm"
+                              blocking={false}
+                              className="z-10"
+                            />
+                          ) : null}
+                          {worktreeError ? (
+                            <div className="flex h-full items-center">
+                              <p className="text-latte-red text-xs">{worktreeError}</p>
+                            </div>
+                          ) : null}
+                          {!worktreeError && existingWorktrees.length === 0 && !worktreeLoading ? (
+                            <div className="flex h-full items-center">
+                              <p className="text-latte-subtext1 text-xs">
+                                No existing vw worktree found. Switch to New mode to create one.
+                              </p>
+                            </div>
+                          ) : null}
+                          {!worktreeError && existingWorktrees.length > 0 ? (
+                            <SettingRadioGroup
+                              ariaLabel="Existing worktrees"
+                              name={`worktree-${sessionName}`}
+                              className="pr-1"
+                              optionClassName="py-1.5"
+                              value={selectedWorktreePath}
+                              onValueChange={setSelectedWorktreePath}
+                              options={existingWorktreeOptions}
+                            />
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-latte-subtext1 text-xs">
+                          Enter a branch name. `vw switch &lt;branch&gt;` will create the worktree
+                          if missing.
+                        </p>
+                        <div className="border-latte-surface2 bg-latte-base/70 text-latte-text focus-within:border-latte-lavender focus-within:ring-latte-lavender/30 shadow-elev-1 overflow-hidden rounded-2xl border transition focus-within:ring-2">
+                          <ZoomSafeInput
+                            value={newWorktreeBranch}
+                            onChange={(event) => setNewWorktreeBranch(event.target.value)}
+                            placeholder="feature/new-worktree"
+                            className="border-none bg-transparent font-mono shadow-none focus:ring-0"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {submitError ? <p className="text-latte-red text-xs">{submitError}</p> : null}

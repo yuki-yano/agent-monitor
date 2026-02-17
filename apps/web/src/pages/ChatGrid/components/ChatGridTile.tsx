@@ -120,10 +120,15 @@ export const ChatGridTile = ({
   const [composerError, setComposerError] = useState<string | null>(null);
   const sessionTone = getLastInputTone(session.lastInputAt, nowMs);
   const sessionTitle = resolveSessionDisplayTitle(session);
-  const displayLines = useMemo(
-    () => (screenLines.length > 0 ? screenLines : ["No screen data yet."]),
-    [screenLines],
-  );
+  const displayLines = useMemo(() => {
+    if (screenLines.length > 0) {
+      return screenLines;
+    }
+    if (screenLoading) {
+      return [];
+    }
+    return ["No screen data yet."];
+  }, [screenLines, screenLoading]);
   const scrollToBottom = useCallback(
     (behavior: "auto" | "smooth" = "smooth") => {
       virtuosoRef.current?.scrollToIndex({

@@ -326,6 +326,10 @@ describe("SessionDetailView", () => {
       renderWithRouter(<SessionDetailView {...props} />);
 
       expect(screen.getByText("Loading session...")).toBeTruthy();
+      expect(screen.getByTestId("session-detail-loading-skeleton")).toBeTruthy();
+      expect(screen.getByTestId("session-detail-loading-header")).toBeTruthy();
+      expect(screen.getByTestId("session-detail-loading-top")).toBeTruthy();
+      expect(screen.getByRole("tablist", { name: "Theme selection" })).toBeTruthy();
       act(() => {
         vi.advanceTimersByTime(1600);
       });
@@ -344,6 +348,10 @@ describe("SessionDetailView", () => {
     renderWithRouter(<SessionDetailView {...props} />);
 
     expect(screen.getByText("Loading session...")).toBeTruthy();
+    expect(screen.getByTestId("session-detail-loading-skeleton")).toBeTruthy();
+    expect(screen.getByTestId("session-detail-loading-header")).toBeTruthy();
+    expect(screen.getByTestId("session-detail-loading-top")).toBeTruthy();
+    expect(screen.getByRole("tablist", { name: "Theme selection" })).toBeTruthy();
     expect(screen.queryByText("Session not found.")).toBeNull();
   });
 
