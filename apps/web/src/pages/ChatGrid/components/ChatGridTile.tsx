@@ -286,6 +286,7 @@ export const ChatGridTile = ({
             <GitBranch className="h-3 w-3" />
             <span>{formatBranchLabel(session.branch)}</span>
           </TagPill>
+          <TagPill tone="meta">Window {session.windowIndex}</TagPill>
           <TagPill tone="meta">Pane {session.paneId}</TagPill>
         </div>
       </header>
