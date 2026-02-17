@@ -1,17 +1,12 @@
 import type {
   HighlightCorrectionConfig,
-  ScreenResponse,
   SessionStateTimeline,
-  SessionStateTimelineRange,
-  SessionStateTimelineScope,
   SessionSummary,
 } from "@vde-monitor/shared";
 import { useAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 import { renderAnsiLines } from "@/lib/ansi";
-import { API_ERROR_MESSAGES } from "@/lib/api-messages";
-import { resolveUnknownErrorMessage } from "@/lib/api-utils";
 import type { Theme } from "@/lib/theme";
 
 import {
@@ -19,7 +14,10 @@ import {
   sidebarHoveredPaneIdAtom,
   sidebarPreviewFrameAtom,
 } from "../atoms/sidebarPreviewAtoms";
+import { selectVisibleLines } from "./sidebar-preview-geometry";
 import { useSessionPreview } from "./useSessionPreview";
+import { useSidebarPreviewHoverController } from "./useSidebarPreviewHoverController";
+import { useSidebarPreviewTimelineCache } from "./useSidebarPreviewTimelineCache";
 
 export type SidebarPreview = {
   paneId: string;
@@ -43,37 +41,22 @@ type UseSidebarPreviewParams = {
   requestStateTimeline?: (
     paneId: string,
     options?: {
-      scope?: SessionStateTimelineScope;
-      range?: SessionStateTimelineRange;
+      scope?: "pane" | "repo";
+      range?: "15m" | "1h" | "3h" | "6h" | "24h";
       limit?: number;
     },
   ) => Promise<SessionStateTimeline>;
   requestScreen: (
     paneId: string,
     options: { lines?: number; mode?: "text" | "image"; cursor?: string },
-  ) => Promise<ScreenResponse>;
+  ) => Promise<import("@vde-monitor/shared").ScreenResponse>;
   resolvedTheme: Theme;
   highlightCorrections?: HighlightCorrectionConfig;
 };
 
-const PREVIEW_MIN_WIDTH = 640;
-const PREVIEW_MAX_WIDTH = 1200;
-const PREVIEW_MIN_HEIGHT = 420;
-const PREVIEW_HEIGHT_RATIO = 0.78;
-const PREVIEW_VERTICAL_GUTTER = 72;
-const PREVIEW_MARGIN = 16;
-const PREVIEW_HEADER_OFFSET = 176;
-const PREVIEW_LINE_HEIGHT = 16;
-const HOVER_PREVIEW_DELAY_MS = 320;
-const TIMELINE_RANGE: SessionStateTimelineRange = "1h";
-const TIMELINE_LIMIT = 200;
-
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-
 type PreviewCacheMap = Partial<Record<string, { screen: string }>>;
 type PreviewLoadingMap = Partial<Record<string, boolean>>;
 type PreviewErrorMap = Partial<Record<string, string | null>>;
-type TimelineCacheMap = Partial<Record<string, SessionStateTimeline>>;
 
 type HoveredPaneData = {
   session: SessionSummary | null;
@@ -116,42 +99,6 @@ const resolveHoveredPaneData = ({
   };
 };
 
-const isPaneLoading = (paneId: string | null, loading: Record<string, boolean>) =>
-  Boolean(paneId && loading[paneId]);
-
-const pickPaneError = (paneId: string | null, errors: Record<string, string | null>) => {
-  if (!paneId) {
-    return null;
-  }
-  return errors[paneId] ?? null;
-};
-
-const pickPaneTimeline = (paneId: string | null, cache: TimelineCacheMap) => {
-  if (!paneId) {
-    return null;
-  }
-  return cache[paneId] ?? null;
-};
-
-const resolveTimelineError = (err: unknown) =>
-  resolveUnknownErrorMessage(err, API_ERROR_MESSAGES.timeline);
-
-const prunePaneRecord = <T>(record: Record<string, T>, activePaneIds: Set<string>) => {
-  const keys = Object.keys(record);
-  if (keys.length === 0) {
-    return record;
-  }
-  const nextKeys = keys.filter((paneId) => activePaneIds.has(paneId));
-  if (nextKeys.length === keys.length) {
-    return record;
-  }
-  const nextRecord: Record<string, T> = {};
-  nextKeys.forEach((paneId) => {
-    nextRecord[paneId] = record[paneId] as T;
-  });
-  return nextRecord;
-};
-
 const resolvePreviewAgent = (session: SessionSummary | null): "codex" | "claude" | "unknown" => {
   if (session?.agent === "codex" || session?.agent === "claude") {
     return session.agent;
@@ -174,7 +121,9 @@ const buildPreviewLines = ({
   resolvedTheme: Theme;
   highlightCorrections: HighlightCorrectionConfig | undefined;
 }) => {
-  if (!hoveredPaneId || !previewEntry) return [];
+  if (!hoveredPaneId || !previewEntry) {
+    return [];
+  }
   const text = previewText.length > 0 ? previewText : "No log data";
   return renderAnsiLines(text, resolvedTheme, {
     agent: resolvePreviewAgent(session),
@@ -182,15 +131,16 @@ const buildPreviewLines = ({
   });
 };
 
-const selectVisibleLines = (previewFrame: PreviewFrame | null, lines: string[]) => {
-  if (!previewFrame || lines.length === 0) return [];
-  return lines.slice(-previewFrame.lines);
-};
-
 const resolvePreviewTitle = (session: SessionSummary | null) => {
-  if (session?.customTitle) return session.customTitle;
-  if (session?.title) return session.title;
-  if (session?.sessionName) return session.sessionName;
+  if (session?.customTitle) {
+    return session.customTitle;
+  }
+  if (session?.title) {
+    return session.title;
+  }
+  if (session?.sessionName) {
+    return session.sessionName;
+  }
   return "Session";
 };
 
@@ -234,7 +184,9 @@ const buildSidebarPreview = ({
   timelineLoading: boolean;
   timelineError: string | null;
 }): SidebarPreview | null => {
-  if (!hoveredPaneId || !previewFrame) return null;
+  if (!hoveredPaneId || !previewFrame) {
+    return null;
+  }
   return {
     paneId: hoveredPaneId,
     sessionName,
@@ -268,16 +220,31 @@ export const useSidebarPreview = ({
     });
   const [hoveredPaneId, setHoveredPaneId] = useAtom(sidebarHoveredPaneIdAtom);
   const [previewFrame, setPreviewFrame] = useAtom(sidebarPreviewFrameAtom);
-  const [timelineCache, setTimelineCache] = useState<Record<string, SessionStateTimeline>>({});
-  const [timelineLoading, setTimelineLoading] = useState<Record<string, boolean>>({});
-  const [timelineError, setTimelineError] = useState<Record<string, string | null>>({});
-  const timelineCacheRef = useRef<Record<string, SessionStateTimeline>>({});
-  const timelineInflightRef = useRef(new Set<string>());
-  const itemRefs = useRef(new Map<string, HTMLDivElement>());
-  const hoverTimerRef = useRef<number | null>(null);
-  const pendingHoverRef = useRef<string | null>(null);
-  const rafIdRef = useRef<number | null>(null);
-  const pendingPreviewPaneRef = useRef<string | null>(null);
+
+  const { hoveredTimeline, hoveredTimelineLoading, hoveredTimelineError, fetchTimeline } =
+    useSidebarPreviewTimelineCache({
+      hoveredPaneId,
+      sessionIndex,
+      requestStateTimeline,
+    });
+
+  const {
+    handleBlur,
+    handleFocus,
+    handleHoverEnd,
+    handleHoverStart,
+    handleListScroll,
+    handleSelect,
+    registerItemRef,
+  } = useSidebarPreviewHoverController({
+    currentPaneId,
+    hoveredPaneId,
+    setHoveredPaneId,
+    setPreviewFrame,
+    prefetchPreview,
+    fetchTimeline,
+  });
+
   const hoveredPaneData = resolveHoveredPaneData({
     hoveredPaneId,
     sessionIndex,
@@ -290,9 +257,6 @@ export const useSidebarPreview = ({
   const hoveredPreviewText = hoveredPaneData.previewText;
   const hoveredPreviewLoading = hoveredPaneData.loading;
   const hoveredPreviewError = hoveredPaneData.error;
-  const hoveredTimeline = pickPaneTimeline(hoveredPaneId, timelineCache);
-  const hoveredTimelineLoading = isPaneLoading(hoveredPaneId, timelineLoading);
-  const hoveredTimelineError = pickPaneError(hoveredPaneId, timelineError);
   const hoveredPreviewLines = useMemo(() => {
     return buildPreviewLines({
       hoveredPaneId,
@@ -312,177 +276,9 @@ export const useSidebarPreview = ({
   ]);
 
   useEffect(() => {
-    timelineCacheRef.current = timelineCache;
-  }, [timelineCache]);
-
-  const fetchTimeline = useCallback(
-    async (paneId: string) => {
-      if (!requestStateTimeline || !paneId) {
-        return;
-      }
-      if (timelineCacheRef.current[paneId] || timelineInflightRef.current.has(paneId)) {
-        return;
-      }
-      timelineInflightRef.current.add(paneId);
-      setTimelineLoading((prev) => ({ ...prev, [paneId]: true }));
-      try {
-        const timeline = await requestStateTimeline(paneId, {
-          range: TIMELINE_RANGE,
-          limit: TIMELINE_LIMIT,
-        });
-        setTimelineCache((prev) => ({ ...prev, [paneId]: timeline }));
-        setTimelineError((prev) => ({ ...prev, [paneId]: null }));
-      } catch (err) {
-        setTimelineError((prev) => ({ ...prev, [paneId]: resolveTimelineError(err) }));
-      } finally {
-        timelineInflightRef.current.delete(paneId);
-        setTimelineLoading((prev) => ({ ...prev, [paneId]: false }));
-      }
-    },
-    [requestStateTimeline],
-  );
-
-  const updatePreviewPosition = useCallback(
-    (paneId: string) => {
-      const node = itemRefs.current.get(paneId);
-      if (!node || typeof window === "undefined") return;
-      const rect = node.getBoundingClientRect();
-      if (!rect.width || !rect.height) return;
-
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      const maxWidth = Math.min(PREVIEW_MAX_WIDTH, viewportWidth - 48);
-      const maxHeight = Math.max(PREVIEW_MIN_HEIGHT, viewportHeight - PREVIEW_VERTICAL_GUTTER);
-      const width = clamp(Math.round(viewportWidth * 0.56), PREVIEW_MIN_WIDTH, maxWidth);
-      const height = clamp(
-        Math.round(viewportHeight * PREVIEW_HEIGHT_RATIO),
-        PREVIEW_MIN_HEIGHT,
-        maxHeight,
-      );
-      const bodyHeight = Math.max(
-        height - PREVIEW_HEADER_OFFSET,
-        PREVIEW_MIN_HEIGHT - PREVIEW_HEADER_OFFSET,
-      );
-      const lines = Math.max(20, Math.floor(bodyHeight / PREVIEW_LINE_HEIGHT) - 1);
-
-      let left = rect.right + PREVIEW_MARGIN;
-      const maxLeft = viewportWidth - width - 24;
-      if (left > maxLeft) {
-        left = Math.max(24, maxLeft);
-      }
-      let top = rect.top + rect.height / 2;
-      const minTop = height / 2 + 24;
-      const maxTop = viewportHeight - height / 2 - 24;
-      top = Math.min(Math.max(top, minTop), maxTop);
-      setPreviewFrame({ left, top, width, height, lines });
-    },
-    [setPreviewFrame],
-  );
-
-  const schedulePreviewPosition = useCallback(
-    (paneId: string) => {
-      if (!paneId || typeof window === "undefined") return;
-      pendingPreviewPaneRef.current = paneId;
-      if (rafIdRef.current != null) return;
-      rafIdRef.current = window.requestAnimationFrame(() => {
-        rafIdRef.current = null;
-        const target = pendingPreviewPaneRef.current;
-        if (target) {
-          updatePreviewPosition(target);
-        }
-      });
-    },
-    [updatePreviewPosition],
-  );
-
-  const clearHoverTimer = useCallback(() => {
-    if (hoverTimerRef.current != null) {
-      window.clearTimeout(hoverTimerRef.current);
-      hoverTimerRef.current = null;
-    }
-    pendingHoverRef.current = null;
-  }, []);
-
-  const clearHoverState = useCallback(
-    (paneId: string) => {
-      if (pendingHoverRef.current === paneId) {
-        clearHoverTimer();
-      }
-      setHoveredPaneId((prev) => {
-        if (prev !== paneId) return prev;
-        setPreviewFrame(null);
-        return null;
-      });
-    },
-    [clearHoverTimer, setHoveredPaneId, setPreviewFrame],
-  );
-
-  const registerItemRef = useCallback((paneId: string, node: HTMLDivElement | null) => {
-    if (node) {
-      itemRefs.current.set(paneId, node);
-    } else {
-      itemRefs.current.delete(paneId);
-    }
-  }, []);
-
-  const handleHoverStart = useCallback(
-    (paneId: string) => {
-      if (paneId === currentPaneId) return;
-      void prefetchPreview(paneId);
-      void fetchTimeline(paneId);
-      clearHoverTimer();
-      pendingHoverRef.current = paneId;
-      hoverTimerRef.current = window.setTimeout(() => {
-        if (pendingHoverRef.current !== paneId) return;
-        setHoveredPaneId(paneId);
-        clearHoverTimer();
-      }, HOVER_PREVIEW_DELAY_MS);
-    },
-    [clearHoverTimer, currentPaneId, fetchTimeline, prefetchPreview, setHoveredPaneId],
-  );
-
-  const handleHoverEnd = useCallback(
-    (paneId: string) => {
-      clearHoverState(paneId);
-    },
-    [clearHoverState],
-  );
-
-  const handleFocus = useCallback(
-    (paneId: string) => {
-      if (paneId === currentPaneId) return;
-      clearHoverTimer();
-      setHoveredPaneId(paneId);
-      void prefetchPreview(paneId);
-      void fetchTimeline(paneId);
-    },
-    [clearHoverTimer, currentPaneId, fetchTimeline, prefetchPreview, setHoveredPaneId],
-  );
-
-  const handleBlur = useCallback(
-    (paneId: string) => {
-      clearHoverState(paneId);
-    },
-    [clearHoverState],
-  );
-
-  const handleSelect = useCallback(() => {
-    clearHoverTimer();
-    setHoveredPaneId(null);
-    setPreviewFrame(null);
-  }, [clearHoverTimer, setHoveredPaneId, setPreviewFrame]);
-
-  useEffect(() => {
-    if (!hoveredPaneId) {
-      pendingPreviewPaneRef.current = null;
-      setPreviewFrame(null);
+    if (Object.keys(previewCache).length === 0) {
       return;
     }
-    updatePreviewPosition(hoveredPaneId);
-  }, [hoveredPaneId, setPreviewFrame, updatePreviewPosition]);
-
-  useEffect(() => {
-    if (Object.keys(previewCache).length === 0) return;
     const activePaneIds = new Set(sessionIndex.keys());
     Object.keys(previewCache).forEach((paneId) => {
       if (!activePaneIds.has(paneId)) {
@@ -490,34 +286,6 @@ export const useSidebarPreview = ({
       }
     });
   }, [clearPreviewCache, previewCache, sessionIndex]);
-
-  useEffect(() => {
-    const activePaneIds = new Set(sessionIndex.keys());
-    setTimelineCache((prev) => prunePaneRecord(prev, activePaneIds));
-    setTimelineLoading((prev) => prunePaneRecord(prev, activePaneIds));
-    setTimelineError((prev) => prunePaneRecord(prev, activePaneIds));
-  }, [sessionIndex]);
-
-  useEffect(() => {
-    if (!hoveredPaneId) return;
-    const handleUpdate = () => schedulePreviewPosition(hoveredPaneId);
-    window.addEventListener("resize", handleUpdate);
-    window.addEventListener("scroll", handleUpdate, true);
-    return () => {
-      window.removeEventListener("resize", handleUpdate);
-      window.removeEventListener("scroll", handleUpdate, true);
-    };
-  }, [hoveredPaneId, schedulePreviewPosition]);
-
-  useEffect(() => {
-    return () => {
-      clearHoverTimer();
-      if (typeof window !== "undefined" && rafIdRef.current != null) {
-        window.cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
-      }
-    };
-  }, [clearHoverTimer]);
 
   const previewLines = selectVisibleLines(previewFrame, hoveredPreviewLines);
   const previewSessionMeta = resolvePreviewSessionMeta(hoveredSession);
@@ -534,12 +302,6 @@ export const useSidebarPreview = ({
     timelineLoading: hoveredTimelineLoading,
     timelineError: hoveredTimelineError,
   });
-
-  const handleListScroll = useCallback(() => {
-    if (hoveredPaneId) {
-      schedulePreviewPosition(hoveredPaneId);
-    }
-  }, [hoveredPaneId, schedulePreviewPosition]);
 
   return {
     preview,
