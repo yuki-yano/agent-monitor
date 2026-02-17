@@ -155,6 +155,9 @@ const TestComponent = () => {
       <button type="button" onClick={() => vm.onSearchQueryChange("repo")}>
         set-query
       </button>
+      <button type="button" onClick={() => vm.onSearchQueryChange("repo backend")}>
+        set-query-words
+      </button>
       <button type="button" onClick={() => vm.onSearchQueryChange("")}>
         clear-query
       </button>
@@ -283,6 +286,14 @@ describe("useSessionListVM", () => {
     fireEvent.click(screen.getByRole("button", { name: "set-query" }));
     await waitFor(() => {
       expect(screen.getByTestId("query").textContent).toBe("repo");
+    });
+  });
+
+  it("keeps space-separated query terms", async () => {
+    await renderWithRouter(["/?filter=AGENT"]);
+    fireEvent.click(screen.getByRole("button", { name: "set-query-words" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("query").textContent).toBe("repo backend");
     });
   });
 

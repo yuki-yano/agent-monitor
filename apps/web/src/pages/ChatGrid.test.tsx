@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { render, screen } from "@testing-library/react";
+import type { ComponentPropsWithoutRef } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ChatGridPage } from "./ChatGrid";
@@ -29,6 +30,21 @@ vi.mock("@/lib/use-media-query", () => ({
   useMediaQuery: mockUseMediaQuery,
 }));
 
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    to,
+    search,
+    ...props
+  }: {
+    to: string;
+    search?: { filter?: string };
+  } & Omit<ComponentPropsWithoutRef<"a">, "href">) => {
+    const href =
+      typeof search?.filter === "string" ? `${to}?filter=${encodeURIComponent(search.filter)}` : to;
+    return <a href={href} {...props} />;
+  },
+}));
+
 describe("ChatGridPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -50,7 +66,9 @@ describe("ChatGridPage", () => {
     render(<ChatGridPage />);
 
     expect(screen.getByText("Chat Grid is desktop only")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Back to Live Sessions" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back to Live Sessions" }).getAttribute("href")).toBe(
+      "/?filter=AGENT",
+    );
     expect(mockUseChatGridVM).not.toHaveBeenCalled();
     expect(viewSpy).not.toHaveBeenCalled();
     expect(document.title).toBe("VDE Monitor");

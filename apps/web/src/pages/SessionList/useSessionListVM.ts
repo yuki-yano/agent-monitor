@@ -18,7 +18,11 @@ import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
 import { useSessions } from "@/state/session-context";
 import { useTheme } from "@/state/theme-context";
 
-import { matchesSessionListSearch, normalizeSessionListSearchQuery } from "./sessionListSearch";
+import {
+  hasSessionListSearchTerms,
+  matchesSessionListSearch,
+  normalizeSessionListSearchQuery,
+} from "./sessionListSearch";
 
 const FILTER_OPTIONS = SESSION_LIST_FILTER_VALUES.map((value) => ({
   value,
@@ -147,7 +151,7 @@ export const useSessionListVM = () => {
       void navigate({
         search: (prev) => ({
           ...prev,
-          q: nextQuery.length > 0 ? nextQuery : undefined,
+          q: hasSessionListSearchTerms(nextQuery) ? nextQuery : undefined,
         }),
         replace: true,
       });

@@ -1,5 +1,5 @@
 import { LayoutGrid, RefreshCw, Search, X } from "lucide-react";
-import type { ChangeEvent } from "react";
+import { type ChangeEvent, useEffect, useState } from "react";
 
 import {
   Button,
@@ -22,6 +22,8 @@ type SessionListHeaderProps = {
   onOpenChatGrid: () => void;
 };
 
+const SEARCH_INPUT_DEBOUNCE_MS = 180;
+
 export const SessionListHeader = ({
   connectionStatus,
   connectionIssue,
@@ -33,8 +35,28 @@ export const SessionListHeader = ({
   onRefresh,
   onOpenChatGrid,
 }: SessionListHeaderProps) => {
+  const [draftSearchQuery, setDraftSearchQuery] = useState(searchQuery);
+
+  useEffect(() => {
+    setDraftSearchQuery(searchQuery);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (draftSearchQuery === searchQuery) {
+      return;
+    }
+    const debounceMs = draftSearchQuery.length === 0 ? 0 : SEARCH_INPUT_DEBOUNCE_MS;
+    const timeoutId = window.setTimeout(() => {
+      onSearchQueryChange(draftSearchQuery);
+    }, debounceMs);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [draftSearchQuery, onSearchQueryChange, searchQuery]);
+
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
-    onSearchQueryChange(event.target.value);
+    setDraftSearchQuery(event.target.value);
   };
   const connectionIssueLines = connectionIssue
     ? connectionIssue
@@ -81,19 +103,19 @@ export const SessionListHeader = ({
       <div className="border-latte-surface2 text-latte-text focus-within:border-latte-lavender focus-within:ring-latte-lavender/30 bg-latte-base/70 shadow-elev-1 relative overflow-hidden rounded-2xl border transition focus-within:ring-2">
         <Search className="text-latte-subtext0 pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" />
         <Input
-          value={searchQuery}
+          value={draftSearchQuery}
           onChange={handleSearchChange}
           placeholder="Search sessions"
           aria-label="Search sessions"
           className="h-10 border-none bg-transparent py-0 pl-11 pr-12 text-base shadow-none focus:ring-0 sm:pl-11 sm:pr-12 sm:text-sm"
         />
-        {searchQuery.length > 0 && (
+        {draftSearchQuery.length > 0 && (
           <Button
             type="button"
             variant="ghost"
             size="sm"
             className="absolute right-1.5 top-1/2 h-7 w-7 -translate-y-1/2 p-0"
-            onClick={() => onSearchQueryChange("")}
+            onClick={() => setDraftSearchQuery("")}
             aria-label="Clear search"
             title="Clear search"
           >

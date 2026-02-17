@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+
 import { DEFAULT_SESSION_LIST_FILTER } from "@/features/shared-session-ui/model/session-list-filters";
 import { APP_DISPLAY_NAME } from "@/lib/brand";
 import { useMediaQuery } from "@/lib/use-media-query";
@@ -28,12 +30,13 @@ export const ChatGridPage = () => {
               Chat Grid is available on larger screens. Please open this page from a desktop
               browser.
             </p>
-            <a
-              href={`/?filter=${DEFAULT_SESSION_LIST_FILTER}`}
+            <Link
+              to="/"
+              search={{ filter: DEFAULT_SESSION_LIST_FILTER }}
               className="text-latte-lavender hover:text-latte-blue inline-flex text-sm font-semibold transition"
             >
               Back to Live Sessions
-            </a>
+            </Link>
           </div>
         </main>
       </>

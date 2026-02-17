@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { SessionSummary } from "@vde-monitor/shared";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ChatGridCandidateModal } from "./ChatGridCandidateModal";
 
@@ -40,6 +40,10 @@ const buildSession = (overrides: Partial<SessionSummary> = {}): SessionSummary =
 });
 
 describe("ChatGridCandidateModal", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("disables apply when selected count is below minimum", () => {
     render(
       <ChatGridCandidateModal
@@ -84,6 +88,7 @@ describe("ChatGridCandidateModal", () => {
   });
 
   it("filters candidates by session and window fields", () => {
+    vi.useFakeTimers();
     render(
       <ChatGridCandidateModal
         open
@@ -111,13 +116,87 @@ describe("ChatGridCandidateModal", () => {
 
     const searchInput = screen.getByLabelText("Filter candidate panes");
     fireEvent.change(searchInput, { target: { value: "beta-session" } });
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
+
+    expect(screen.queryByLabelText("Select First Session")).toBeNull();
+    expect(screen.getByLabelText("Select Second Session")).toBeTruthy();
+
+    fireEvent.change(searchInput, { target: { value: "beta 8" } });
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
 
     expect(screen.queryByLabelText("Select First Session")).toBeNull();
     expect(screen.getByLabelText("Select Second Session")).toBeTruthy();
 
     fireEvent.change(searchInput, { target: { value: "window 3" } });
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
 
     expect(screen.getByLabelText("Select First Session")).toBeTruthy();
     expect(screen.queryByLabelText("Select Second Session")).toBeNull();
+  });
+
+  it("keeps candidate list viewport height stable while filtering", () => {
+    vi.useFakeTimers();
+    render(
+      <ChatGridCandidateModal
+        open
+        candidateItems={[
+          buildSession({ paneId: "pane-1", title: "First Session", sessionName: "alpha" }),
+          buildSession({ paneId: "pane-2", title: "Second Session", sessionName: "beta" }),
+        ]}
+        selectedPaneIds={[]}
+        nowMs={Date.parse("2026-02-17T00:10:00.000Z")}
+        onOpenChange={vi.fn()}
+        onTogglePane={vi.fn()}
+        onApply={vi.fn()}
+      />,
+    );
+
+    const listViewport = screen.getByTestId("candidate-pane-list");
+    expect(listViewport.className).toContain("h-[64vh]");
+
+    const searchInput = screen.getByLabelText("Filter candidate panes");
+    fireEvent.change(searchInput, { target: { value: "no-match" } });
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
+
+    expect(screen.getByText('No candidate panes match "no-match".')).toBeTruthy();
+    expect(screen.getByTestId("candidate-pane-list").className).toContain("h-[64vh]");
+  });
+
+  it("clears search query when modal is reopened", () => {
+    vi.useFakeTimers();
+    const props = {
+      candidateItems: [
+        buildSession({ paneId: "pane-1", title: "First Session", sessionName: "alpha-session" }),
+        buildSession({ paneId: "pane-2", title: "Second Session", sessionName: "beta-session" }),
+      ],
+      selectedPaneIds: [],
+      nowMs: Date.parse("2026-02-17T00:10:00.000Z"),
+      onOpenChange: vi.fn(),
+      onTogglePane: vi.fn(),
+      onApply: vi.fn(),
+    };
+    const { rerender } = render(<ChatGridCandidateModal open {...props} />);
+
+    const searchInput = screen.getByLabelText("Filter candidate panes");
+    fireEvent.change(searchInput, { target: { value: "beta-session" } });
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
+    expect(screen.queryByLabelText("Select First Session")).toBeNull();
+
+    rerender(<ChatGridCandidateModal open={false} {...props} />);
+    rerender(<ChatGridCandidateModal open {...props} />);
+
+    const reopenedSearchInput = screen.getByLabelText("Filter candidate panes") as HTMLInputElement;
+    expect(reopenedSearchInput.value).toBe("");
+    expect(screen.getByLabelText("Select First Session")).toBeTruthy();
   });
 });
