@@ -95,35 +95,6 @@ const SessionListLoadingSkeleton = () => (
   </div>
 );
 
-const SessionListHeaderLoadingSkeleton = () => (
-  <header
-    data-testid="session-list-header-loading-skeleton"
-    className="shadow-glass border-latte-surface1/60 bg-latte-base/80 flex flex-col gap-3 rounded-3xl border p-3 backdrop-blur sm:gap-4 sm:p-6"
-  >
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="space-y-2">
-        <LoadingBar className="h-3 w-24" shimmerClassName="w-8" />
-        <LoadingBar className="h-9 w-52 max-w-[70vw]" shimmerClassName="w-20" />
-      </div>
-      <div className="flex items-center gap-3">
-        <LoadingBar className="hidden h-7 w-24 rounded-full md:block" shimmerClassName="w-10" />
-        <LoadingBar className="h-7 w-20 rounded-full" shimmerClassName="w-9" />
-        <LoadingBar className="h-7 w-7 rounded-full" shimmerClassName="w-4 rounded-full" />
-      </div>
-    </div>
-    <LoadingBar className="h-10 w-full rounded-2xl" shimmerClassName="w-24 rounded-2xl" />
-    <div className="flex flex-wrap gap-2">
-      {[0, 1, 2, 3, 4].map((index) => (
-        <LoadingBar
-          key={`session-list-header-filter-${index}`}
-          className="h-7 w-16 rounded-full"
-          shimmerClassName="w-7 rounded-full"
-        />
-      ))}
-    </div>
-  </header>
-);
-
 export const SessionListView = ({
   sessions,
   groups,
@@ -301,21 +272,17 @@ export const SessionListView = ({
             <div />
             <ThemeToggle />
           </div>
-          {isDiscoveringSessions ? (
-            <SessionListHeaderLoadingSkeleton />
-          ) : (
-            <SessionListHeader
-              connectionStatus={connectionStatus}
-              connectionIssue={connectionIssue}
-              filter={filter}
-              searchQuery={searchQuery}
-              filterOptions={filterOptions}
-              onFilterChange={onFilterChange}
-              onSearchQueryChange={onSearchQueryChange}
-              onRefresh={onRefresh}
-              onOpenChatGrid={onOpenChatGrid}
-            />
-          )}
+          <SessionListHeader
+            connectionStatus={connectionStatus}
+            connectionIssue={connectionIssue}
+            filter={filter}
+            searchQuery={searchQuery}
+            filterOptions={filterOptions}
+            onFilterChange={onFilterChange}
+            onSearchQueryChange={onSearchQueryChange}
+            onRefresh={onRefresh}
+            onOpenChatGrid={onOpenChatGrid}
+          />
           {screenError ? (
             <div
               role="alert"
