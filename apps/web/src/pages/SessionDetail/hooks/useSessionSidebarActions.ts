@@ -4,7 +4,7 @@ import {
   DEFAULT_SESSION_LIST_FILTER,
   isSessionListFilter,
   type SessionListFilter,
-} from "@/pages/SessionList/sessionListFilters";
+} from "@/features/shared-session-ui/model/session-list-filters";
 import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
 
 type UseSessionSidebarActionsArgs = {

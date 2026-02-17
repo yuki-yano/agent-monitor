@@ -14,10 +14,10 @@ import {
 import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { Card, Tabs, TabsList, TabsTrigger } from "@/components/ui";
+import { readStoredSessionListFilter } from "@/features/shared-session-ui/model/session-list-filters";
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import { buildSessionDocumentTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
-import { readStoredSessionListFilter } from "@/pages/SessionList/sessionListFilters";
 
 import { CommitSection } from "./components/CommitSection";
 import { ControlsPanel } from "./components/ControlsPanel";

@@ -1,13 +1,13 @@
 import type { SessionSummary } from "@vde-monitor/shared";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { buildSessionGroups } from "@/lib/session-group";
 import {
   createRepoPinKey,
   readStoredSessionListPins,
   storeSessionListPins,
   touchSessionListPin,
-} from "@/pages/SessionList/sessionListPins";
+} from "@/features/shared-session-ui/model/session-list-pins";
+import { buildSessionGroups } from "@/lib/session-group";
 
 type UseSessionRepoPinsArgs = {
   sessions: SessionSummary[];

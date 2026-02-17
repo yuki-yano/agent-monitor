@@ -1,6 +1,20 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useSessionLogs } from "@/features/shared-session-ui/hooks/useSessionLogs";
+import {
+  DEFAULT_SESSION_LIST_FILTER,
+  isSessionListFilter,
+  matchesSessionListFilter,
+  SESSION_LIST_FILTER_VALUES,
+  storeSessionListFilter,
+} from "@/features/shared-session-ui/model/session-list-filters";
+import {
+  createRepoPinKey,
+  readStoredSessionListPins,
+  storeSessionListPins,
+  touchSessionListPin,
+} from "@/features/shared-session-ui/model/session-list-pins";
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import { resolveUnknownErrorMessage } from "@/lib/api-utils";
 import { buildSessionGroups } from "@/lib/session-group";
@@ -10,20 +24,6 @@ import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
 import { useSessions } from "@/state/session-context";
 import { useTheme } from "@/state/theme-context";
 
-import { useSessionLogs } from "../SessionDetail/hooks/useSessionLogs";
-import {
-  DEFAULT_SESSION_LIST_FILTER,
-  isSessionListFilter,
-  matchesSessionListFilter,
-  SESSION_LIST_FILTER_VALUES,
-  storeSessionListFilter,
-} from "./sessionListFilters";
-import {
-  createRepoPinKey,
-  readStoredSessionListPins,
-  storeSessionListPins,
-  touchSessionListPin,
-} from "./sessionListPins";
 import { matchesSessionListSearch, normalizeSessionListSearchQuery } from "./sessionListSearch";
 
 const FILTER_OPTIONS = SESSION_LIST_FILTER_VALUES.map((value) => ({

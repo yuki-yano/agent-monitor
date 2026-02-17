@@ -10,9 +10,12 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import type { SessionSummary } from "@vde-monitor/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  DEFAULT_SESSION_LIST_FILTER,
+  isSessionListFilter,
+} from "@/features/shared-session-ui/model/session-list-filters";
 import { defaultLaunchConfig } from "@/state/launch-agent-options";
 
-import { DEFAULT_SESSION_LIST_FILTER, isSessionListFilter } from "./sessionListFilters";
 import { normalizeSessionListSearchQuery } from "./sessionListSearch";
 import { useSessionListVM } from "./useSessionListVM";
 
@@ -67,7 +70,7 @@ vi.mock("@/lib/use-sidebar-width", () => ({
   }),
 }));
 
-vi.mock("../SessionDetail/hooks/useSessionLogs", () => ({
+vi.mock("@/features/shared-session-ui/hooks/useSessionLogs", () => ({
   useSessionLogs: () => mockUseSessionLogs,
 }));
 

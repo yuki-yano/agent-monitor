@@ -3,9 +3,9 @@ import { type CSSProperties, useCallback, useEffect, useRef, useState } from "re
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button, EmptyCard } from "@/components/ui";
-import { LogModal } from "@/pages/SessionDetail/components/LogModal";
-import { QuickPanel } from "@/pages/SessionDetail/components/QuickPanel";
-import { SessionSidebar } from "@/pages/SessionDetail/components/SessionSidebar";
+import { LogModal } from "@/features/shared-session-ui/components/LogModal";
+import { QuickPanel } from "@/features/shared-session-ui/components/QuickPanel";
+import { SessionSidebar } from "@/features/shared-session-ui/components/SessionSidebar";
 
 import { SessionGroupSection } from "./components/SessionGroupSection";
 import { SessionListHeader } from "./components/SessionListHeader";

@@ -21,7 +21,7 @@ vi.mock("@/components/theme-toggle", () => ({
   ThemeToggle: () => <div data-testid="theme-toggle" />,
 }));
 
-vi.mock("@/pages/SessionDetail/components/SessionSidebar", () => ({
+vi.mock("@/features/shared-session-ui/components/SessionSidebar", () => ({
   SessionSidebar: ({
     state,
     actions,
@@ -66,7 +66,7 @@ vi.mock("@/pages/SessionDetail/components/SessionSidebar", () => ({
   ),
 }));
 
-vi.mock("@/pages/SessionDetail/components/QuickPanel", () => ({
+vi.mock("@/features/shared-session-ui/components/QuickPanel", () => ({
   QuickPanel: ({
     state,
     actions,
@@ -99,7 +99,7 @@ vi.mock("@/pages/SessionDetail/components/QuickPanel", () => ({
   ),
 }));
 
-vi.mock("@/pages/SessionDetail/components/LogModal", () => ({
+vi.mock("@/features/shared-session-ui/components/LogModal", () => ({
   LogModal: ({ actions }: { actions: { onOpenHere: () => void; onOpenNewTab: () => void } }) => (
     <div data-testid="log-modal">
       <button type="button" onClick={actions.onOpenHere}>

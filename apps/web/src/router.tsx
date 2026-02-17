@@ -1,12 +1,12 @@
 import { createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
 
 import App from "./App";
-import { SessionDetailPage } from "./pages/SessionDetail";
-import { SessionListPage } from "./pages/SessionList";
 import {
   DEFAULT_SESSION_LIST_FILTER,
   isSessionListFilter,
-} from "./pages/SessionList/sessionListFilters";
+} from "./features/shared-session-ui/model/session-list-filters";
+import { SessionDetailPage } from "./pages/SessionDetail";
+import { SessionListPage } from "./pages/SessionList";
 import { normalizeSessionListSearchQuery } from "./pages/SessionList/sessionListSearch";
 
 const rootRoute = createRootRoute({

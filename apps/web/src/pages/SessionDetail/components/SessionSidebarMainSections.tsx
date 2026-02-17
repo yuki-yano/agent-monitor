@@ -5,7 +5,7 @@ import { FilterToggleGroup, TagPill } from "@/components/ui";
 import {
   SESSION_LIST_FILTER_VALUES,
   type SessionListFilter,
-} from "@/pages/SessionList/sessionListFilters";
+} from "@/features/shared-session-ui/model/session-list-filters";
 import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
 
 import type { SidebarRepoGroup } from "../hooks/useSessionSidebarGroups";

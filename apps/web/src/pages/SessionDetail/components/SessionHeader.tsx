@@ -14,9 +14,9 @@ import {
   TextButton,
   TruncatedPathText,
 } from "@/components/ui";
+import { readStoredSessionListFilter } from "@/features/shared-session-ui/model/session-list-filters";
 import { cn } from "@/lib/cn";
 import { buildGitHubRepoUrl } from "@/lib/github-repo-url";
-import { readStoredSessionListFilter } from "@/pages/SessionList/sessionListFilters";
 
 import {
   agentLabelFor,

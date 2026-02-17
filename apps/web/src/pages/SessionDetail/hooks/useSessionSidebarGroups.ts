@@ -1,15 +1,15 @@
 import type { SessionSummary } from "@vde-monitor/shared";
 import { useMemo } from "react";
 
-import { buildSessionGroups, type SessionGroup } from "@/lib/session-group";
-import {
-  buildSessionWindowGroups,
-  type SessionWindowGroup,
-} from "@/pages/SessionList/session-window-group";
 import {
   matchesSessionListFilter,
   type SessionListFilter,
-} from "@/pages/SessionList/sessionListFilters";
+} from "@/features/shared-session-ui/model/session-list-filters";
+import {
+  buildSessionWindowGroups,
+  type SessionWindowGroup,
+} from "@/features/shared-session-ui/model/session-window-group";
+import { buildSessionGroups, type SessionGroup } from "@/lib/session-group";
 
 export type SidebarRepoGroup = {
   repoRoot: SessionGroup["repoRoot"];
