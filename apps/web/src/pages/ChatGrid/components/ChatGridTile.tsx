@@ -300,26 +300,28 @@ export const ChatGridTile = ({
       </header>
 
       <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-2">
-        {callout ? (
-          <Callout tone={callout.tone} size="xs">
-            {callout.message}
-          </Callout>
-        ) : null}
+        <div className="flex min-h-0 flex-col gap-2">
+          {callout ? (
+            <Callout tone={callout.tone} size="xs">
+              {callout.message}
+            </Callout>
+          ) : null}
 
-        <AnsiVirtualizedViewport
-          lines={displayLines}
-          loading={screenLoading}
-          loadingLabel="Loading screen..."
-          isAtBottom={isAtBottom}
-          onAtBottomChange={setIsAtBottom}
-          virtuosoRef={virtuosoRef}
-          onScrollToBottom={scrollToBottom}
-          className="border-latte-surface2/80 bg-latte-crust/95 shadow-inner-soft relative min-h-[180px] w-full min-w-0 flex-1 rounded-2xl border"
-          viewportClassName="h-full w-full min-w-0"
-          listClassName="text-latte-text w-max min-w-full px-1.5 py-1 font-mono text-xs sm:px-2 sm:py-1.5"
-          lineClassName="min-h-4 whitespace-pre leading-4"
-          height="100%"
-        />
+          <AnsiVirtualizedViewport
+            lines={displayLines}
+            loading={screenLoading}
+            loadingLabel="Loading screen..."
+            isAtBottom={isAtBottom}
+            onAtBottomChange={setIsAtBottom}
+            virtuosoRef={virtuosoRef}
+            onScrollToBottom={scrollToBottom}
+            className="border-latte-surface2/80 bg-latte-crust/95 shadow-inner-soft relative min-h-[180px] w-full min-w-0 flex-1 rounded-2xl border"
+            viewportClassName="h-full w-full min-w-0"
+            listClassName="text-latte-text w-max min-w-full px-1.5 py-1 font-mono text-xs sm:px-2 sm:py-1.5"
+            lineClassName="min-h-4 whitespace-pre leading-4"
+            height="100%"
+          />
+        </div>
 
         <PaneTextComposer
           state={{

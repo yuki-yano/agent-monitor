@@ -453,6 +453,7 @@ export const PaneTextComposer = ({ state, actions }: PaneTextComposerProps) => {
                 type="button"
                 onClick={keyPanelHandlers.onToggleShift}
                 active={keyPanelState.shiftHeld}
+                disabled={!interactive}
               >
                 <span className={cn("h-2 w-2 rounded-full transition-colors", shiftDotClass)} />
                 Shift
@@ -461,6 +462,7 @@ export const PaneTextComposer = ({ state, actions }: PaneTextComposerProps) => {
                 type="button"
                 onClick={keyPanelHandlers.onToggleCtrl}
                 active={keyPanelState.ctrlHeld}
+                disabled={!interactive}
               >
                 <span className={cn("h-2 w-2 rounded-full transition-colors", ctrlDotClass)} />
                 Ctrl

@@ -243,14 +243,18 @@ export const useChatGridVM = () => {
 
   const handleLaunchAgentInSession = useCallback(
     async (sessionName: string, agent: "codex" | "claude", options?: LaunchAgentRequestOptions) => {
-      const result = await launchAgentInSession(
-        sessionName,
-        agent,
-        createLaunchRequestId(),
-        options,
-      );
-      if (result.ok) {
-        await refreshSessions();
+      try {
+        const result = await launchAgentInSession(
+          sessionName,
+          agent,
+          createLaunchRequestId(),
+          options,
+        );
+        if (result.ok) {
+          await refreshSessions();
+        }
+      } catch {
+        // Launch failures are surfaced by upstream transport and reconciled by next refresh.
       }
     },
     [launchAgentInSession, refreshSessions],
