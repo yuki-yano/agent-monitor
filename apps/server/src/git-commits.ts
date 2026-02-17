@@ -7,14 +7,10 @@ import type {
 } from "@vde-monitor/shared";
 
 import { setMapEntryWithLimit } from "./cache";
-import {
-  GIT_CACHE_TTL_MS,
-  GIT_PATCH_MAX_BYTES,
-  shouldReuseCacheEntry,
-  truncateTextByLength,
-} from "./git-common";
+import { GIT_CACHE_TTL_MS, GIT_PATCH_MAX_BYTES, truncateTextByLength } from "./git-common";
 import { isBinaryPatch, parseNumstat, pickStatus } from "./git-parsers";
-import { resolveRepoRoot, runGit } from "./git-utils";
+import { resolveGitHead, resolveGitRepoContext, shouldReuseGitCache } from "./git-query-context";
+import { runGit } from "./git-utils";
 
 const LOG_CACHE_MAX_ENTRIES = 200;
 const DETAIL_CACHE_MAX_ENTRIES = 500;
@@ -31,16 +27,6 @@ const logCache = new Map<
 >();
 const detailCache = new Map<string, { at: number; detail: CommitDetail }>();
 const fileCache = new Map<string, { at: number; file: CommitFileDiff }>();
-
-const resolveHead = async (repoRoot: string) => {
-  try {
-    const output = await runGit(repoRoot, ["rev-parse", "HEAD"]);
-    const trimmed = output.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  } catch {
-    return null;
-  }
-};
 
 const resolveCommitCount = async (repoRoot: string) => {
   try {
@@ -192,32 +178,19 @@ const createCommitLog = ({
 });
 
 const resolveCommitLogContext = async (cwd: string | null) => {
-  if (!cwd) {
+  const context = await resolveGitRepoContext(cwd);
+  if (context.reason) {
     return {
       repoRoot: null,
       earlyResult: createCommitLog({
         repoRoot: null,
         rev: null,
         commits: [],
-        reason: "cwd_unknown",
+        reason: context.reason,
       }),
     };
   }
-
-  const repoRoot = await resolveRepoRoot(cwd);
-  if (!repoRoot) {
-    return {
-      repoRoot: null,
-      earlyResult: createCommitLog({
-        repoRoot: null,
-        rev: null,
-        commits: [],
-        reason: "not_git",
-      }),
-    };
-  }
-
-  return { repoRoot, earlyResult: null as CommitLog | null };
+  return { repoRoot: context.repoRoot, earlyResult: null as CommitLog | null };
 };
 
 const resolveCommitLogPaging = (options?: { limit?: number; skip?: number }) => ({
@@ -238,7 +211,7 @@ const shouldUseCachedCommitLog = ({
 }) =>
   Boolean(cached) &&
   (cached?.rev ?? null) === head &&
-  shouldReuseCacheEntry({
+  shouldReuseGitCache({
     force,
     cachedAt: cached?.at ?? 0,
     nowMs,
@@ -289,9 +262,17 @@ export const fetchCommitLog = async (
   if (context.earlyResult) {
     return context.earlyResult;
   }
-  const repoRoot = context.repoRoot as string;
+  const repoRoot = context.repoRoot;
+  if (!repoRoot) {
+    return createCommitLog({
+      repoRoot: null,
+      rev: null,
+      commits: [],
+      reason: "not_git",
+    });
+  }
   const { limit, skip } = resolveCommitLogPaging(options);
-  const head = await resolveHead(repoRoot);
+  const head = await resolveGitHead(repoRoot);
   const cacheKey = `${repoRoot}:${limit}:${skip}`;
   const cached = logCache.get(cacheKey);
   const nowMs = Date.now();
@@ -349,7 +330,7 @@ export const fetchCommitDetail = async (
   const nowMs = Date.now();
   if (
     cached &&
-    shouldReuseCacheEntry({
+    shouldReuseGitCache({
       force: options?.force,
       cachedAt: cached.at,
       nowMs,
@@ -420,7 +401,7 @@ export const fetchCommitFile = async (
   const nowMs = Date.now();
   if (
     cached &&
-    shouldReuseCacheEntry({
+    shouldReuseGitCache({
       force: options?.force,
       cachedAt: cached.at,
       nowMs,

@@ -4,14 +4,10 @@ import path from "node:path";
 import type { DiffFile, DiffFileStatus, DiffSummary, DiffSummaryFile } from "@vde-monitor/shared";
 
 import { setMapEntryWithLimit } from "./cache";
-import {
-  GIT_CACHE_TTL_MS,
-  GIT_PATCH_MAX_BYTES,
-  shouldReuseCacheEntry,
-  truncateTextByLength,
-} from "./git-common";
+import { GIT_CACHE_TTL_MS, GIT_PATCH_MAX_BYTES, truncateTextByLength } from "./git-common";
 import { isBinaryPatch, parseNumstat, parseNumstatLine, pickStatus } from "./git-parsers";
-import { resolveRepoRoot, runGit } from "./git-utils";
+import { resolveGitRepoContext, shouldReuseGitCache } from "./git-query-context";
+import { runGit } from "./git-utils";
 
 const SUMMARY_CACHE_MAX_ENTRIES = 200;
 const FILE_CACHE_MAX_ENTRIES = 500;
@@ -140,7 +136,7 @@ const getCachedSummary = (repoRoot: string, force: boolean | undefined, nowMs: n
     return null;
   }
   if (
-    !shouldReuseCacheEntry({
+    !shouldReuseGitCache({
       force,
       cachedAt: cached.at,
       nowMs,
@@ -225,7 +221,7 @@ const getCachedDiffFile = (
     return null;
   }
   if (
-    !shouldReuseCacheEntry({
+    !shouldReuseGitCache({
       force,
       cachedAt: cached.at,
       nowMs,
@@ -285,13 +281,11 @@ export const fetchDiffSummary = async (
   cwd: string | null,
   options?: { force?: boolean },
 ): Promise<DiffSummary> => {
-  if (!cwd) {
-    return buildUnknownSummary("cwd_unknown");
+  const context = await resolveGitRepoContext(cwd);
+  if (context.reason) {
+    return buildUnknownSummary(context.reason);
   }
-  const repoRoot = await resolveRepoRoot(cwd);
-  if (!repoRoot) {
-    return buildUnknownSummary("not_git");
-  }
+  const repoRoot = context.repoRoot;
   const nowMs = Date.now();
   const cached = getCachedSummary(repoRoot, options?.force, nowMs);
   if (cached) {
