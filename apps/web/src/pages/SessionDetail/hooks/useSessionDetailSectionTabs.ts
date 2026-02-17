@@ -1,4 +1,4 @@
-import { useElementSize, useLocalStorage, useMergedRef, useWindowEvent } from "@mantine/hooks";
+import { useLocalStorage } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const DETAIL_SECTION_TAB_VALUES = [
@@ -55,13 +55,7 @@ export const useSessionDetailSectionTabs = ({ scope }: UseSessionDetailSectionTa
       }),
     [branch, repoRoot],
   );
-  const { ref: sectionTabsListMeasureRef, width: sectionTabsListWidth } =
-    useElementSize<HTMLDivElement>();
   const [sectionTabsListElement, setSectionTabsListElement] = useState<HTMLDivElement | null>(null);
-  const sectionTabsListRef = useMergedRef<HTMLDivElement>(
-    sectionTabsListMeasureRef,
-    setSectionTabsListElement,
-  );
   const [selectedSectionTabValue, setSelectedSectionTabValue] = useLocalStorage<SectionTabValue>({
     key: sectionTabStorageKey,
     defaultValue: DEFAULT_DETAIL_SECTION_TAB,
@@ -88,19 +82,18 @@ export const useSessionDetailSectionTabs = ({ scope }: UseSessionDetailSectionTa
     setSectionTabsIconOnly((previous) => (previous === nextIconOnly ? previous : nextIconOnly));
   }, [sectionTabsListElement]);
 
-  useWindowEvent("resize", evaluateTabLabelVisibility);
-
-  useEffect(() => {
-    if (!sectionTabsListElement || sectionTabsListWidth <= 0) {
-      return;
-    }
-    evaluateTabLabelVisibility();
-  }, [evaluateTabLabelVisibility, sectionTabsListElement, sectionTabsListWidth]);
-
   useEffect(() => {
     if (!sectionTabsListElement) {
       return;
     }
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => {
+            evaluateTabLabelVisibility();
+          });
+    resizeObserver?.observe(sectionTabsListElement);
+    window.addEventListener("resize", evaluateTabLabelVisibility);
     const rafId = window.requestAnimationFrame(evaluateTabLabelVisibility);
     let settleInnerRafId: number | null = null;
     const settleRafId = window.requestAnimationFrame(() => {
@@ -124,6 +117,8 @@ export const useSessionDetailSectionTabs = ({ scope }: UseSessionDetailSectionTa
         window.cancelAnimationFrame(settleInnerRafId);
       }
       window.clearTimeout(settleTimeoutId);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", evaluateTabLabelVisibility);
       fontFaceSet?.removeEventListener("loadingdone", onFontLoadingDone);
     };
   }, [evaluateTabLabelVisibility, sectionTabsListElement]);
@@ -131,7 +126,7 @@ export const useSessionDetailSectionTabs = ({ scope }: UseSessionDetailSectionTa
   return {
     selectedSectionTabValue,
     sectionTabsIconOnly,
-    sectionTabsListRef,
+    setSectionTabsListElement,
     handleSectionTabChange,
   };
 };
