@@ -15,6 +15,16 @@ type WorktreeDiffStats = Pick<WorktreeListEntry, "fileChanges" | "additions" | "
 type WorktreeAheadBehindStats = Pick<WorktreeListEntry, "ahead" | "behind">;
 type DiffSummaryResult = Awaited<ReturnType<typeof fetchDiffSummary>>;
 
+type ResolveRequestedWorktreePathInput = {
+  detail: WorktreeSource;
+  worktreePath: string | undefined;
+  fallbackPath: string | null;
+};
+
+type ResolveRequestedWorktreePathResult =
+  | { ok: true; path: string | null }
+  | { ok: false; reason: "worktree_override_unavailable" | "invalid_worktree_path" };
+
 const resolveSnapshotCwd = (detail: WorktreeSource) =>
   detail.repoRoot ?? detail.currentPath ?? process.cwd();
 
@@ -258,4 +268,23 @@ export const resolveValidWorktreePath = (
     return null;
   }
   return normalized;
+};
+
+export const resolveRequestedWorktreePath = async ({
+  detail,
+  worktreePath,
+  fallbackPath,
+}: ResolveRequestedWorktreePathInput): Promise<ResolveRequestedWorktreePathResult> => {
+  if (!worktreePath) {
+    return { ok: true, path: fallbackPath };
+  }
+  const payload = await resolveWorktreePathValidationPayload(detail);
+  if (payload.entries.length === 0) {
+    return { ok: false, reason: "worktree_override_unavailable" };
+  }
+  const target = resolveValidWorktreePath(payload, worktreePath);
+  if (!target) {
+    return { ok: false, reason: "invalid_worktree_path" };
+  }
+  return { ok: true, path: target };
 };

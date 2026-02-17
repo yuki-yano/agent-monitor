@@ -5,6 +5,7 @@ import { runGit } from "../../git-utils";
 import { resolveRepoBranchCached } from "../../monitor/repo-branch";
 import { resolveVwWorktreeSnapshotCached } from "../../monitor/vw-worktree";
 import {
+  resolveRequestedWorktreePath,
   resolveValidWorktreePath,
   resolveWorktreeListPayload,
   resolveWorktreePathValidationPayload,
@@ -229,5 +230,78 @@ describe("worktree-utils", () => {
     expect(fetchDiffSummary).not.toHaveBeenCalled();
     expect(runGit).not.toHaveBeenCalled();
     expect(resolveRepoBranchCached).not.toHaveBeenCalled();
+  });
+
+  it("returns fallback path when worktree override is omitted", async () => {
+    const resolved = await resolveRequestedWorktreePath({
+      detail: { repoRoot: "/repo", currentPath: "/repo/worktree-a" },
+      worktreePath: undefined,
+      fallbackPath: "/repo",
+    });
+
+    expect(resolved).toEqual({ ok: true, path: "/repo" });
+    expect(resolveVwWorktreeSnapshotCached).not.toHaveBeenCalled();
+  });
+
+  it("returns unavailable reason when worktree snapshot is unavailable", async () => {
+    vi.mocked(resolveVwWorktreeSnapshotCached).mockResolvedValueOnce(null);
+
+    const resolved = await resolveRequestedWorktreePath({
+      detail: { repoRoot: "/repo", currentPath: "/repo/worktree-a" },
+      worktreePath: "/repo/worktree-a",
+      fallbackPath: "/repo",
+    });
+
+    expect(resolved).toEqual({ ok: false, reason: "worktree_override_unavailable" });
+  });
+
+  it("returns invalid reason when override path does not match snapshot entries", async () => {
+    vi.mocked(resolveVwWorktreeSnapshotCached).mockResolvedValueOnce({
+      repoRoot: "/repo",
+      baseBranch: "main",
+      entries: [
+        {
+          path: "/repo/worktree-a",
+          branch: "feature/a",
+          dirty: true,
+          locked: { value: false, owner: null, reason: null },
+          merged: { overall: false, byPR: null },
+          pr: { status: "unknown" },
+        },
+      ],
+    });
+
+    const resolved = await resolveRequestedWorktreePath({
+      detail: { repoRoot: "/repo", currentPath: "/repo/worktree-a" },
+      worktreePath: "/repo/worktree-b",
+      fallbackPath: "/repo",
+    });
+
+    expect(resolved).toEqual({ ok: false, reason: "invalid_worktree_path" });
+  });
+
+  it("returns normalized worktree path when override is valid", async () => {
+    vi.mocked(resolveVwWorktreeSnapshotCached).mockResolvedValueOnce({
+      repoRoot: "/repo",
+      baseBranch: "main",
+      entries: [
+        {
+          path: "/repo/worktree-a",
+          branch: "feature/a",
+          dirty: true,
+          locked: { value: false, owner: null, reason: null },
+          merged: { overall: false, byPR: null },
+          pr: { status: "unknown" },
+        },
+      ],
+    });
+
+    const resolved = await resolveRequestedWorktreePath({
+      detail: { repoRoot: "/repo", currentPath: "/repo/worktree-a" },
+      worktreePath: "/repo/worktree-a/",
+      fallbackPath: "/repo",
+    });
+
+    expect(resolved).toEqual({ ok: true, path: "/repo/worktree-a" });
   });
 });

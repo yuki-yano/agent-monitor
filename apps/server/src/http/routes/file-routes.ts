@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createRepoFileService, type RepoFileServiceError } from "../../repo-files/service";
 import { buildError } from "../helpers";
 import type { FileRouteDeps } from "./types";
-import { resolveValidWorktreePath, resolveWorktreePathValidationPayload } from "./worktree-utils";
+import { resolveRequestedWorktreePath } from "./worktree-utils";
 
 const treeQuerySchema = z.object({
   path: z.string().optional(),
@@ -76,21 +76,24 @@ const resolveRequestedRepoRoot = async (
   detail: { repoRoot: string | null; currentPath: string | null },
   worktreePath: string | undefined,
 ): Promise<Response | string | null> => {
-  if (!worktreePath) {
-    return resolveRepoRoot(detail.repoRoot);
-  }
-  const payload = await resolveWorktreePathValidationPayload(detail);
-  if (payload.entries.length === 0) {
+  const resolved = await resolveRequestedWorktreePath({
+    detail,
+    worktreePath,
+    fallbackPath: resolveRepoRoot(detail.repoRoot),
+  });
+  if (!resolved.ok) {
+    if (resolved.reason === "worktree_override_unavailable") {
+      return c.json(
+        { error: buildError("INVALID_PAYLOAD", "worktree override is unavailable") },
+        400,
+      );
+    }
     return c.json(
-      { error: buildError("INVALID_PAYLOAD", "worktree override is unavailable") },
+      { error: buildError("INVALID_PAYLOAD", "invalid worktree path") },
       400,
     );
   }
-  const target = resolveValidWorktreePath(payload, worktreePath);
-  if (!target) {
-    return c.json({ error: buildError("INVALID_PAYLOAD", "invalid worktree path") }, 400);
-  }
-  return target;
+  return resolved.path;
 };
 
 const mapServiceError = (error: RepoFileServiceError) => {

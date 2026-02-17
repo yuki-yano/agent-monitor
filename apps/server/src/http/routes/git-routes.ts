@@ -7,7 +7,7 @@ import { fetchCommitDetail, fetchCommitFile, fetchCommitLog } from "../../git-co
 import { fetchDiffFile, fetchDiffSummary } from "../../git-diff";
 import { buildError } from "../helpers";
 import type { GitRouteDeps, RouteContext } from "./types";
-import { resolveValidWorktreePath, resolveWorktreePathValidationPayload } from "./worktree-utils";
+import { resolveRequestedWorktreePath } from "./worktree-utils";
 
 type DiffSummaryResult = Awaited<ReturnType<typeof fetchDiffSummary>>;
 type CommitLogResult = Awaited<ReturnType<typeof fetchCommitLog>>;
@@ -58,21 +58,24 @@ const resolveRequestedCwd = async (
   detail: SessionDetail,
   worktreePath: string | undefined,
 ): Promise<Response | string | null> => {
-  if (!worktreePath) {
-    return detail.currentPath;
-  }
-  const payload = await resolveWorktreePathValidationPayload(detail);
-  if (payload.entries.length === 0) {
+  const resolved = await resolveRequestedWorktreePath({
+    detail,
+    worktreePath,
+    fallbackPath: detail.currentPath,
+  });
+  if (!resolved.ok) {
+    if (resolved.reason === "worktree_override_unavailable") {
+      return c.json(
+        { error: buildError("INVALID_PAYLOAD", "worktree override is unavailable") },
+        400,
+      );
+    }
     return c.json(
-      { error: buildError("INVALID_PAYLOAD", "worktree override is unavailable") },
+      { error: buildError("INVALID_PAYLOAD", "invalid worktree path") },
       400,
     );
   }
-  const target = resolveValidWorktreePath(payload, worktreePath);
-  if (!target) {
-    return c.json({ error: buildError("INVALID_PAYLOAD", "invalid worktree path") }, 400);
-  }
-  return target;
+  return resolved.path;
 };
 
 const loadReadyDiffSummary = async (
