@@ -1,15 +1,14 @@
 import type { SessionSummary } from "@vde-monitor/shared";
 import { useMemo } from "react";
 
-import {
-  matchesSessionListFilter,
-  type SessionListFilter,
-} from "@/features/shared-session-ui/model/session-list-filters";
+import type { SessionListFilter } from "@/features/shared-session-ui/model/session-list-filters";
 import {
   buildSessionWindowGroups,
   type SessionWindowGroup,
 } from "@/features/shared-session-ui/model/session-window-group";
-import { buildSessionGroups, type SessionGroup } from "@/lib/session-group";
+import type { SessionGroup } from "@/lib/session-group";
+
+import { buildFilteredSessionGroups } from "./useSessionGroupingSelector";
 
 export type SidebarRepoGroup = {
   repoRoot: SessionGroup["repoRoot"];
@@ -27,17 +26,13 @@ export const useSessionSidebarGroups = ({
   filter,
   getRepoSortAnchorAt,
 }: UseSessionSidebarGroupsArgs) => {
-  const filteredSessions = useMemo(
-    () =>
-      sessionGroups
-        .flatMap((group) => group.sessions)
-        .filter((session) => matchesSessionListFilter(session, filter)),
-    [filter, sessionGroups],
-  );
-
   const filteredSessionGroups = useMemo(() => {
-    return buildSessionGroups(filteredSessions, { getRepoSortAnchorAt });
-  }, [filteredSessions, getRepoSortAnchorAt]);
+    return buildFilteredSessionGroups({
+      sessionGroups,
+      filter,
+      getRepoSortAnchorAt,
+    });
+  }, [filter, getRepoSortAnchorAt, sessionGroups]);
 
   const sidebarGroups = useMemo(() => {
     return filteredSessionGroups

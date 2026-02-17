@@ -1,18 +1,17 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useSessionGroupingSelector } from "@/features/shared-session-ui/hooks/useSessionGroupingSelector";
 import { useSessionListPins } from "@/features/shared-session-ui/hooks/useSessionListPins";
 import { useSessionLogs } from "@/features/shared-session-ui/hooks/useSessionLogs";
 import {
   DEFAULT_SESSION_LIST_FILTER,
   isSessionListFilter,
-  matchesSessionListFilter,
   SESSION_LIST_FILTER_VALUES,
   storeSessionListFilter,
 } from "@/features/shared-session-ui/model/session-list-filters";
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import { resolveUnknownErrorMessage } from "@/lib/api-utils";
-import { buildSessionGroups } from "@/lib/session-group";
 import { useNowMs } from "@/lib/use-now-ms";
 import { useSidebarWidth } from "@/lib/use-sidebar-width";
 import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
@@ -67,25 +66,14 @@ export const useSessionListVM = () => {
     storeSessionListFilter(filter);
   }, [filter]);
 
-  const visibleSessions = useMemo(() => {
-    return sessions.filter(
-      (session) =>
-        matchesSessionListFilter(session, filter) && matchesSessionListSearch(session, searchQuery),
-    );
-  }, [filter, searchQuery, sessions]);
-
-  const groups = useMemo(
-    () => buildSessionGroups(visibleSessions, { getRepoSortAnchorAt }),
-    [getRepoSortAnchorAt, visibleSessions],
-  );
-  const sidebarSessionGroups = useMemo(
-    () => buildSessionGroups(sessions, { getRepoSortAnchorAt }),
-    [getRepoSortAnchorAt, sessions],
-  );
-  const quickPanelGroups = useMemo(
-    () => buildSessionGroups(visibleSessions, { getRepoSortAnchorAt }),
-    [getRepoSortAnchorAt, visibleSessions],
-  );
+  const { visibleSessions, groups, sidebarSessionGroups, quickPanelGroups } =
+    useSessionGroupingSelector({
+      sessions,
+      filter,
+      searchQuery,
+      matchesSearch: matchesSessionListSearch,
+      getRepoSortAnchorAt,
+    });
 
   const {
     quickPanelOpen,
