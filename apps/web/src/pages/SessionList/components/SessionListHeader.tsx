@@ -1,4 +1,4 @@
-import { RefreshCw, Search, X } from "lucide-react";
+import { LayoutGrid, RefreshCw, Search, X } from "lucide-react";
 import type { ChangeEvent } from "react";
 
 import {
@@ -6,8 +6,8 @@ import {
   Callout,
   ConnectionStatusPill,
   FilterToggleGroup,
+  Input,
   Toolbar,
-  ZoomSafeInput,
 } from "@/components/ui";
 
 type SessionListHeaderProps = {
@@ -19,6 +19,7 @@ type SessionListHeaderProps = {
   onFilterChange: (value: string) => void;
   onSearchQueryChange: (value: string) => void;
   onRefresh: () => void;
+  onOpenChatGrid: () => void;
 };
 
 export const SessionListHeader = ({
@@ -30,6 +31,7 @@ export const SessionListHeader = ({
   onFilterChange,
   onSearchQueryChange,
   onRefresh,
+  onOpenChatGrid,
 }: SessionListHeaderProps) => {
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     onSearchQueryChange(event.target.value);
@@ -52,6 +54,16 @@ export const SessionListHeader = ({
         </div>
         <div className="flex flex-col items-end gap-3">
           <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="hidden h-7 gap-1.5 px-2.5 text-[11px] uppercase tracking-[0.14em] md:inline-flex"
+              onClick={onOpenChatGrid}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Chat Grid
+            </Button>
             <ConnectionStatusPill status={connectionStatus} />
             <Button
               variant="ghost"
@@ -67,13 +79,13 @@ export const SessionListHeader = ({
         </div>
       </Toolbar>
       <div className="border-latte-surface2 text-latte-text focus-within:border-latte-lavender focus-within:ring-latte-lavender/30 bg-latte-base/70 shadow-elev-1 relative overflow-hidden rounded-2xl border transition focus-within:ring-2">
-        <Search className="text-latte-subtext0 pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-        <ZoomSafeInput
+        <Search className="text-latte-subtext0 pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" />
+        <Input
           value={searchQuery}
           onChange={handleSearchChange}
           placeholder="Search sessions"
           aria-label="Search sessions"
-          className="h-10 border-none bg-transparent py-0 pl-9 pr-12 text-sm shadow-none focus:ring-0"
+          className="h-10 border-none bg-transparent py-0 pl-11 pr-12 text-sm shadow-none focus:ring-0 sm:pl-11 sm:pr-12"
         />
         {searchQuery.length > 0 && (
           <Button

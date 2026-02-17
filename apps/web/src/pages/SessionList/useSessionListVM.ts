@@ -159,6 +159,12 @@ export const useSessionListVM = () => {
     refreshSessions();
   }, [refreshSessions]);
 
+  const handleOpenChatGrid = useCallback(() => {
+    closeQuickPanel();
+    closeLogModal();
+    void navigate({ to: "/chat-grid" });
+  }, [closeLogModal, closeQuickPanel, navigate]);
+
   const handleLaunchAgentInSession = useCallback(
     async (sessionName: string, agent: "codex" | "claude", options?: LaunchAgentRequestOptions) => {
       const key = sessionName;
@@ -214,6 +220,7 @@ export const useSessionListVM = () => {
     onFilterChange: handleFilterChange,
     onSearchQueryChange: handleSearchQueryChange,
     onRefresh: handleRefresh,
+    onOpenChatGrid: handleOpenChatGrid,
     onSidebarResizeStart: handlePointerDown,
     quickPanelOpen,
     logModalOpen,

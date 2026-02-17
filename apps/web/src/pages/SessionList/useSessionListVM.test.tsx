@@ -181,11 +181,14 @@ const renderWithRouter = async (initialEntries: string[] = ["/"]) => {
   await act(async () => {
     await router.load();
   });
-  return render(
-    <RouterContextProvider router={router}>
-      <TestComponent />
-    </RouterContextProvider>,
-  );
+  return {
+    ...render(
+      <RouterContextProvider router={router}>
+        <TestComponent />
+      </RouterContextProvider>,
+    ),
+    router,
+  };
 };
 
 describe("useSessionListVM", () => {

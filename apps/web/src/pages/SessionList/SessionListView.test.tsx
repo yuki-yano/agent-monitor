@@ -228,6 +228,7 @@ const createViewProps = (overrides: Partial<SessionListViewProps> = {}): Session
     onFilterChange: vi.fn(),
     onSearchQueryChange: vi.fn(),
     onRefresh: vi.fn(),
+    onOpenChatGrid: vi.fn(),
     onSidebarResizeStart: vi.fn(),
     quickPanelOpen: false,
     logModalOpen: false,
@@ -330,6 +331,15 @@ describe("SessionListView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
     expect(onRefresh).toHaveBeenCalled();
+  });
+
+  it("calls onOpenChatGrid when chat grid button is clicked", () => {
+    const onOpenChatGrid = vi.fn();
+    const props = createViewProps({ onOpenChatGrid });
+    renderWithRouter(<SessionListView {...props} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Chat Grid" }));
+    expect(onOpenChatGrid).toHaveBeenCalledTimes(1);
   });
 
   it("calls onFilterChange when filter button is clicked", () => {
