@@ -12,6 +12,7 @@ import {
   selectedPaneIdAtom,
 } from "@/features/shared-session-ui/atoms/logAtoms";
 import { useScreenCache } from "@/features/shared-session-ui/hooks/useScreenCache";
+import { findStalePaneIds } from "@/features/shared-session-ui/model/pane-record-utils";
 import { renderAnsiLines } from "@/lib/ansi";
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import type { Theme } from "@/lib/theme";
@@ -132,12 +133,10 @@ export const useSessionLogs = ({
   });
 
   useEffect(() => {
-    if (Object.keys(logCache).length === 0) return;
     const activePaneIds = new Set(sessions.map((session) => session.paneId));
-    Object.keys(logCache).forEach((paneId) => {
-      if (!activePaneIds.has(paneId)) {
-        clearCache(paneId);
-      }
+    const stalePaneIds = findStalePaneIds(logCache, activePaneIds);
+    stalePaneIds.forEach((paneId) => {
+      clearCache(paneId);
     });
   }, [clearCache, logCache, sessions]);
 

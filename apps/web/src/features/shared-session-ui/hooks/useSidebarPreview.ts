@@ -6,6 +6,7 @@ import type {
 import { useAtom } from "jotai";
 import { useEffect, useMemo } from "react";
 
+import { findStalePaneIds } from "@/features/shared-session-ui/model/pane-record-utils";
 import { renderAnsiLines } from "@/lib/ansi";
 import type { Theme } from "@/lib/theme";
 
@@ -276,14 +277,10 @@ export const useSidebarPreview = ({
   ]);
 
   useEffect(() => {
-    if (Object.keys(previewCache).length === 0) {
-      return;
-    }
     const activePaneIds = new Set(sessionIndex.keys());
-    Object.keys(previewCache).forEach((paneId) => {
-      if (!activePaneIds.has(paneId)) {
-        clearPreviewCache(paneId);
-      }
+    const stalePaneIds = findStalePaneIds(previewCache, activePaneIds);
+    stalePaneIds.forEach((paneId) => {
+      clearPreviewCache(paneId);
     });
   }, [clearPreviewCache, previewCache, sessionIndex]);
 

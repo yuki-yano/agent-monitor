@@ -6,6 +6,7 @@ import type {
 } from "@vde-monitor/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { prunePaneRecord } from "@/features/shared-session-ui/model/pane-record-utils";
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 import { resolveUnknownErrorMessage } from "@/lib/api-utils";
 
@@ -32,22 +33,6 @@ const pickPaneTimeline = (paneId: string | null, cache: TimelineCacheMap) => {
     return null;
   }
   return cache[paneId] ?? null;
-};
-
-const prunePaneRecord = <T>(record: Record<string, T>, activePaneIds: Set<string>) => {
-  const keys = Object.keys(record);
-  if (keys.length === 0) {
-    return record;
-  }
-  const nextKeys = keys.filter((paneId) => activePaneIds.has(paneId));
-  if (nextKeys.length === keys.length) {
-    return record;
-  }
-  const nextRecord: Record<string, T> = {};
-  nextKeys.forEach((paneId) => {
-    nextRecord[paneId] = record[paneId] as T;
-  });
-  return nextRecord;
 };
 
 export const useSidebarPreviewTimelineCache = ({
