@@ -19,7 +19,6 @@ describe("pane-log-manager", () => {
     };
     const logActivity = { register: vi.fn() };
     const config = {
-      attachOnServe: true,
       logs: { maxPaneLogBytes: 10, retainRotations: 1 },
     } as AgentMonitorConfig;
     const manager = createPaneLogManager({
@@ -64,7 +63,6 @@ describe("pane-log-manager", () => {
     };
     const logActivity = { register: vi.fn() };
     const config = {
-      attachOnServe: true,
       logs: { maxPaneLogBytes: 10, retainRotations: 1 },
     } as AgentMonitorConfig;
     const manager = createPaneLogManager({
@@ -116,7 +114,6 @@ describe("pane-log-manager", () => {
     };
     const logActivity = { register: vi.fn() };
     const config = {
-      attachOnServe: true,
       logs: { maxPaneLogBytes: 10, retainRotations: 1 },
     } as AgentMonitorConfig;
     const manager = createPaneLogManager({
@@ -160,7 +157,6 @@ describe("pane-log-manager", () => {
     };
     const logActivity = { register: vi.fn() };
     const config = {
-      attachOnServe: true,
       logs: { maxPaneLogBytes: 10, retainRotations: 1 },
     } as AgentMonitorConfig;
     const manager = createPaneLogManager({
@@ -195,7 +191,6 @@ describe("pane-log-manager", () => {
     };
     const logActivity = { register: vi.fn() };
     const config = {
-      attachOnServe: true,
       logs: { maxPaneLogBytes: 10, retainRotations: 1 },
     } as AgentMonitorConfig;
     const manager = createPaneLogManager({

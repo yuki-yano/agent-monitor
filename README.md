@@ -1,69 +1,32 @@
 # vde-monitor
 
-Monitor terminal multiplexer sessions from a web UI with a single CLI.  
-Built for Codex CLI and Claude Code workflows running inside tmux/WezTerm panes.
-Designed with a mobile-prioritized UX so core monitoring/control flows work well on phone browsers.
-Supports remote control of PC-hosted AI agent sessions from smartphone browsers.
+Monitor tmux/WezTerm coding sessions from a browser with a single CLI.
+It is designed for Codex CLI / Claude Code workflows and optimized for quick checks and control from both desktop and mobile devices.
 
-## Purpose
+## What you can do
 
-- Provide a single operational view for AI coding sessions running in tmux
-- Reduce context switching between terminal panes and monitoring tools
-- Offer safe remote interaction for active sessions from desktop/mobile browsers
-- Keep core monitoring and control flows mobile-prioritized, not desktop-only
-- Enable remote operation of AI agents running on a host PC from smartphone browsers
+- See active sessions in one place, with recent activity and status
+- Open a session and send text, key input, or raw input to the pane
+- Monitor terminal output in text mode (cross-platform)
+- Use image mode on macOS terminals (when enabled)
+- Track session/repo timeline and activity history across restarts
+- Inspect Git diff/commits and keep repo-scoped notes while monitoring
+- Launch Codex/Claude agents into tmux sessions
 
-## Scope
+## Main features
 
-- Discover and track tmux/WezTerm pane/session state in near real time
-- Expose authenticated HTTP APIs for session inspection and interaction
-- Provide a mobile-prioritized responsive web UI for monitoring, input dispatch, timeline tracking, and Git context checks
-- Persist session metadata and timeline history across restarts
-- Ingest Claude hook events for activity/state enrichment
-
-## Non-goals
-
-- Replacing tmux as a full terminal multiplexer
-- Acting as a general-purpose process supervisor/orchestrator
-- Providing full parity for terminal automation features on every OS
-- Serving as an internet-exposed service with zero network hardening setup
-
-## Architecture at a glance
-
-- `@vde-monitor/server`: multiplexer integration, monitor loop, API routes, auth/rate limiting, persistence
-- `@vde-monitor/web`: session list/detail UI, controls, timeline, diff/commit panels
-- `vde-monitor-hook`: CLI helper that writes Claude hook JSONL events
-- `@vde-monitor/shared`, `@vde-monitor/tmux`, and `@vde-monitor/wezterm`: shared contracts/config/schema and multiplexer adapter utilities
-
-## Who should use this
-
-- Developers running Codex CLI or Claude Code inside tmux
-- Users who need lightweight remote visibility/control of coding sessions
-- Developers who frequently monitor sessions from smartphone browsers
-- Developers who need to operate PC-hosted agent sessions while away from their desk
-- Teams that want session observability without adopting a heavy terminal platform
-
-## Feature highlights
-
-- Live session list with activity state and per-session details
-- Mobile-prioritized session list/detail UX for quick checks and control from phone browsers
-- Remote operation of PC-hosted agent panes from smartphone browsers via text/key/raw input
-- Send text, key inputs, and raw input to panes
-- Session title customization
-- Screen capture in text mode on all platforms, optional image mode on macOS terminals
-- Image upload from the composer (attachments are inserted into the prompt automatically)
-- State Timeline view (`15m` / `1h` / `3h` / `6h` / `24h`) with persisted history across restarts
-- Per-session Git context: diff summary/file view and commit log/detail view
-- Desktop sidebar pane focus action on macOS (bring terminal app to foreground and target pane)
-- Token-based API auth, origin allowlist, and request rate limits
-- Claude hooks helper CLI for event logging
-- QR code URL output on startup when terminal height permits
+- Session List: grouped by repository/window with quick status checks, search/filter, and pin
+- Session Detail: live screen view (text/image), follow mode, and input composer (text/keys/raw)
+- Timeline and context: state timeline, repo notes, git diff/commits, and file browsing
+- Agent operations: launch Codex/Claude into tmux sessions from CLI/UI
+- Multi-pane monitoring: desktop-oriented Chat Grid for side-by-side pane tracking
+- Mobile usage: core monitor and control flow works from mobile device browsers
 
 ## Requirements
 
 - Node.js `24+`
-- tmux `2.0+` or WezTerm with `wezterm cli` available
-- macOS-only features (image capture and pane focus) require terminal automation via `osascript`
+- tmux `2.0+` or WezTerm with `wezterm cli`
+- macOS-only features (image capture / pane focus) require `osascript`
 - On macOS, Screen Recording and Accessibility permissions may be required
 
 ## Install
@@ -73,6 +36,8 @@ npm install -g vde-monitor
 ```
 
 ## Quick start
+
+Run:
 
 ```bash
 vde-monitor
@@ -84,64 +49,88 @@ Startup prints a URL like:
 vde-monitor: http://localhost:11080/#token=...
 ```
 
-Open it in a browser to access the UI.
+Open the URL in your browser.
+When terminal height allows, a QR code is also printed for quick access from another device.
 
-Recommended remote access:
+## First 5 minutes
+
+1. Open the session list and choose the pane you want to monitor.
+2. In session detail, confirm live output in the screen panel.
+3. Send input from the composer:
+   - text input
+   - key input
+   - raw input
+4. Use timeline, notes, diff, and commits tabs to inspect progress in context.
+
+## Mobile device usage
+
+Recommended access methods:
 
 - SSH port-forward
 - Tailscale
-- Private LAN only (avoid public internet exposure)
+- Private LAN only
 
-Smartphone remote operation (PC-hosted agents):
+Typical flow:
 
-1. Start `vde-monitor` on your PC.
-   If you are not using Tailscale and want direct access from another device, start with `vde-monitor --public`.
-   If you use Tailscale, `vde-monitor --tailscale` is recommended.
-2. Make the printed URL reachable from your phone via SSH port-forward, Tailscale, or private LAN.
-3. Open the URL on your phone browser and use the session detail view to send text/key/raw input to the agent pane.
+1. Start `vde-monitor` on your host machine.
+2. Expose the printed URL safely:
+   - `--tailscale` is recommended when available
+   - `--public` only on trusted networks
+3. Open the URL on your mobile device and control sessions from `SessionDetail`.
 
-## CLI options
+## Useful commands
 
-```text
---bind <ip>     Bind to a specific IPv4 address
---public        Bind to 0.0.0.0 instead of 127.0.0.1
---tailscale     Use the Tailscale IP when printing the URL
---no-attach     Do not auto-attach tmux panes
---port <port>   Override the server port
---web-port <p>  Override the displayed web port in the printed URL
---socket-name   tmux socket name
---socket-path   tmux socket path
---multiplexer  multiplexer backend (`tmux` or `wezterm`)
---backend      image/focus terminal backend (`alacritty`, `terminal`, `iterm`, `wezterm`, `ghostty`)
---wezterm-cli  wezterm binary path (default: `wezterm`)
---wezterm-target wezterm CLI target (`auto` or explicit target name)
+### Start server
+
+```bash
+vde-monitor [options]
 ```
 
-Host resolution notes:
+Common options:
 
-- `--bind` cannot be used with `--tailscale`
+```text
+--port <port>           API/UI port
+--public                Bind to 0.0.0.0
+--tailscale             Use Tailscale IP for access URL
+--bind <ip>             Bind to specific IPv4
+--web-port <port>       Override displayed web port in URL
+--multiplexer <name>    `tmux` or `wezterm`
+--backend <name>        image backend (`alacritty`, `terminal`, `iterm`, `wezterm`, `ghostty`)
+--wezterm-cli <path>    wezterm binary path (default: `wezterm`)
+--wezterm-target <t>    wezterm target (`auto` or explicit target)
+--socket-name <name>    tmux socket name
+--socket-path <path>    tmux socket path
+```
+
+Notes:
+
+- `--bind` cannot be combined with `--tailscale`
 - `--bind` takes priority over `--public`
 - `--tailscale` requires a resolvable Tailscale IP
 - `--tailscale` without `--public` binds to the Tailscale IP
-- `--public` with `--tailscale` binds to `0.0.0.0` and prints a Tailscale URL
+- `--public --tailscale` binds to `0.0.0.0` and prints a Tailscale URL
 
-## Commands
+### Launch agent in tmux session
 
-Rotate auth token:
+```bash
+vde-monitor tmux launch-agent --session <name> --agent <codex|claude> [options]
+```
+
+Common options:
+
+```text
+--window-name <name>
+--cwd <path>
+--worktree-path <path>
+--worktree-branch <name>
+--output <json|text>
+```
+
+### Utility commands
 
 ```bash
 vde-monitor token rotate
-```
-
-Print Claude hooks snippet:
-
-```bash
 vde-monitor claude hooks print
-```
-
-Write Claude hook event JSONL:
-
-```bash
 vde-monitor-hook <HookEventName>
 ```
 
@@ -152,29 +141,25 @@ Global config file:
 - `$XDG_CONFIG_HOME/vde/monitor/config.json`
 - fallback: `~/.config/vde/monitor/config.json`
 
-Project-local override config file:
+Project-local override:
 
 - `<repo-root>/.vde/monitor/config.json`
 
-Effective config priority:
+Priority:
 
 - `CLI args > project-local override > global config > defaults`
 
 Project config discovery:
 
-- Search starts from the current working directory
-- Search stops at the repository root (directory containing `.git`)
-- If current working directory is outside a repository, only the current directory is checked
+- starts from current working directory
+- walks up to git root (`.git`) and stops there
+- outside a repository, only current directory is checked
 
 `fileNavigator.includeIgnoredPaths` policy:
 
-- Paths ignored by `.gitignore` (or Git ignore metadata) remain hidden by default
-- Ignored paths are visible only when they match `includeIgnoredPaths`
-- This applies to tree listing, search, file content, and log-file reference resolution
-
-Token file:
-
-- `~/.vde-monitor/token.json`
+- ignored paths stay hidden by default
+- ignored paths become visible only when matching `includeIgnoredPaths`
+- applies to tree/search/content and log file-reference resolution
 
 Minimal global config example:
 
@@ -218,7 +203,7 @@ Project-local override example (`<repo-root>/.vde/monitor/config.json`):
 ```json
 {
   "fileNavigator": {
-    "includeIgnoredPaths": ["tmp/ai/**"],
+    "includeIgnoredPaths": ["ai/**"],
     "autoExpandMatchLimit": 150
   }
 }
@@ -234,36 +219,64 @@ Supported image backends:
 
 - Text screen capture works cross-platform
 - Image capture is macOS-only
-- Desktop sidebar pane focus is macOS-only
-- QuickPanel does not include pane focus action
+- Pane focus integration is macOS-only
 
 ## Runtime data paths
 
+- Token: `~/.vde-monitor/token.json`
 - Session/timeline persistence: `~/.vde-monitor/state.json`
-- Claude hook event logs: `~/.vde-monitor/events/<server-key>/claude.jsonl`
+- Hook event logs: `~/.vde-monitor/events/<server-key>/claude.jsonl`
 - Uploaded image attachments: `$TMPDIR/vde-monitor/attachments/<encoded-pane-id>/...`
 
 ## Security defaults
 
 - Bearer token auth is required for API access
-- Default bind is `127.0.0.1` (`--public` is opt-in)
-- Optional origin restriction is available via `allowedOrigins`
+- Default bind host is loopback (`127.0.0.1`)
+- `--public` is opt-in
+- Optional origin restriction via `allowedOrigins`
 
 ## Development
 
+Install:
+
 ```bash
-pnpm install
-pnpm dev
+pnpm install --frozen-lockfile
 ```
 
-Run CI checks:
+Run local development:
+
+```bash
+pnpm dev
+pnpm dev:server
+pnpm dev:web
+pnpm dev:public
+```
+
+Quality checks:
 
 ```bash
 pnpm run ci
+pnpm run ci:fix
+pnpm test
+pnpm test:run
 ```
 
-Build distributable package:
+Build package:
 
 ```bash
 pnpm build
 ```
+
+`pnpm build` assembles npm-ready artifacts in `dist/`, including CLI entry files and web assets.
+
+## Troubleshooting
+
+- No sessions appear:
+  - confirm tmux/WezTerm is running
+  - verify socket/target options (`--socket-name`, `--socket-path`, `--multiplexer`)
+- URL opens but API fails:
+  - check token in URL hash (`#token=...`)
+  - rotate token with `vde-monitor token rotate`
+- Mobile device cannot connect:
+  - re-check network path (SSH forward / Tailscale / LAN)
+  - avoid exposing to public internet without hardening

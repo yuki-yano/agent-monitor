@@ -27,7 +27,6 @@ describe("parseArgs", () => {
       "wezterm",
       "--backend",
       "wezterm",
-      "--no-attach",
     ]);
 
     expect(result.command).toBe("token");
@@ -37,7 +36,6 @@ describe("parseArgs", () => {
     expect(result.port).toBe("3000");
     expect(result.multiplexer).toBe("wezterm");
     expect(result.backend).toBe("wezterm");
-    expect(result.attach).toBe(false);
   });
 
   it("keeps unknown flags on raw parsed output", () => {

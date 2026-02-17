@@ -419,7 +419,6 @@ export const claudeHookEventSchema = z.object({
 export const configSchema = z.object({
   bind: z.enum(["127.0.0.1", "0.0.0.0"]),
   port: z.number(),
-  attachOnServe: z.boolean(),
   allowedOrigins: z.array(z.string()),
   rateLimit: z.object({
     send: z.object({ windowMs: z.number(), max: z.number() }),
@@ -512,7 +511,6 @@ const strictObject = <TShape extends z.ZodRawShape>(shape: TShape) => z.object(s
 export const configOverrideSchema = strictObject({
   bind: z.enum(["127.0.0.1", "0.0.0.0"]).optional(),
   port: z.number().optional(),
-  attachOnServe: z.boolean().optional(),
   allowedOrigins: z.array(z.string()).optional(),
   rateLimit: strictObject({
     send: strictObject({

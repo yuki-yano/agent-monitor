@@ -104,7 +104,7 @@ export const createPaneLogManager = ({
     pipeConflict: boolean;
     forceReattach: boolean;
   }) => {
-    if (!config.attachOnServe || pipeConflict || (pipeAttached && !forceReattach)) {
+    if (pipeConflict || (pipeAttached && !forceReattach)) {
       return { pipeAttached, pipeConflict };
     }
     await ensureLogFiles(paneId);
@@ -147,9 +147,7 @@ export const createPaneLogManager = ({
       normalizedPipeDestinations.delete(paneId);
     }
 
-    if (config.attachOnServe) {
-      logActivity.register(paneId, logPath);
-    }
+    logActivity.register(paneId, logPath);
 
     await rotateFn(logPath, config.logs.maxPaneLogBytes, config.logs.retainRotations);
 

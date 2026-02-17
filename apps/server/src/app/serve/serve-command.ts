@@ -69,7 +69,6 @@ export const buildAccessUrl = ({
 
 export const runServe = async (args: ParsedArgs) => {
   const config = ensureConfig();
-  const noAttach = args.attach === false;
   const multiplexerOverrides = resolveMultiplexerOverrides(args);
 
   const { bindHost, displayHost } = resolveHosts({
@@ -79,7 +78,6 @@ export const runServe = async (args: ParsedArgs) => {
     getTailscaleIP,
   });
 
-  config.attachOnServe = !noAttach;
   const parsedPort = parsePort(args.port);
   if (parsedPort) {
     config.port = parsedPort;
