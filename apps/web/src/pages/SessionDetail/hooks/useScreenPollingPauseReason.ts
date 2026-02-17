@@ -1,5 +1,4 @@
-import { useDocumentVisibility, useNetwork, useWindowEvent } from "@mantine/hooks";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
 
@@ -8,13 +7,9 @@ type PollingPauseReason = "disconnected" | "unauthorized" | "offline" | "hidden"
 const resolvePollingPauseReason = ({
   connected,
   connectionIssue,
-  isOffline,
-  isHidden,
 }: {
   connected: boolean;
   connectionIssue: string | null;
-  isOffline: boolean;
-  isHidden: boolean;
 }): PollingPauseReason => {
   if (!connected) {
     return "disconnected";
@@ -22,10 +17,10 @@ const resolvePollingPauseReason = ({
   if (connectionIssue === API_ERROR_MESSAGES.unauthorized) {
     return "unauthorized";
   }
-  if (isOffline) {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
     return "offline";
   }
-  if (isHidden) {
+  if (typeof document !== "undefined" && document.hidden) {
     return "hidden";
   }
   return null;
@@ -38,47 +33,33 @@ export const useScreenPollingPauseReason = ({
   connected: boolean;
   connectionIssue: string | null;
 }) => {
-  const visibilityState = useDocumentVisibility();
-  const { online } = useNetwork();
   const [pollingPauseReason, setPollingPauseReason] = useState<PollingPauseReason>(() =>
-    resolvePollingPauseReason({
-      connected,
-      connectionIssue,
-      isOffline: typeof navigator !== "undefined" && navigator.onLine === false,
-      isHidden: typeof document !== "undefined" && document.hidden,
-    }),
+    resolvePollingPauseReason({ connected, connectionIssue }),
   );
-  const updatePauseReason = useCallback(() => {
-    const isOfflineNow =
-      (typeof navigator !== "undefined" ? navigator.onLine === false : online === false) ||
-      online === false;
-    const isHiddenNow =
-      typeof document !== "undefined" ? document.hidden : visibilityState !== "visible";
-    setPollingPauseReason(
-      resolvePollingPauseReason({
-        connected,
-        connectionIssue,
-        isOffline: isOfflineNow,
-        isHidden: isHiddenNow,
-      }),
-    );
-  }, [connected, connectionIssue, online, visibilityState]);
-
-  useWindowEvent("focus", updatePauseReason);
 
   useEffect(() => {
-    if (typeof document === "undefined") {
+    setPollingPauseReason(resolvePollingPauseReason({ connected, connectionIssue }));
+  }, [connected, connectionIssue]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
       return;
     }
-    document.addEventListener("visibilitychange", updatePauseReason);
-    return () => {
-      document.removeEventListener("visibilitychange", updatePauseReason);
+    const targetDocument = typeof document !== "undefined" ? document : null;
+    const updatePauseReason = () => {
+      setPollingPauseReason(resolvePollingPauseReason({ connected, connectionIssue }));
     };
-  }, [updatePauseReason]);
-
-  useEffect(() => {
-    updatePauseReason();
-  }, [updatePauseReason]);
+    window.addEventListener("online", updatePauseReason);
+    window.addEventListener("offline", updatePauseReason);
+    targetDocument?.addEventListener("visibilitychange", updatePauseReason);
+    window.addEventListener("focus", updatePauseReason);
+    return () => {
+      window.removeEventListener("online", updatePauseReason);
+      window.removeEventListener("offline", updatePauseReason);
+      targetDocument?.removeEventListener("visibilitychange", updatePauseReason);
+      window.removeEventListener("focus", updatePauseReason);
+    };
+  }, [connected, connectionIssue]);
 
   return pollingPauseReason;
 };

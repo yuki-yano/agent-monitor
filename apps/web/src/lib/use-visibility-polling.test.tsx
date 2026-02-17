@@ -17,6 +17,7 @@ describe("useVisibilityPolling", () => {
     Object.defineProperty(document, "hidden", { value: true, configurable: true });
     Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
     const setIntervalSpy = vi.spyOn(window, "setInterval");
+    const addListenerSpy = vi.spyOn(window, "addEventListener");
     const onTick = vi.fn();
     const onResume = vi.fn();
 
@@ -30,9 +31,13 @@ describe("useVisibilityPolling", () => {
     );
 
     expect(setIntervalSpy).not.toHaveBeenCalled();
+    const visibilityListener = addListenerSpy.mock.calls.find(
+      ([event]) => event === "visibilitychange",
+    )?.[1] as EventListener;
+
     Object.defineProperty(document, "hidden", { value: false, configurable: true });
     act(() => {
-      document.dispatchEvent(new Event("visibilitychange"));
+      visibilityListener(new Event("visibilitychange"));
     });
 
     expect(onResume).toHaveBeenCalledTimes(1);
@@ -50,6 +55,7 @@ describe("useVisibilityPolling", () => {
     Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
     const setIntervalSpy = vi.spyOn(window, "setInterval");
     const clearIntervalSpy = vi.spyOn(window, "clearInterval");
+    const addListenerSpy = vi.spyOn(window, "addEventListener");
     const onTick = vi.fn();
 
     renderHook(() =>
@@ -66,8 +72,11 @@ describe("useVisibilityPolling", () => {
     });
     expect(onTick).toHaveBeenCalledTimes(1);
 
+    const offlineListener = addListenerSpy.mock.calls.find(
+      ([event]) => event === "offline",
+    )?.[1] as EventListener;
     act(() => {
-      window.dispatchEvent(new Event("offline"));
+      offlineListener(new Event("offline"));
     });
 
     expect(clearIntervalSpy).toHaveBeenCalledWith(intervalId);
@@ -82,6 +91,7 @@ describe("useVisibilityPolling", () => {
     Object.defineProperty(document, "hidden", { value: false, configurable: true });
     Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
     Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
+    const addListenerSpy = vi.spyOn(window, "addEventListener");
     const onResume = vi.fn();
 
     renderHook(() =>
@@ -93,10 +103,15 @@ describe("useVisibilityPolling", () => {
       }),
     );
 
+    const pageShowListener = addListenerSpy.mock.calls.find(
+      ([event]) => event === "pageshow",
+    )?.[1] as EventListener;
+    expect(pageShowListener).toBeDefined();
+
     act(() => {
       const event = new Event("pageshow") as Event & { persisted?: boolean };
       event.persisted = true;
-      window.dispatchEvent(event);
+      pageShowListener(event);
     });
 
     expect(onResume).toHaveBeenCalledTimes(1);
@@ -106,6 +121,7 @@ describe("useVisibilityPolling", () => {
     Object.defineProperty(document, "hidden", { value: true, configurable: true });
     Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
     Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
+    const addListenerSpy = vi.spyOn(window, "addEventListener");
     const onResume = vi.fn();
 
     renderHook(() =>
@@ -117,10 +133,14 @@ describe("useVisibilityPolling", () => {
       }),
     );
 
+    const pageShowListener = addListenerSpy.mock.calls.find(
+      ([event]) => event === "pageshow",
+    )?.[1] as EventListener;
+
     act(() => {
       const event = new Event("pageshow") as Event & { persisted?: boolean };
       event.persisted = false;
-      window.dispatchEvent(event);
+      pageShowListener(event);
     });
 
     expect(onResume).not.toHaveBeenCalled();
@@ -129,6 +149,7 @@ describe("useVisibilityPolling", () => {
   it("skips polling and resume callback when shouldPoll returns false", () => {
     Object.defineProperty(document, "hidden", { value: false, configurable: true });
     Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
+    const addListenerSpy = vi.spyOn(window, "addEventListener");
     const setIntervalSpy = vi.spyOn(window, "setInterval");
     const onResume = vi.fn();
     const onTick = vi.fn();
@@ -144,8 +165,11 @@ describe("useVisibilityPolling", () => {
     );
 
     expect(setIntervalSpy).not.toHaveBeenCalled();
+    const focusListener = addListenerSpy.mock.calls.find(
+      ([event]) => event === "focus",
+    )?.[1] as EventListener;
     act(() => {
-      window.dispatchEvent(new Event("focus"));
+      focusListener(new Event("focus"));
     });
 
     expect(onResume).not.toHaveBeenCalled();

@@ -1,4 +1,3 @@
-import { useClickOutside, useInterval } from "@mantine/hooks";
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 
 const WORKTREE_SELECTOR_OPEN_BODY_DATASET_KEY = "vdeWorktreeSelectorOpen";
@@ -27,9 +26,6 @@ export const useScreenPanelWorktreeSelector = ({
     }
     onRefreshScreen();
   }, [onRefreshScreen, onRefreshWorktrees]);
-  const { start: startRefreshInterval, stop: stopRefreshInterval } = useInterval(() => {
-    refreshWorktrees();
-  }, WORKTREE_SELECTOR_REFRESH_INTERVAL_MS);
 
   useEffect(() => {
     if (!enabled && isOpen) {
@@ -39,11 +35,9 @@ export const useScreenPanelWorktreeSelector = ({
 
   useEffect(() => {
     if (!enabled) {
-      stopRefreshInterval();
       return;
     }
     if (!isOpen) {
-      stopRefreshInterval();
       lastClosedAtRef.current = Date.now();
       return;
     }
@@ -51,9 +45,13 @@ export const useScreenPanelWorktreeSelector = ({
     if (elapsedSinceCloseMs >= WORKTREE_SELECTOR_REFRESH_INTERVAL_MS) {
       refreshWorktrees();
     }
-    startRefreshInterval();
-    return stopRefreshInterval;
-  }, [enabled, isOpen, refreshWorktrees, startRefreshInterval, stopRefreshInterval]);
+    const timerId = window.setInterval(() => {
+      refreshWorktrees();
+    }, WORKTREE_SELECTOR_REFRESH_INTERVAL_MS);
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [enabled, isOpen, refreshWorktrees]);
 
   useEffect(() => {
     if (typeof document === "undefined") {
@@ -70,16 +68,24 @@ export const useScreenPanelWorktreeSelector = ({
     };
   }, [isOpen]);
 
-  useClickOutside(
-    () => {
-      if (!isOpen) {
+  useEffect(() => {
+    if (!isOpen || typeof document === "undefined") {
+      return;
+    }
+    const handlePointerDown = (event: PointerEvent) => {
+      const containerNode = containerRef.current;
+      if (!containerNode) {
         return;
       }
-      setIsOpen(false);
-    },
-    ["pointerdown"],
-    [containerRef.current],
-  );
+      if (event.target instanceof Node && !containerNode.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [containerRef, isOpen]);
 
   return {
     isOpen,

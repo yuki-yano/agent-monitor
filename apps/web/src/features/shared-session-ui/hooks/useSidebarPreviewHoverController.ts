@@ -1,4 +1,3 @@
-import { useWindowEvent } from "@mantine/hooks";
 import { useCallback, useEffect, useRef } from "react";
 
 import type { PreviewFrame } from "../atoms/sidebarPreviewAtoms";
@@ -167,15 +166,18 @@ export const useSidebarPreviewHoverController = ({
     updatePreviewPosition(hoveredPaneId);
   }, [hoveredPaneId, setPreviewFrame, updatePreviewPosition]);
 
-  const handleWindowUpdate = useCallback(() => {
+  useEffect(() => {
     if (!hoveredPaneId) {
       return;
     }
-    schedulePreviewPosition(hoveredPaneId);
+    const handleUpdate = () => schedulePreviewPosition(hoveredPaneId);
+    window.addEventListener("resize", handleUpdate);
+    window.addEventListener("scroll", handleUpdate, true);
+    return () => {
+      window.removeEventListener("resize", handleUpdate);
+      window.removeEventListener("scroll", handleUpdate, true);
+    };
   }, [hoveredPaneId, schedulePreviewPosition]);
-
-  useWindowEvent("resize", handleWindowUpdate);
-  useWindowEvent("scroll", handleWindowUpdate, true);
 
   useEffect(() => {
     return () => {

@@ -1,5 +1,3 @@
-import { readLocalStorageValue } from "@mantine/hooks";
-
 export type SessionListPinScope = "repos";
 
 export type SessionListPinValues = Record<string, number>;
@@ -48,11 +46,10 @@ const normalizePins = (value: unknown): SessionListPins => {
 export const createRepoPinKey = (repoRoot: string | null) => `repo:${repoRoot ?? "__NO_REPO__"}`;
 
 export const readStoredSessionListPins = (): SessionListPins => {
-  const stored = readLocalStorageValue<string | null>({
-    key: SESSION_LIST_PINS_STORAGE_KEY,
-    defaultValue: null,
-    deserialize: (value) => value ?? null,
-  });
+  if (typeof window === "undefined") {
+    return EMPTY_PINS;
+  }
+  const stored = window.localStorage.getItem(SESSION_LIST_PINS_STORAGE_KEY);
   if (!stored) {
     return EMPTY_PINS;
   }

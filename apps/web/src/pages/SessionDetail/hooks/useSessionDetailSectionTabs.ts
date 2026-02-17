@@ -1,5 +1,4 @@
-import { useLocalStorage } from "@mantine/hooks";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const DETAIL_SECTION_TAB_VALUES = [
   "keys",
@@ -40,6 +39,14 @@ const buildDetailSectionTabStorageKey = (
 ): string =>
   `${DETAIL_SECTION_TAB_STORAGE_KEY_PREFIX}:${encodeURIComponent(scope?.repoRoot ?? SECTION_TAB_STORAGE_REPO_FALLBACK)}:${encodeURIComponent(scope?.branch ?? SECTION_TAB_STORAGE_BRANCH_FALLBACK)}`;
 
+const readStoredSectionTabValue = (storageKey: string): SectionTabValue => {
+  if (typeof window === "undefined") {
+    return DEFAULT_DETAIL_SECTION_TAB;
+  }
+  const stored = window.localStorage.getItem(storageKey);
+  return isSectionTabValue(stored) ? stored : DEFAULT_DETAIL_SECTION_TAB;
+};
+
 type UseSessionDetailSectionTabsInput = {
   scope: SectionTabStorageScope | null | undefined;
 };
@@ -56,50 +63,56 @@ export const useSessionDetailSectionTabs = ({ scope }: UseSessionDetailSectionTa
     [branch, repoRoot],
   );
   const [sectionTabsListElement, setSectionTabsListElement] = useState<HTMLDivElement | null>(null);
-  const [selectedSectionTabValue, setSelectedSectionTabValue] = useLocalStorage<SectionTabValue>({
-    key: sectionTabStorageKey,
-    defaultValue: DEFAULT_DETAIL_SECTION_TAB,
-    getInitialValueInEffect: false,
-    deserialize: (value) => (isSectionTabValue(value) ? value : DEFAULT_DETAIL_SECTION_TAB),
-    serialize: (value) => value,
-  });
-  const [sectionTabsIconOnly, setSectionTabsIconOnly] = useState(false);
-  const handleSectionTabChange = useCallback(
-    (value: string) => {
-      if (!isSectionTabValue(value)) {
-        return;
-      }
-      setSelectedSectionTabValue(value);
-    },
-    [setSelectedSectionTabValue],
+  const [selectedSectionTabValue, setSelectedSectionTabValue] = useState<SectionTabValue>(() =>
+    readStoredSectionTabValue(sectionTabStorageKey),
   );
-
-  const evaluateTabLabelVisibility = useCallback(() => {
-    if (!sectionTabsListElement) {
+  const [sectionTabsIconOnly, setSectionTabsIconOnly] = useState(false);
+  const handleSectionTabChange = (value: string) => {
+    if (!isSectionTabValue(value)) {
       return;
     }
-    const nextIconOnly = sectionTabsListElement.clientWidth < DETAIL_SECTION_TAB_TEXT_MIN_WIDTH;
-    setSectionTabsIconOnly((previous) => (previous === nextIconOnly ? previous : nextIconOnly));
-  }, [sectionTabsListElement]);
+    setSelectedSectionTabValue(value);
+  };
 
   useEffect(() => {
-    if (!sectionTabsListElement) {
+    if (typeof window === "undefined") {
       return;
     }
-    const resizeObserver =
-      typeof ResizeObserver === "undefined"
-        ? null
-        : new ResizeObserver(() => {
-            evaluateTabLabelVisibility();
-          });
-    resizeObserver?.observe(sectionTabsListElement);
-    window.addEventListener("resize", evaluateTabLabelVisibility);
+    setSelectedSectionTabValue(readStoredSectionTabValue(sectionTabStorageKey));
+  }, [sectionTabStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(sectionTabStorageKey, selectedSectionTabValue);
+  }, [sectionTabStorageKey, selectedSectionTabValue]);
+
+  useEffect(() => {
+    const tabListElement = sectionTabsListElement;
+    if (!tabListElement) {
+      return;
+    }
+
+    const evaluateTabLabelVisibility = () => {
+      const nextIconOnly = tabListElement.clientWidth < DETAIL_SECTION_TAB_TEXT_MIN_WIDTH;
+      setSectionTabsIconOnly((previous) => (previous === nextIconOnly ? previous : nextIconOnly));
+    };
+
     const rafId = window.requestAnimationFrame(evaluateTabLabelVisibility);
     let settleInnerRafId: number | null = null;
     const settleRafId = window.requestAnimationFrame(() => {
       settleInnerRafId = window.requestAnimationFrame(evaluateTabLabelVisibility);
     });
     const settleTimeoutId = window.setTimeout(evaluateTabLabelVisibility, 180);
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => {
+            evaluateTabLabelVisibility();
+          });
+    resizeObserver?.observe(tabListElement);
+    window.addEventListener("resize", evaluateTabLabelVisibility);
     const fontFaceSet =
       typeof document !== "undefined" && "fonts" in document ? document.fonts : null;
     const onFontLoadingDone = () => {
@@ -121,11 +134,12 @@ export const useSessionDetailSectionTabs = ({ scope }: UseSessionDetailSectionTa
       window.removeEventListener("resize", evaluateTabLabelVisibility);
       fontFaceSet?.removeEventListener("loadingdone", onFontLoadingDone);
     };
-  }, [evaluateTabLabelVisibility, sectionTabsListElement]);
+  }, [sectionTabsListElement]);
 
   return {
     selectedSectionTabValue,
     sectionTabsIconOnly,
+    sectionTabsListElement,
     setSectionTabsListElement,
     handleSectionTabChange,
   };
