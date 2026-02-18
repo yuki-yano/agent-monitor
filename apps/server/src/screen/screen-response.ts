@@ -26,12 +26,20 @@ type ScreenResponseParams = {
   buildTextResponse: ScreenCache["buildTextResponse"];
 };
 
-const resolveJoinLines = (config: AgentMonitorConfig) => config.screen.joinLines;
+const resolveRequestedJoinLines = (config: AgentMonitorConfig) => config.screen.joinLines;
 
 const resolveCaptureBackend = (config: AgentMonitorConfig): ScreenCaptureMeta["backend"] =>
   config.multiplexer.backend === "tmux" || config.multiplexer.backend === "wezterm"
     ? config.multiplexer.backend
     : "unknown";
+
+const resolveAppliedJoinLines = ({
+  backend,
+  joinLinesRequested,
+}: {
+  backend: ScreenCaptureMeta["backend"];
+  joinLinesRequested: boolean;
+}) => (backend === "tmux" ? joinLinesRequested : false);
 
 const buildNoneCaptureMeta = (): ScreenCaptureMeta => ({
   backend: "unknown",
@@ -97,7 +105,8 @@ export const createScreenResponse = async ({
 }: ScreenResponseParams): Promise<ScreenResponse> => {
   const lineCount = Math.min(lines ?? config.screen.defaultLines, config.screen.maxLines);
   const backend = resolveCaptureBackend(config);
-  const joinLinesApplied = resolveJoinLines(config);
+  const joinLinesRequested = resolveRequestedJoinLines(config);
+  const joinLinesApplied = resolveAppliedJoinLines({ backend, joinLinesRequested });
   const textCaptureMeta = buildTextCaptureMeta({ backend, joinLinesApplied });
 
   const captureTextResponse = async (

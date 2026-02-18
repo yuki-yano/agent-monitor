@@ -88,14 +88,13 @@ const resolveClaudeLabelIndent = (text: string): number | null => {
   if (!match) {
     return null;
   }
-  let anchor = match[0].length;
-  const nextChar = text[anchor];
-  if (nextChar === "(") {
-    anchor += 1;
-  } else if (nextChar === " ") {
+  const codePoints = [...text];
+  let anchor = countCh(match[0]);
+  const nextChar = codePoints[anchor];
+  if (nextChar === "(" || nextChar === " ") {
     anchor += 1;
   }
-  return countCh(text.slice(0, anchor));
+  return anchor;
 };
 
 export const isTableLine = (lineHtml: string) =>

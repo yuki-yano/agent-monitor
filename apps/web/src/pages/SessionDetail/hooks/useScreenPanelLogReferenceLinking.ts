@@ -86,6 +86,8 @@ export const useScreenPanelLogReferenceLinking = ({
     return extracted;
   }, []);
 
+  const visibleRangeForMemo = effectiveWrapMode === "smart" ? null : visibleRange;
+
   const referenceCandidateTokens = useMemo(() => {
     if (mode !== "text") {
       return [];
@@ -98,17 +100,15 @@ export const useScreenPanelLogReferenceLinking = ({
     const maxIndex = screenLines.length - 1;
     const fallbackStart = Math.max(0, maxIndex - FALLBACK_VISIBLE_REFERENCE_WINDOW);
     const startIndex =
-      effectiveWrapMode === "smart"
-        ? 0
-        : visibleRange == null
-          ? fallbackStart
-          : Math.max(0, visibleRange.startIndex - VISIBLE_REFERENCE_LINE_PADDING);
+      visibleRangeForMemo == null
+        ? effectiveWrapMode === "smart"
+          ? 0
+          : fallbackStart
+        : Math.max(0, visibleRangeForMemo.startIndex - VISIBLE_REFERENCE_LINE_PADDING);
     const endIndex =
-      effectiveWrapMode === "smart"
+      visibleRangeForMemo == null
         ? maxIndex
-        : visibleRange == null
-          ? maxIndex
-          : Math.min(maxIndex, visibleRange.endIndex + VISIBLE_REFERENCE_LINE_PADDING);
+        : Math.min(maxIndex, visibleRangeForMemo.endIndex + VISIBLE_REFERENCE_LINE_PADDING);
 
     for (let index = endIndex; index >= startIndex; index -= 1) {
       const line = screenLines[index];
@@ -134,7 +134,7 @@ export const useScreenPanelLogReferenceLinking = ({
       }
     }
     return ordered;
-  }, [effectiveWrapMode, extractCachedTokensFromLine, mode, screenLines, visibleRange]);
+  }, [effectiveWrapMode, extractCachedTokensFromLine, mode, screenLines, visibleRangeForMemo]);
 
   const referenceCandidateTokenSet = useMemo(
     () => new Set(referenceCandidateTokens),
@@ -189,6 +189,8 @@ export const useScreenPanelLogReferenceLinking = ({
         if (activeResolveCandidatesRequestIdRef.current !== requestId) {
           return;
         }
+        // Restore previous context so identical inputs can retry on the next render cycle.
+        lastResolveContextRef.current = previousResolveContext;
         setLinkableTokens((previous) => {
           const next = new Set<string>();
           previous.forEach((token) => {

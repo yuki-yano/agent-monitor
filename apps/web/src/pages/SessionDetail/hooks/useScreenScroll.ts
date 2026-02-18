@@ -65,12 +65,14 @@ export const useScreenScroll = ({
           stopForceFollow();
         }, forceFollowFallbackMs);
       }
-      window.requestAnimationFrame(() => {
-        const scroller = scrollerRef.current;
-        if (scroller != null) {
-          scroller.scrollTo({ top: scroller.scrollHeight, left: 0, behavior });
-        }
-      });
+      if (!hasVirtuoso) {
+        window.requestAnimationFrame(() => {
+          const scroller = scrollerRef.current;
+          if (scroller != null) {
+            scroller.scrollTo({ top: scroller.scrollHeight, left: 0, behavior });
+          }
+        });
+      }
       return true;
     },
     [forceFollowFallbackMs, isAtBottom, screenLinesLength, setForceFollow, stopForceFollow],

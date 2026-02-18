@@ -155,6 +155,9 @@ export const SmartScreenViewport = ({
               className={cn("vde-screen-line-smart min-h-4 leading-4", line.className)}
               onClick={onLineClick}
               onKeyDown={onLineKeyDown}
+              // lineHtml must come from the controlled screen pipeline
+              // (server terminal output -> ansi escape -> DOM-only transforms),
+              // never from unvalidated user input.
               dangerouslySetInnerHTML={{ __html: line.lineHtml || "&#x200B;" }}
             />
           ))}

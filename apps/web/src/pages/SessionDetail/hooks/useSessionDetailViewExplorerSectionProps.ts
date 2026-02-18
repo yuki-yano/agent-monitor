@@ -48,10 +48,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
     clearVirtualWorktree,
   } = screen;
   const sourceRepoRoot = effectiveWorktreePath ?? session?.repoRoot ?? null;
-  const screenAgent: "codex" | "claude" | "unknown" =
-    session?.agent === "codex" || session?.agent === "claude" || session?.agent === "unknown"
-      ? session.agent
-      : "unknown";
+  const screenAgent = session?.agent ?? "unknown";
   const { diffSummary, diffError, diffFiles, diffLoadingFiles, ensureDiffFile } = diffs;
   const { rawMode, allowDangerKeys } = controls;
   const {

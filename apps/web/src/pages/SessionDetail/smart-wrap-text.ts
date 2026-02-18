@@ -9,8 +9,8 @@ export const extractTextContentFromHtml = (lineHtml: string) => {
   if (!sharedParser) {
     return stripInvisibleChars(lineHtml.replace(/<[^>]*>/g, ""));
   }
-  const document = sharedParser.parseFromString(`<div>${lineHtml}</div>`, "text/html");
-  return stripInvisibleChars(document.body.firstElementChild?.textContent ?? "");
+  const parsedDocument = sharedParser.parseFromString(`<div>${lineHtml}</div>`, "text/html");
+  return stripInvisibleChars(parsedDocument.body.firstElementChild?.textContent ?? "");
 };
 
 export const countCh = (value: string) => [...value].length;

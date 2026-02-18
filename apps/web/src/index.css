@@ -268,11 +268,11 @@ body::before {
 .vde-screen-line-smart {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 .vde-smart-wrap-hang {
   --vde-wrap-indent-ch: 0ch;
+
   display: block;
   padding-left: var(--vde-wrap-indent-ch);
   text-indent: calc(var(--vde-wrap-indent-ch) * -1);

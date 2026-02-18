@@ -110,6 +110,37 @@ describe("useScreenPanelLogReferenceLinking", () => {
     });
   });
 
+  it("retries resolution after failure when context stays logically identical", async () => {
+    const onResolveFileReferenceCandidates = vi
+      .fn<(rawTokens: string[]) => Promise<string[]>>()
+      .mockRejectedValueOnce(new Error("network error"))
+      .mockResolvedValueOnce(["src/retry.ts"]);
+    const { rerender } = renderHook(
+      ({ screenLines }: { screenLines: string[] }) =>
+        useScreenPanelLogReferenceLinking({
+          mode: "text",
+          effectiveWrapMode: "smart",
+          paneId: "%1",
+          sourceRepoRoot: "/repo",
+          agent: "codex",
+          screenLines,
+          onResolveFileReferenceCandidates,
+          onRangeChanged: vi.fn(),
+        }),
+      { initialProps: { screenLines: ["src/retry.ts"] } },
+    );
+
+    await waitFor(() => {
+      expect(onResolveFileReferenceCandidates).toHaveBeenCalledTimes(1);
+    });
+
+    rerender({ screenLines: ["src/retry.ts"] });
+
+    await waitFor(() => {
+      expect(onResolveFileReferenceCandidates).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it("switches from smart full-range to off fallback-window behavior", async () => {
     const onResolveFileReferenceCandidates = vi.fn(async (rawTokens: string[]) => rawTokens);
     const screenLines = [
