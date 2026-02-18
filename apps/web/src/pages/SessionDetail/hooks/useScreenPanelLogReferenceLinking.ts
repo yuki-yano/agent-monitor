@@ -11,6 +11,7 @@ import {
 
 const VISIBLE_REFERENCE_LINE_PADDING = 20;
 const FALLBACK_VISIBLE_REFERENCE_WINDOW = 120;
+const LINE_TOKEN_CACHE_LIMIT = 2000;
 
 type ScreenRange = { startIndex: number; endIndex: number };
 
@@ -25,26 +26,32 @@ type UseScreenPanelLogReferenceLinkingArgs = {
   onRangeChanged: (range: ScreenRange) => void;
 };
 
-const buildResolveSignature = ({
-  paneId,
-  sourceRepoRoot,
-  agent,
-  effectiveWrapMode,
-  referenceCandidateTokens,
-}: {
+type ResolveContext = {
   paneId: string;
   sourceRepoRoot: string | null;
   agent: "codex" | "claude" | "unknown";
   effectiveWrapMode: ScreenWrapMode;
   referenceCandidateTokens: string[];
-}) =>
-  [
-    paneId,
-    sourceRepoRoot ?? "__no_repo_root__",
-    agent,
-    effectiveWrapMode,
-    referenceCandidateTokens.join("\u0001"),
-  ].join("\u0000");
+};
+
+const areStringArraysEqual = (left: string[], right: string[]) => {
+  if (left.length !== right.length) {
+    return false;
+  }
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const isSameResolveContext = (left: ResolveContext, right: ResolveContext) =>
+  left.paneId === right.paneId &&
+  left.sourceRepoRoot === right.sourceRepoRoot &&
+  left.agent === right.agent &&
+  left.effectiveWrapMode === right.effectiveWrapMode &&
+  areStringArraysEqual(left.referenceCandidateTokens, right.referenceCandidateTokens);
 
 export const useScreenPanelLogReferenceLinking = ({
   mode,
@@ -59,7 +66,25 @@ export const useScreenPanelLogReferenceLinking = ({
   const [linkableTokens, setLinkableTokens] = useState<Set<string>>(new Set());
   const [visibleRange, setVisibleRange] = useState<ScreenRange | null>(null);
   const activeResolveCandidatesRequestIdRef = useRef(0);
-  const lastResolveSignatureRef = useRef<string | null>(null);
+  const lastResolveContextRef = useRef<ResolveContext | null>(null);
+  const lineTokenCacheRef = useRef<Map<string, string[]>>(new Map());
+
+  const extractCachedTokensFromLine = useCallback((line: string) => {
+    const cache = lineTokenCacheRef.current;
+    const cached = cache.get(line);
+    if (cached) {
+      return cached;
+    }
+    const extracted = extractLogReferenceTokensFromLine(line);
+    cache.set(line, extracted);
+    if (cache.size > LINE_TOKEN_CACHE_LIMIT) {
+      const oldestKey = cache.keys().next().value;
+      if (oldestKey != null) {
+        cache.delete(oldestKey);
+      }
+    }
+    return extracted;
+  }, []);
 
   const referenceCandidateTokens = useMemo(() => {
     if (mode !== "text") {
@@ -90,7 +115,7 @@ export const useScreenPanelLogReferenceLinking = ({
       if (!line) {
         continue;
       }
-      const tokens = extractLogReferenceTokensFromLine(line);
+      const tokens = extractCachedTokensFromLine(line);
       const pathTokens: string[] = [];
       const filenameTokens: string[] = [];
       for (const token of tokens) {
@@ -109,7 +134,7 @@ export const useScreenPanelLogReferenceLinking = ({
       }
     }
     return ordered;
-  }, [effectiveWrapMode, mode, screenLines, visibleRange]);
+  }, [effectiveWrapMode, extractCachedTokensFromLine, mode, screenLines, visibleRange]);
 
   const referenceCandidateTokenSet = useMemo(
     () => new Set(referenceCandidateTokens),
@@ -117,17 +142,21 @@ export const useScreenPanelLogReferenceLinking = ({
   );
 
   useEffect(() => {
-    const signature = buildResolveSignature({
+    const resolveContext: ResolveContext = {
       paneId,
       sourceRepoRoot,
       agent,
       effectiveWrapMode,
       referenceCandidateTokens,
-    });
-    if (signature === lastResolveSignatureRef.current) {
+    };
+    const previousResolveContext = lastResolveContextRef.current;
+    if (
+      previousResolveContext != null &&
+      isSameResolveContext(previousResolveContext, resolveContext)
+    ) {
       return;
     }
-    lastResolveSignatureRef.current = signature;
+    lastResolveContextRef.current = resolveContext;
 
     const requestId = activeResolveCandidatesRequestIdRef.current + 1;
     activeResolveCandidatesRequestIdRef.current = requestId;

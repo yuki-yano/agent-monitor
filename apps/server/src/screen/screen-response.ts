@@ -26,8 +26,7 @@ type ScreenResponseParams = {
   buildTextResponse: ScreenCache["buildTextResponse"];
 };
 
-const resolveJoinLines = (config: AgentMonitorConfig, target: SessionDetail) =>
-  config.screen.joinLines || target.agent === "claude";
+const resolveJoinLines = (config: AgentMonitorConfig) => config.screen.joinLines;
 
 const resolveCaptureBackend = (config: AgentMonitorConfig): ScreenCaptureMeta["backend"] =>
   config.multiplexer.backend === "tmux" || config.multiplexer.backend === "wezterm"
@@ -98,7 +97,7 @@ export const createScreenResponse = async ({
 }: ScreenResponseParams): Promise<ScreenResponse> => {
   const lineCount = Math.min(lines ?? config.screen.defaultLines, config.screen.maxLines);
   const backend = resolveCaptureBackend(config);
-  const joinLinesApplied = resolveJoinLines(config, target);
+  const joinLinesApplied = resolveJoinLines(config);
   const textCaptureMeta = buildTextCaptureMeta({ backend, joinLinesApplied });
 
   const captureTextResponse = async (

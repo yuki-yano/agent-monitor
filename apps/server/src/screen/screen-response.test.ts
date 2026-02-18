@@ -15,7 +15,7 @@ vi.mock("../screen-service", () => ({
 }));
 
 describe("createScreenResponse", () => {
-  it("enables joinLines for claude sessions even when config is disabled", async () => {
+  it("follows config joinLines setting for claude sessions", async () => {
     const captureText = vi.fn(async () => ({
       screen: "hello",
       alternateOn: false,
@@ -52,15 +52,15 @@ describe("createScreenResponse", () => {
     expect(response.ok).toBe(true);
     expect(response.captureMeta).toMatchObject({
       backend: "tmux",
-      lineModel: "joined-physical",
-      joinLinesApplied: true,
+      lineModel: "physical",
+      joinLinesApplied: false,
       captureMethod: "tmux-capture-pane",
     });
     expect(captureText).toHaveBeenCalledWith(
       expect.objectContaining({
         paneId: "%1",
         lines: 5,
-        joinLines: true,
+        joinLines: false,
         includeTruncated: false,
       }),
     );

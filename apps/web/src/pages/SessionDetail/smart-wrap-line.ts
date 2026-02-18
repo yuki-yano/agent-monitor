@@ -1,4 +1,4 @@
-import type { SmartWrapLineClassification } from "./smart-wrap-classify";
+import type { SmartWrapLineClassification } from "./smart-wrap-types";
 
 export type SmartWrapDecoratedLine = {
   lineHtml: string;

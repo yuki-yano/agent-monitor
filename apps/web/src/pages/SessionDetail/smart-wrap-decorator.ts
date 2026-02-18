@@ -1,5 +1,5 @@
-import type { SmartWrapLineClassification } from "./smart-wrap-classify";
 import { decorateSmartWrapLine, type SmartWrapDecoratedLine } from "./smart-wrap-line";
+import type { SmartWrapLineClassification } from "./smart-wrap-types";
 
 const defaultClassification: SmartWrapLineClassification = {
   rule: "default",

@@ -92,8 +92,6 @@ type ScreenPanelProps = {
   controls: ReactNode;
 };
 
-const SMART_RENDER_LINE_SOFT_LIMIT = 3000;
-
 const shouldShowErrorMessage = (error: string | null, connectionIssue: string | null) =>
   Boolean(error) &&
   (!connectionIssue || (error !== connectionIssue && error !== DISCONNECTED_MESSAGE));
@@ -234,12 +232,8 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     onResolveFileReferenceCandidates,
   } = actions;
   const showError = shouldShowErrorMessage(error, connectionIssue);
-  const smartRenderFallbackReason =
-    mode === "text" && wrapMode === "smart" && screenLines.length > SMART_RENDER_LINE_SOFT_LIMIT
-      ? `Smart wrap is temporarily disabled for large output (${screenLines.length} lines > ${SMART_RENDER_LINE_SOFT_LIMIT}).`
-      : null;
   const effectiveWrapMode: ScreenWrapMode =
-    mode === "text" && wrapMode === "smart" && smartRenderFallbackReason == null ? "smart" : "off";
+    mode === "text" && wrapMode === "smart" ? "smart" : "off";
   const pollingPauseMeta = pollingPauseReason ? pollingPauseLabelMap[pollingPauseReason] : null;
   const gitBranchLabel = formatBranchLabel(promptGitContext?.branch);
   const gitFileChanges = promptGitContext?.fileChanges;
@@ -405,11 +399,6 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
       {fallbackReason && (
         <Callout tone="warning" size="xs">
           Image fallback: {fallbackReason}
-        </Callout>
-      )}
-      {smartRenderFallbackReason && (
-        <Callout tone="warning" size="xs">
-          {smartRenderFallbackReason}
         </Callout>
       )}
       {showError && (
