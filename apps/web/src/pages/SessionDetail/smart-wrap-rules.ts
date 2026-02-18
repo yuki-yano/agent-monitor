@@ -119,6 +119,12 @@ export const detectCodexDiffBlockLineSet = (textLines: string[]) => {
         continue;
       }
 
+      // Two-phase recovery for wrapped Codex diff fragments:
+      // 1) after explicit continuation lines end, perform bounded lookahead
+      //    (up to wrappedMaxExclusive) to consume only plain wrapped text.
+      // 2) absorb that fragment only when a continuation line follows.
+      // This loop always makes progress: lookahead is bounded, absorption
+      // requires at least one consumed line, and fallback resets to wrappedStart.
       const wrappedStart = nextIndex;
       const wrappedMaxExclusive = Math.min(
         textLines.length,
@@ -221,7 +227,7 @@ export const resolveGenericIndent = (text: string): number | null => {
     }
     const indentCh = countCh(match[0]);
     if (indentCh < MIN_INDENT_CH || indentCh > MAX_INDENT_CH) {
-      return null;
+      continue;
     }
     return indentCh;
   }

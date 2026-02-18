@@ -73,6 +73,8 @@ export const useScreenPanelLogReferenceLinking = ({
     const cache = lineTokenCacheRef.current;
     const cached = cache.get(line);
     if (cached) {
+      cache.delete(line);
+      cache.set(line, cached);
       return cached;
     }
     const extracted = extractLogReferenceTokensFromLine(line);

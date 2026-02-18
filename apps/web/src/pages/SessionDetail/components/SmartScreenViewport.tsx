@@ -131,6 +131,8 @@ export const SmartScreenViewport = ({
     [onAtBottomChange, onUserScrollStateChange],
   );
 
+  const handleScrollToBottom = useCallback(() => onScrollToBottom("smooth"), [onScrollToBottom]);
+
   return (
     <div
       className="border-latte-surface2/80 bg-latte-crust/95 shadow-inner-soft relative min-h-[260px] w-full min-w-0 max-w-full flex-1 rounded-2xl border-2 sm:min-h-[320px]"
@@ -166,7 +168,7 @@ export const SmartScreenViewport = ({
       {!isAtBottom && (
         <IconButton
           type="button"
-          onClick={() => onScrollToBottom("smooth")}
+          onClick={handleScrollToBottom}
           aria-label="Scroll to bottom"
           className="absolute bottom-2 right-2"
           variant="base"

@@ -308,10 +308,6 @@ export type ScreenCaptureMeta = {
   // "logical" is reserved for future backends/modes that can return logical lines.
   lineModel: "joined-physical" | "physical" | "logical" | "none";
   joinLinesApplied: boolean | null;
-  // Geometry fields remain nullable until all capture backends expose these metrics.
-  paneCols: number | null;
-  paneRows: number | null;
-  scrollbackRows: number | null;
   // "wezterm-logical-lines" is reserved for future wezterm logical-line capture support.
   captureMethod:
     | "tmux-capture-pane"

@@ -6,6 +6,8 @@ import type { ScreenMode } from "@/lib/screen-loading";
 
 import { screenAtBottomAtom, screenForceFollowAtom } from "../atoms/screenAtoms";
 
+const FORCE_FOLLOW_FALLBACK_MS = 5000;
+
 type UseScreenScrollParams = {
   paneId: string;
   mode: ScreenMode;
@@ -32,7 +34,6 @@ export const useScreenScroll = ({
   const prevModeRef = useRef<ScreenMode>(mode);
   const prevPaneIdRef = useRef<string>(paneId);
   const snapToBottomRef = useRef(false);
-  const forceFollowFallbackMs = 5000;
 
   const stopForceFollow = useCallback(() => {
     setForceFollow(false);
@@ -63,7 +64,7 @@ export const useScreenScroll = ({
         }
         forceFollowTimerRef.current = window.setTimeout(() => {
           stopForceFollow();
-        }, forceFollowFallbackMs);
+        }, FORCE_FOLLOW_FALLBACK_MS);
       }
       if (!hasVirtuoso) {
         window.requestAnimationFrame(() => {
@@ -75,7 +76,7 @@ export const useScreenScroll = ({
       }
       return true;
     },
-    [forceFollowFallbackMs, isAtBottom, screenLinesLength, setForceFollow, stopForceFollow],
+    [isAtBottom, screenLinesLength, setForceFollow, stopForceFollow],
   );
 
   const handleAtBottomChange = useCallback(

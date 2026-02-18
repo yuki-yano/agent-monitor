@@ -299,6 +299,7 @@ describe("createScreenResponse", () => {
         screen: {
           ...baseConfig.screen,
           image: { ...baseConfig.screen.image, enabled: false },
+          joinLines: true,
         },
       },
       monitor,
@@ -389,7 +390,11 @@ describe("createScreenResponse", () => {
     const response = await createScreenResponse({
       config: {
         ...baseConfig,
-        screen: { ...baseConfig.screen, image: { ...baseConfig.screen.image, enabled: true } },
+        screen: {
+          ...baseConfig.screen,
+          image: { ...baseConfig.screen.image, enabled: true },
+          joinLines: true,
+        },
       },
       monitor,
       target,

@@ -45,9 +45,6 @@ const buildNoneCaptureMeta = (): ScreenCaptureMeta => ({
   backend: "unknown",
   lineModel: "none",
   joinLinesApplied: null,
-  paneCols: null,
-  paneRows: null,
-  scrollbackRows: null,
   captureMethod: "none",
 });
 
@@ -57,31 +54,30 @@ const buildTextCaptureMeta = ({
 }: {
   backend: ScreenCaptureMeta["backend"];
   joinLinesApplied: boolean;
-}): ScreenCaptureMeta => ({
-  backend,
-  lineModel:
+}): ScreenCaptureMeta => {
+  const lineModel =
     backend === "tmux"
       ? joinLinesApplied
         ? "joined-physical"
         : "physical"
       : backend === "wezterm"
         ? "physical"
-        : "none",
-  joinLinesApplied,
-  paneCols: null,
-  paneRows: null,
-  scrollbackRows: null,
-  captureMethod:
-    backend === "tmux" ? "tmux-capture-pane" : backend === "wezterm" ? "wezterm-get-text" : "none",
-});
+        : "none";
+  const captureMethod =
+    backend === "tmux" ? "tmux-capture-pane" : backend === "wezterm" ? "wezterm-get-text" : "none";
+
+  return {
+    backend,
+    lineModel,
+    joinLinesApplied,
+    captureMethod,
+  };
+};
 
 const buildImageCaptureMeta = (backend: ScreenCaptureMeta["backend"]): ScreenCaptureMeta => ({
   backend,
   lineModel: "none",
   joinLinesApplied: null,
-  paneCols: null,
-  paneRows: null,
-  scrollbackRows: null,
   captureMethod: "terminal-image",
 });
 

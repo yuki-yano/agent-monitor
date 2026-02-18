@@ -40,10 +40,6 @@ const screenCaptureMetaSchema = z.object({
   // "logical" is reserved for future backends/modes that can return logical lines.
   lineModel: z.enum(["joined-physical", "physical", "logical", "none"]),
   joinLinesApplied: z.boolean().nullable(),
-  // Geometry fields stay nullable until all capture backends expose these metrics.
-  paneCols: z.number().nullable(),
-  paneRows: z.number().nullable(),
-  scrollbackRows: z.number().nullable(),
   // "wezterm-logical-lines" is reserved for future wezterm logical-line capture support.
   captureMethod: z.enum([
     "tmux-capture-pane",
