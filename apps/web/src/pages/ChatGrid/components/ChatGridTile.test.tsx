@@ -15,7 +15,15 @@ import { ChatGridTile } from "./ChatGridTile";
 
 vi.mock("@/features/shared-session-ui/components/AnsiVirtualizedViewport", () => ({
   AnsiVirtualizedViewport: ({ lines }: { lines: string[] }) => (
-    <div data-testid="ansi-viewport">{lines.join("\n")}</div>
+    <div data-testid="ansi-viewport">
+      {lines.map((line, index) => (
+        <div
+          key={index}
+          data-testid={`ansi-line-${index}`}
+          dangerouslySetInnerHTML={{ __html: line }}
+        />
+      ))}
+    </div>
   ),
 }));
 
@@ -196,5 +204,33 @@ describe("ChatGridTile", () => {
     );
 
     expect(screen.getByText("No screen data yet.")).toBeTruthy();
+  });
+
+  it("linkifies file paths and http/https urls in screen lines", () => {
+    renderWithRouter(
+      <ChatGridTile
+        session={buildSession()}
+        nowMs={Date.parse("2026-02-17T00:10:00.000Z")}
+        connected
+        screenLines={["error at src/main.ts:12 see https://example.com/docs"]}
+        screenLoading={false}
+        screenError={null}
+        onTouchSession={vi.fn(async () => undefined)}
+        sendText={vi.fn(async () => ({ ok: true }))}
+        sendKeys={vi.fn(async () => ({ ok: true }))}
+        sendRaw={vi.fn(async () => ({ ok: true }))}
+      />,
+    );
+
+    const viewport = screen.getByTestId("ansi-viewport");
+    const fileRef = viewport.querySelector<HTMLElement>("[data-vde-file-ref='src/main.ts:12']");
+    const urlLink = viewport.querySelector<HTMLAnchorElement>(
+      "a[data-vde-log-url='https://example.com/docs']",
+    );
+
+    expect(fileRef).toBeTruthy();
+    expect(urlLink?.getAttribute("href")).toBe("https://example.com/docs");
+    expect(urlLink?.getAttribute("target")).toBe("_blank");
+    expect(urlLink?.getAttribute("rel")).toBe("noreferrer noopener");
   });
 });

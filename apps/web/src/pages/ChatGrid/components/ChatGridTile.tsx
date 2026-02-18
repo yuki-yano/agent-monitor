@@ -40,6 +40,10 @@ import {
 } from "@/lib/session-format";
 import { mapKeyWithModifiers } from "@/pages/SessionDetail/hooks/sessionControlKeys";
 import { useRawInputHandlers } from "@/pages/SessionDetail/hooks/useRawInputHandlers";
+import {
+  linkifyLogLineFileReferences,
+  linkifyLogLineHttpUrls,
+} from "@/pages/SessionDetail/log-file-reference";
 import { isDangerousText } from "@/pages/SessionDetail/sessionDetailUtils";
 
 type ChatGridTileProps = {
@@ -122,7 +126,15 @@ export const ChatGridTile = ({
   const sessionTitle = resolveSessionDisplayTitle(session);
   const displayLines = useMemo(() => {
     if (screenLines.length > 0) {
-      return screenLines;
+      return screenLines.map((line) => {
+        let linkified = linkifyLogLineFileReferences(line, {
+          isLinkableToken: (rawToken) => rawToken.includes("/") || rawToken.includes("\\"),
+        });
+        if (linkified.includes("http://") || linkified.includes("https://")) {
+          linkified = linkifyLogLineHttpUrls(linkified);
+        }
+        return linkified;
+      });
     }
     if (screenLoading) {
       return [];
