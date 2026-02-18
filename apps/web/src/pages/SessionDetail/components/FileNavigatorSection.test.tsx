@@ -45,6 +45,7 @@ const createProps = () => ({
     searchHasMore: false,
   },
   actions: {
+    onRefresh: vi.fn(),
     onSearchQueryChange: vi.fn(),
     onSearchMove: vi.fn(),
     onSearchConfirm: vi.fn(),
@@ -57,6 +58,17 @@ const createProps = () => ({
 });
 
 describe("FileNavigatorSection", () => {
+  it("renders refresh button in header and triggers refresh action", () => {
+    const props = createProps();
+    render(<FileNavigatorSection {...props} />);
+
+    const refreshButton = screen.getByRole("button", { name: "Refresh file navigator" });
+    expect(refreshButton.className).toContain("h-[30px]");
+    expect(refreshButton.className).toContain("w-[30px]");
+    fireEvent.click(refreshButton);
+    expect(props.actions.onRefresh).toHaveBeenCalledTimes(1);
+  });
+
   it("renders unavailable message", () => {
     const props = createProps();
     props.state.unavailable = true;

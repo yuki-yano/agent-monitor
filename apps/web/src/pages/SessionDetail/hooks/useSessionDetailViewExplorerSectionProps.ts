@@ -76,6 +76,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
     logFileCandidateModalOpen,
     logFileCandidateReference,
     logFileCandidateItems,
+    onRefresh,
     onSearchQueryChange,
     onSearchMove,
     onSearchConfirm,
@@ -160,6 +161,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
         searchHasMore,
       },
       actions: {
+        onRefresh,
         onSearchQueryChange,
         onSearchMove,
         onSearchConfirm,
@@ -184,6 +186,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
       treeNodes,
       rootTreeHasMore,
       searchHasMore,
+      onRefresh,
       onSearchQueryChange,
       onSearchMove,
       onSearchConfirm,

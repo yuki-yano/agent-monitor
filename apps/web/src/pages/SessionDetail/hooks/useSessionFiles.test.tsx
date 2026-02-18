@@ -96,6 +96,80 @@ describe("useSessionFiles", () => {
     });
   });
 
+  it("refreshes root tree even when search is inactive", async () => {
+    const requestRepoFileTree = vi.fn(async () => createTreePage({ basePath: ".", entries: [] }));
+    const requestRepoFileSearch = vi.fn();
+
+    const { result } = renderHook(() =>
+      useSessionFiles({
+        paneId: "pane-1",
+        repoRoot: "/repo",
+        autoExpandMatchLimit: 100,
+        requestRepoFileTree,
+        requestRepoFileSearch,
+        requestRepoFileContent,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(requestRepoFileTree).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      result.current.onRefresh();
+    });
+
+    await waitFor(() => {
+      expect(requestRepoFileTree).toHaveBeenCalledTimes(2);
+    });
+    expect(requestRepoFileSearch).not.toHaveBeenCalled();
+  });
+
+  it("refreshes active search result with current query", async () => {
+    const requestRepoFileTree = vi.fn(async () => createTreePage({ basePath: ".", entries: [] }));
+    const requestRepoFileSearch = vi.fn(async (_paneId: string, query: string) =>
+      createSearchPage({
+        query,
+        items: [
+          { path: `src/${query}.ts`, name: `${query}.ts`, kind: "file", score: 1, highlights: [0] },
+        ],
+        totalMatchedCount: 1,
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useSessionFiles({
+        paneId: "pane-1",
+        repoRoot: "/repo",
+        autoExpandMatchLimit: 100,
+        requestRepoFileTree,
+        requestRepoFileSearch,
+        requestRepoFileContent,
+      }),
+    );
+
+    act(() => {
+      result.current.onSearchQueryChange("index");
+    });
+
+    await waitFor(() => {
+      expect(result.current.searchResult?.query).toBe("index");
+    });
+    expect(requestRepoFileSearch).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      result.current.onRefresh();
+    });
+
+    await waitFor(() => {
+      expect(requestRepoFileSearch).toHaveBeenCalledTimes(2);
+    });
+    expect(requestRepoFileSearch).toHaveBeenLastCalledWith("pane-1", "index", {
+      cursor: undefined,
+      limit: 100,
+    });
+  });
+
   it("applies search results to tree nodes and confirms active selection", async () => {
     const requestRepoFileTree = vi.fn(async () => createTreePage({ basePath: ".", entries: [] }));
     const requestRepoFileSearch = vi.fn(async () =>

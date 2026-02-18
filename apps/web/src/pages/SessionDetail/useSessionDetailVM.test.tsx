@@ -142,6 +142,7 @@ vi.mock("./hooks/useSessionFiles", () => ({
     logFileCandidateReference: null,
     logFileCandidatePaneId: null,
     logFileCandidateItems: [],
+    onRefresh: vi.fn(),
     onSearchQueryChange: vi.fn(),
     onSearchMove: vi.fn(),
     onSearchConfirm: vi.fn(),

@@ -212,6 +212,7 @@ const createViewProps = (overrides: SessionDetailViewOverrides = {}): SessionDet
       logFileCandidateReference: null,
       logFileCandidatePaneId: null,
       logFileCandidateItems: [],
+      onRefresh: vi.fn(),
       onSearchQueryChange: vi.fn(),
       onSearchMove: vi.fn(),
       onSearchConfirm: vi.fn(),

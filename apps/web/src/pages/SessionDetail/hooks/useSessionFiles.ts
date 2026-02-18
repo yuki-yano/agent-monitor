@@ -18,6 +18,7 @@ import { useSessionFilesTreeActions } from "./useSessionFiles-tree-actions";
 import { useSessionFilesTreeLoader } from "./useSessionFiles-tree-loader";
 import { useSessionFilesTreeRenderNodes } from "./useSessionFiles-tree-render-nodes";
 import { useSessionFilesTreeReveal } from "./useSessionFiles-tree-reveal";
+import { createNextSearchRequestId } from "./session-files-search-effect";
 import { useSessionFilesUiSetters } from "./useSessionFiles-ui-setters";
 import {
   createInitialSessionFilesUiState,
@@ -326,6 +327,52 @@ export const useSessionFiles = ({
     onOpenFileModal,
   });
 
+  const onRefresh = useCallback(() => {
+    if (!repoRoot) {
+      return;
+    }
+    void loadTree(".");
+
+    const normalizedQuery = searchQuery.trim();
+    if (normalizedQuery.length === 0) {
+      return;
+    }
+    const requestId = createNextSearchRequestId(activeSearchRequestIdRef);
+    setSearchLoading(true);
+    setSearchError(null);
+    void fetchSearchPage(normalizedQuery)
+      .then((nextPage) => {
+        if (activeSearchRequestIdRef.current !== requestId) {
+          return;
+        }
+        setSearchResult(nextPage);
+        setSearchActiveIndex(0);
+      })
+      .catch((error) => {
+        if (activeSearchRequestIdRef.current !== requestId) {
+          return;
+        }
+        setSearchError(resolveSearchErrorMessage(error));
+      })
+      .finally(() => {
+        if (activeSearchRequestIdRef.current !== requestId) {
+          return;
+        }
+        setSearchLoading(false);
+      });
+  }, [
+    activeSearchRequestIdRef,
+    fetchSearchPage,
+    loadTree,
+    repoRoot,
+    resolveSearchErrorMessage,
+    searchQuery,
+    setSearchActiveIndex,
+    setSearchError,
+    setSearchLoading,
+    setSearchResult,
+  ]);
+
   const resetLogFileCandidateState = useCallback(() => {
     resetLogFileCandidateStateValue({
       setLogFileCandidateModalOpen,
@@ -430,6 +477,7 @@ export const useSessionFiles = ({
     logFileCandidateReference,
     logFileCandidatePaneId,
     logFileCandidateItems,
+    onRefresh,
     onSearchQueryChange: setSearchQuery,
     onSearchMove,
     onSearchConfirm,
