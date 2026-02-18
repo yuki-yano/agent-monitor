@@ -1,5 +1,5 @@
 import type { WorktreeListEntry } from "@vde-monitor/shared";
-import { FileText, Image, RefreshCw } from "lucide-react";
+import { FileText, Image, RefreshCw, TextWrap } from "lucide-react";
 import {
   forwardRef,
   type HTMLAttributes,
@@ -379,10 +379,10 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
             className="h-[30px] px-2 text-[10px] font-semibold uppercase tracking-[0.24em]"
             onClick={onToggleWrapMode}
             disabled={mode === "image"}
-            aria-label="Toggle smart wrap"
+            aria-label="Toggle wrap mode"
             aria-pressed={wrapMode === "smart"}
           >
-            Smart
+            <TextWrap className="h-3.5 w-3.5" />
           </Button>
           <Button
             variant="ghost"

@@ -87,12 +87,12 @@ describe("ScreenPanel", () => {
     expect(screen.getByText("Unsafe")).toBeTruthy();
   });
 
-  it("shows smart wrap button next to refresh", () => {
+  it("shows wrap button next to refresh", () => {
     const state = buildState();
     const actions = buildActions();
     render(<ScreenPanel state={state} actions={actions} controls={null} />);
 
-    const smartButton = screen.getByRole("button", { name: "Toggle smart wrap" });
+    const smartButton = screen.getByRole("button", { name: "Toggle wrap mode" });
     const refreshButton = screen.getByRole("button", { name: "Refresh screen" });
     expect(smartButton).toBeTruthy();
     expect(refreshButton).toBeTruthy();
@@ -101,11 +101,11 @@ describe("ScreenPanel", () => {
     ).not.toBe(0);
   });
 
-  it("disables smart wrap button in image mode", () => {
+  it("disables wrap button in image mode", () => {
     const state = buildState({ mode: "image" });
     const actions = buildActions();
     render(<ScreenPanel state={state} actions={actions} controls={null} />);
-    const smartButton = screen.getByRole("button", { name: "Toggle smart wrap" });
+    const smartButton = screen.getByRole("button", { name: "Toggle wrap mode" });
     expect(smartButton.getAttribute("disabled")).not.toBeNull();
   });
 
