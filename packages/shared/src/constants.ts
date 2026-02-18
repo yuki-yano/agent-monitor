@@ -104,7 +104,7 @@ export const defaultConfig: AgentMonitorConfigFile = {
     defaultLines: 2000,
     maxLines: 2000,
     includeTruncated: false,
-    joinLines: false,
+    joinLines: true,
     ansi: true,
     altScreen: "auto",
     highlightCorrection: {

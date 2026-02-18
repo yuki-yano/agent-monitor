@@ -35,11 +35,28 @@ const screenDeltaSchema = z.object({
   insertLines: z.array(z.string()),
 });
 
+const screenCaptureMetaSchema = z.object({
+  backend: z.enum(["tmux", "wezterm", "unknown"]),
+  lineModel: z.enum(["joined-physical", "physical", "logical", "none"]),
+  joinLinesApplied: z.boolean().nullable(),
+  paneCols: z.number().nullable(),
+  paneRows: z.number().nullable(),
+  scrollbackRows: z.number().nullable(),
+  captureMethod: z.enum([
+    "tmux-capture-pane",
+    "wezterm-get-text",
+    "wezterm-logical-lines",
+    "terminal-image",
+    "none",
+  ]),
+});
+
 export const screenResponseSchema = z.object({
   ok: z.boolean(),
   paneId: z.string(),
   mode: z.enum(["text", "image"]),
   capturedAt: z.string(),
+  captureMeta: screenCaptureMetaSchema.optional(),
   cursor: z.string().optional(),
   lines: z.number().optional(),
   truncated: z.boolean().nullable().optional(),

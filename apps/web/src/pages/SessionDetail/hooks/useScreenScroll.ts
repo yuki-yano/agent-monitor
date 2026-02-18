@@ -44,9 +44,16 @@ export const useScreenScroll = ({
 
   const scrollToBottom = useCallback(
     (behavior: "auto" | "smooth" = "auto") => {
-      if (!virtuosoRef.current || screenLinesLength === 0) return false;
-      const index = screenLinesLength - 1;
-      virtuosoRef.current.scrollToIndex({ index, align: "end", behavior });
+      if (screenLinesLength === 0) return false;
+      const hasVirtuoso = Boolean(virtuosoRef.current);
+      const hasScroller = Boolean(scrollerRef.current);
+      if (!hasVirtuoso && !hasScroller) {
+        return false;
+      }
+      if (virtuosoRef.current) {
+        const index = screenLinesLength - 1;
+        virtuosoRef.current.scrollToIndex({ index, align: "end", behavior });
+      }
       if (isAtBottom) {
         stopForceFollow();
       } else {
@@ -60,7 +67,7 @@ export const useScreenScroll = ({
       }
       window.requestAnimationFrame(() => {
         const scroller = scrollerRef.current;
-        if (scroller) {
+        if (scroller != null) {
           scroller.scrollTo({ top: scroller.scrollHeight, left: 0, behavior });
         }
       });

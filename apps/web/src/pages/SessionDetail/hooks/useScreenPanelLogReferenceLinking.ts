@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ScreenMode } from "@/lib/screen-loading";
 
+import type { ScreenWrapMode } from "../atoms/screenAtoms";
 import {
   extractLogReferenceTokensFromLine,
   linkifyLogLineFileReferences,
@@ -15,13 +16,42 @@ type ScreenRange = { startIndex: number; endIndex: number };
 
 type UseScreenPanelLogReferenceLinkingArgs = {
   mode: ScreenMode;
+  effectiveWrapMode: ScreenWrapMode;
+  paneId: string;
+  sourceRepoRoot: string | null;
+  agent: "codex" | "claude" | "unknown";
   screenLines: string[];
   onResolveFileReferenceCandidates: (rawTokens: string[]) => Promise<string[]>;
   onRangeChanged: (range: ScreenRange) => void;
 };
 
+const buildResolveSignature = ({
+  paneId,
+  sourceRepoRoot,
+  agent,
+  effectiveWrapMode,
+  referenceCandidateTokens,
+}: {
+  paneId: string;
+  sourceRepoRoot: string | null;
+  agent: "codex" | "claude" | "unknown";
+  effectiveWrapMode: ScreenWrapMode;
+  referenceCandidateTokens: string[];
+}) =>
+  [
+    paneId,
+    sourceRepoRoot ?? "__no_repo_root__",
+    agent,
+    effectiveWrapMode,
+    referenceCandidateTokens.join("\u0001"),
+  ].join("\u0000");
+
 export const useScreenPanelLogReferenceLinking = ({
   mode,
+  effectiveWrapMode,
+  paneId,
+  sourceRepoRoot,
+  agent,
   screenLines,
   onResolveFileReferenceCandidates,
   onRangeChanged,
@@ -29,6 +59,7 @@ export const useScreenPanelLogReferenceLinking = ({
   const [linkableTokens, setLinkableTokens] = useState<Set<string>>(new Set());
   const [visibleRange, setVisibleRange] = useState<ScreenRange | null>(null);
   const activeResolveCandidatesRequestIdRef = useRef(0);
+  const lastResolveSignatureRef = useRef<string | null>(null);
 
   const referenceCandidateTokens = useMemo(() => {
     if (mode !== "text") {
@@ -42,13 +73,17 @@ export const useScreenPanelLogReferenceLinking = ({
     const maxIndex = screenLines.length - 1;
     const fallbackStart = Math.max(0, maxIndex - FALLBACK_VISIBLE_REFERENCE_WINDOW);
     const startIndex =
-      visibleRange == null
-        ? fallbackStart
-        : Math.max(0, visibleRange.startIndex - VISIBLE_REFERENCE_LINE_PADDING);
+      effectiveWrapMode === "smart"
+        ? 0
+        : visibleRange == null
+          ? fallbackStart
+          : Math.max(0, visibleRange.startIndex - VISIBLE_REFERENCE_LINE_PADDING);
     const endIndex =
-      visibleRange == null
+      effectiveWrapMode === "smart"
         ? maxIndex
-        : Math.min(maxIndex, visibleRange.endIndex + VISIBLE_REFERENCE_LINE_PADDING);
+        : visibleRange == null
+          ? maxIndex
+          : Math.min(maxIndex, visibleRange.endIndex + VISIBLE_REFERENCE_LINE_PADDING);
 
     for (let index = endIndex; index >= startIndex; index -= 1) {
       const line = screenLines[index];
@@ -74,7 +109,7 @@ export const useScreenPanelLogReferenceLinking = ({
       }
     }
     return ordered;
-  }, [mode, screenLines, visibleRange]);
+  }, [effectiveWrapMode, mode, screenLines, visibleRange]);
 
   const referenceCandidateTokenSet = useMemo(
     () => new Set(referenceCandidateTokens),
@@ -82,6 +117,18 @@ export const useScreenPanelLogReferenceLinking = ({
   );
 
   useEffect(() => {
+    const signature = buildResolveSignature({
+      paneId,
+      sourceRepoRoot,
+      agent,
+      effectiveWrapMode,
+      referenceCandidateTokens,
+    });
+    if (signature === lastResolveSignatureRef.current) {
+      return;
+    }
+    lastResolveSignatureRef.current = signature;
+
     const requestId = activeResolveCandidatesRequestIdRef.current + 1;
     activeResolveCandidatesRequestIdRef.current = requestId;
 
@@ -126,7 +173,15 @@ export const useScreenPanelLogReferenceLinking = ({
           return next;
         });
       });
-  }, [onResolveFileReferenceCandidates, referenceCandidateTokenSet, referenceCandidateTokens]);
+  }, [
+    agent,
+    effectiveWrapMode,
+    onResolveFileReferenceCandidates,
+    paneId,
+    referenceCandidateTokenSet,
+    referenceCandidateTokens,
+    sourceRepoRoot,
+  ]);
 
   const linkifiedScreenLines = useMemo(() => {
     if (mode !== "text") {
@@ -154,10 +209,13 @@ export const useScreenPanelLogReferenceLinking = ({
 
   const handleScreenRangeChanged = useCallback(
     (range: ScreenRange) => {
+      if (screenLines.length === 0 || range.endIndex < range.startIndex) {
+        return;
+      }
       setVisibleRange(range);
       onRangeChanged(range);
     },
-    [onRangeChanged],
+    [onRangeChanged, screenLines.length],
   );
 
   return {

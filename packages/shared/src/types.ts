@@ -303,11 +303,27 @@ export type ApiEnvelope<T> = T & {
   error?: ApiError;
 };
 
+export type ScreenCaptureMeta = {
+  backend: "tmux" | "wezterm" | "unknown";
+  lineModel: "joined-physical" | "physical" | "logical" | "none";
+  joinLinesApplied: boolean | null;
+  paneCols: number | null;
+  paneRows: number | null;
+  scrollbackRows: number | null;
+  captureMethod:
+    | "tmux-capture-pane"
+    | "wezterm-get-text"
+    | "wezterm-logical-lines"
+    | "terminal-image"
+    | "none";
+};
+
 export type ScreenResponse = {
   ok: boolean;
   paneId: string;
   mode: "text" | "image";
   capturedAt: string;
+  captureMeta?: ScreenCaptureMeta;
   cursor?: string;
   lines?: number;
   truncated?: boolean | null;

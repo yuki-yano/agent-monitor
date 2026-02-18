@@ -50,6 +50,12 @@ describe("createScreenResponse", () => {
     });
 
     expect(response.ok).toBe(true);
+    expect(response.captureMeta).toMatchObject({
+      backend: "tmux",
+      lineModel: "joined-physical",
+      joinLinesApplied: true,
+      captureMethod: "tmux-capture-pane",
+    });
     expect(captureText).toHaveBeenCalledWith(
       expect.objectContaining({
         paneId: "%1",
@@ -166,6 +172,10 @@ describe("createScreenResponse", () => {
 
     expect(response.ok).toBe(false);
     expect(response.error?.code).toBe("RATE_LIMIT");
+    expect(response.captureMeta).toMatchObject({
+      captureMethod: "none",
+      lineModel: "none",
+    });
   });
 
   it("falls back to text when image mode is disabled", async () => {
@@ -247,6 +257,11 @@ describe("createScreenResponse", () => {
     expect(captureText).not.toHaveBeenCalled();
     expect(response.ok).toBe(true);
     expect(response.mode).toBe("image");
+    expect(response.captureMeta).toMatchObject({
+      backend: "wezterm",
+      captureMethod: "terminal-image",
+      lineModel: "none",
+    });
   });
 
   it("falls back to text when image capture fails", async () => {
@@ -302,5 +317,9 @@ describe("createScreenResponse", () => {
 
     expect(response.ok).toBe(false);
     expect(response.error?.code).toBe("INTERNAL");
+    expect(response.captureMeta).toMatchObject({
+      captureMethod: "none",
+      lineModel: "none",
+    });
   });
 });
