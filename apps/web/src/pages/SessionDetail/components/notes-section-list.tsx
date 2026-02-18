@@ -156,7 +156,20 @@ type NotesDeleteDialogProps = {
   savingNoteId: string | null;
   onCloseDeleteDialog: () => void;
   onDeleteNote: (noteId: string) => void;
-  formatPreviewBody: (body: string) => string;
+  emptyNotePreview: string;
+};
+
+const DELETE_PREVIEW_MAX_LINES = 3;
+
+const buildDeleteTargetPreview = (body: string, emptyNotePreview: string) => {
+  if (body.length === 0) {
+    return { lines: [emptyNotePreview], isTruncated: false };
+  }
+  const allLines = body.split(/\r?\n/u);
+  return {
+    lines: allLines.slice(0, DELETE_PREVIEW_MAX_LINES),
+    isTruncated: allLines.length > DELETE_PREVIEW_MAX_LINES,
+  };
 };
 
 export const NotesDeleteDialog = ({
@@ -166,7 +179,7 @@ export const NotesDeleteDialog = ({
   savingNoteId,
   onCloseDeleteDialog,
   onDeleteNote,
-  formatPreviewBody,
+  emptyNotePreview,
 }: NotesDeleteDialogProps) => {
   const deleteTargetNote = deleteDialogNoteId
     ? (notes.find((note) => note.id === deleteDialogNoteId) ?? null)
@@ -174,7 +187,9 @@ export const NotesDeleteDialog = ({
   const isDeleteDialogOpen = deleteDialogNoteId != null;
   const isDeletingDialogTarget =
     deleteDialogNoteId != null && deletingNoteId === deleteDialogNoteId;
-  const deleteTargetPreview = deleteTargetNote ? formatPreviewBody(deleteTargetNote.body) : null;
+  const deleteTargetPreview = deleteTargetNote
+    ? buildDeleteTargetPreview(deleteTargetNote.body, emptyNotePreview)
+    : null;
 
   return (
     <Dialog
@@ -191,8 +206,17 @@ export const NotesDeleteDialog = ({
           <DialogDescription>This cannot be undone.</DialogDescription>
         </DialogHeader>
         {deleteTargetPreview ? (
-          <div className="border-latte-surface2/70 bg-latte-base/70 rounded-xl border px-2.5 py-2">
-            <p className="text-latte-subtext0 truncate text-sm">{deleteTargetPreview}</p>
+          <div className="border-latte-surface2/70 bg-latte-base/70 mt-1.5 rounded-xl border px-2.5 py-2">
+            <div className="text-latte-subtext0 flex flex-col gap-0.5 text-[13px] leading-5">
+              {deleteTargetPreview.lines.map((line, index) => (
+                <p key={index} className="whitespace-pre-wrap break-words">
+                  {line}
+                </p>
+              ))}
+              {deleteTargetPreview.isTruncated ? (
+                <p className="text-latte-overlay1 leading-4">...</p>
+              ) : null}
+            </div>
           </div>
         ) : null}
         <div className="mt-1 flex items-center justify-end gap-2">

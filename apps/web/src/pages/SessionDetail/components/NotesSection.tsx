@@ -415,7 +415,7 @@ export const NotesSection = ({ state, actions }: NotesSectionProps) => {
         savingNoteId={savingNoteId}
         onCloseDeleteDialog={closeDeleteDialog}
         onDeleteNote={handleDeleteNote}
-        formatPreviewBody={formatPreviewBody}
+        emptyNotePreview={EMPTY_NOTE_PREVIEW}
       />
     </Card>
   );

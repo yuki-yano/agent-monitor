@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { RepoNote } from "@vde-monitor/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -137,6 +137,22 @@ describe("NotesSection", () => {
     await waitFor(() => {
       expect(onDelete).toHaveBeenCalledWith("note-1");
     });
+  });
+
+  it("shows first 3 lines in delete dialog and truncates remaining lines with ellipsis", () => {
+    const note = createNote({
+      body: "line-1\nline-2\nline-3\nline-4",
+    });
+    render(<NotesSection state={buildState({ notes: [note] })} actions={buildActions()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete note note-1" }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("line-1")).toBeTruthy();
+    expect(within(dialog).getByText("line-2")).toBeTruthy();
+    expect(within(dialog).getByText("line-3")).toBeTruthy();
+    expect(within(dialog).getByText("...")).toBeTruthy();
+    expect(within(dialog).queryByText("line-4")).toBeNull();
   });
 
   it("auto-saves edited note body with debounce", async () => {
