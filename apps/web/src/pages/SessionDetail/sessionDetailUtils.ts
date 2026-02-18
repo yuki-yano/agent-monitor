@@ -49,20 +49,22 @@ export const extractCodexContextLeft = (screenText: string): string | null => {
     return null;
   }
   const normalized = normalizeScreenTextForSearch(screenText);
-  const pattern = /(\d{1,3}(?:\.\d+)?)%\s+context left\b/gi;
+  const pattern = /(\d{1,3}(?:\.\d+)?)%\s+((?:context\s+)?left)\b/gi;
   let match: RegExpExecArray | null = null;
-  let lastValue: string | null = null;
+  let lastLabel: string | null = null;
   while (true) {
     match = pattern.exec(normalized);
     if (!match) {
       break;
     }
     const value = match[1];
-    if (value) {
-      lastValue = value;
+    const leftLabel = match[2];
+    if (value && leftLabel) {
+      const normalizedLeftLabel = leftLabel.toLowerCase().replace(/\s+/g, " ").trim();
+      lastLabel = `${value}% ${normalizedLeftLabel}`;
     }
   }
-  return lastValue ? `${lastValue}% context left` : null;
+  return lastLabel;
 };
 
 export const diffLineClass = (line: string) => {
