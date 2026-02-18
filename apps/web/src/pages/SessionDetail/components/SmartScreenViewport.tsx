@@ -149,14 +149,14 @@ export const SmartScreenViewport = ({
         <div
           data-testid="smart-screen-lines"
           className="text-latte-text w-full min-w-full max-w-full px-1 py-1 font-mono text-xs sm:px-2 sm:py-2"
+          onClick={onLineClick}
+          onKeyDown={onLineKeyDown}
         >
           {decoratedLines.map((line, index) => (
             <div
               key={index}
               data-index={index}
               className={cn("vde-screen-line-smart min-h-4 leading-4", line.className)}
-              onClick={onLineClick}
-              onKeyDown={onLineKeyDown}
               // lineHtml must come from the controlled screen pipeline
               // (server terminal output -> ansi escape -> DOM-only transforms),
               // never from unvalidated user input.

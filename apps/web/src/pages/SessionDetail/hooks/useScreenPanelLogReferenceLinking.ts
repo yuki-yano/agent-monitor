@@ -32,6 +32,7 @@ type ResolveContext = {
   agent: "codex" | "claude" | "unknown";
   effectiveWrapMode: ScreenWrapMode;
   referenceCandidateTokens: string[];
+  resolver: (rawTokens: string[]) => Promise<string[]>;
 };
 
 const areStringArraysEqual = (left: string[], right: string[]) => {
@@ -51,6 +52,7 @@ const isSameResolveContext = (left: ResolveContext, right: ResolveContext) =>
   left.sourceRepoRoot === right.sourceRepoRoot &&
   left.agent === right.agent &&
   left.effectiveWrapMode === right.effectiveWrapMode &&
+  left.resolver === right.resolver &&
   areStringArraysEqual(left.referenceCandidateTokens, right.referenceCandidateTokens);
 
 export const useScreenPanelLogReferenceLinking = ({
@@ -150,6 +152,7 @@ export const useScreenPanelLogReferenceLinking = ({
       agent,
       effectiveWrapMode,
       referenceCandidateTokens,
+      resolver: onResolveFileReferenceCandidates,
     };
     const previousResolveContext = lastResolveContextRef.current;
     if (
