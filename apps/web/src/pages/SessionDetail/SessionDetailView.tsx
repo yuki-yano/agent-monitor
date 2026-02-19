@@ -263,11 +263,8 @@ export const SessionDetailView = ({
 
   useEffect(() => {
     if (!shouldDelayMissingState) {
-      setMissingSessionGraceElapsed(false);
       return;
     }
-
-    setMissingSessionGraceElapsed(false);
     const timeoutId = window.setTimeout(() => {
       setMissingSessionGraceElapsed(true);
     }, MISSING_SESSION_GRACE_MS);
@@ -275,6 +272,13 @@ export const SessionDetailView = ({
     return () => {
       window.clearTimeout(timeoutId);
     };
+  }, [shouldDelayMissingState]);
+
+  useEffect(() => {
+    if (shouldDelayMissingState) {
+      return;
+    }
+    setMissingSessionGraceElapsed(false);
   }, [shouldDelayMissingState]);
 
   if (isSessionMissing) {

@@ -173,7 +173,7 @@ const buildFullLabel = (path: string, renamedFrom?: string | null) =>
 const buildFromFallback = (renamedFrom: string | null | undefined, tailSegments: number) =>
   renamedFrom ? buildFallbackHintLabel(renamedFrom, tailSegments) : "";
 
-const renderPathHintRow = ({
+const PathHintRow = ({
   renamedFrom,
   fromHint,
   dirHint,
@@ -271,13 +271,13 @@ const FilePathLabel = ({
       >
         {baseInfo.base}
       </span>
-      {renderPathHintRow({
-        renamedFrom,
-        fromHint,
-        dirHint,
-        classes,
-        isSegmentTruncate: segmentTruncate,
-      })}
+      <PathHintRow
+        renamedFrom={renamedFrom}
+        fromHint={fromHint}
+        dirHint={dirHint}
+        classes={classes}
+        isSegmentTruncate={segmentTruncate}
+      />
       <span className="sr-only">{fullLabel}</span>
     </div>
   );
