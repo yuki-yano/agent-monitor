@@ -1,5 +1,5 @@
 import { LayoutGrid, RefreshCw, Search, X } from "lucide-react";
-import { type ChangeEvent, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, type MouseEvent, useEffect, useRef, useState } from "react";
 
 import {
   Button,
@@ -82,6 +82,9 @@ const SessionListSearchInput = ({
     setDraftSearchQuery("");
     onSearchQueryChange("");
   };
+  const handleClearMouseDown = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  };
 
   return (
     <div className="border-latte-surface2 text-latte-text focus-within:border-latte-lavender focus-within:ring-latte-lavender/30 bg-latte-base/70 shadow-elev-1 relative overflow-hidden rounded-2xl border transition focus-within:ring-2">
@@ -101,6 +104,7 @@ const SessionListSearchInput = ({
           variant="ghost"
           size="sm"
           className="absolute right-1.5 top-1/2 h-7 w-7 -translate-y-1/2 p-0"
+          onMouseDown={handleClearMouseDown}
           onClick={handleClear}
           aria-label="Clear search"
           title="Clear search"

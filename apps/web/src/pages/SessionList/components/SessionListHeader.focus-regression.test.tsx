@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, createEvent, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -75,5 +75,41 @@ describe("SessionListHeader focus regression", () => {
 
     expect(onSearchQueryChange).toHaveBeenCalledWith("repo");
     expect(onSearchQueryChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears query without dispatching intermediate draft value", () => {
+    vi.useFakeTimers();
+    const onSearchQueryChange = vi.fn();
+    render(
+      <SessionListHeader
+        connectionStatus="healthy"
+        connectionIssue={null}
+        filter="ALL"
+        searchQuery=""
+        filterOptions={FILTER_OPTIONS}
+        onFilterChange={vi.fn()}
+        onSearchQueryChange={onSearchQueryChange}
+        onRefresh={vi.fn()}
+        onOpenChatGrid={vi.fn()}
+      />,
+    );
+
+    const input = screen.getByRole("textbox", { name: "Search sessions" });
+    input.focus();
+    fireEvent.change(input, { target: { value: "repo" } });
+
+    const clearButton = screen.getByRole("button", { name: "Clear search" });
+    const mouseDownEvent = createEvent.mouseDown(clearButton);
+    fireEvent(clearButton, mouseDownEvent);
+    fireEvent.click(clearButton);
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(mouseDownEvent.defaultPrevented).toBe(true);
+    expect(onSearchQueryChange).toHaveBeenCalledTimes(1);
+    expect(onSearchQueryChange).toHaveBeenCalledWith("");
+    expect(onSearchQueryChange).not.toHaveBeenCalledWith("repo");
   });
 });
