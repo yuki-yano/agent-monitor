@@ -1,5 +1,5 @@
 import { LayoutGrid, RefreshCw, Search, X } from "lucide-react";
-import { type ChangeEvent, type MouseEvent, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import {
   Button,
@@ -36,10 +36,32 @@ const SessionListSearchInput = ({
   const [draftSearchQuery, setDraftSearchQuery] = useState(initialSearchQuery);
   const [isFocused, setIsFocused] = useState(false);
   const debounceTimerRef = useRef<number | null>(null);
+  const suppressNextDebounceRef = useRef(false);
+  const clearTriggeredRef = useRef(false);
+  const publishedSearchQueryRef = useRef(initialSearchQuery);
   const activeSearchQuery = isFocused ? draftSearchQuery : initialSearchQuery;
 
   useEffect(() => {
+    publishedSearchQueryRef.current = initialSearchQuery;
+  }, [initialSearchQuery]);
+
+  const publishSearchQuery = useCallback(
+    (value: string) => {
+      if (publishedSearchQueryRef.current === value) {
+        return;
+      }
+      publishedSearchQueryRef.current = value;
+      onSearchQueryChange(value);
+    },
+    [onSearchQueryChange],
+  );
+
+  useEffect(() => {
     if (!isFocused) {
+      return;
+    }
+    if (suppressNextDebounceRef.current) {
+      suppressNextDebounceRef.current = false;
       return;
     }
     if (draftSearchQuery === initialSearchQuery) {
@@ -48,7 +70,7 @@ const SessionListSearchInput = ({
     const debounceMs = draftSearchQuery.length === 0 ? 0 : SEARCH_INPUT_DEBOUNCE_MS;
     const timeoutId = window.setTimeout(() => {
       debounceTimerRef.current = null;
-      onSearchQueryChange(draftSearchQuery);
+      publishSearchQuery(draftSearchQuery);
     }, debounceMs);
     debounceTimerRef.current = timeoutId;
 
@@ -58,29 +80,42 @@ const SessionListSearchInput = ({
         debounceTimerRef.current = null;
       }
     };
-  }, [draftSearchQuery, initialSearchQuery, isFocused, onSearchQueryChange]);
+  }, [draftSearchQuery, initialSearchQuery, isFocused, publishSearchQuery]);
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    clearTriggeredRef.current = false;
     setIsFocused(true);
     setDraftSearchQuery(event.target.value);
   };
   const handleFocus = () => {
+    clearTriggeredRef.current = false;
+    suppressNextDebounceRef.current = false;
     setDraftSearchQuery(initialSearchQuery);
     setIsFocused(true);
   };
   const handleBlur = () => {
+    const skipBlurCommit = clearTriggeredRef.current;
+    clearTriggeredRef.current = false;
+    suppressNextDebounceRef.current = false;
     setIsFocused(false);
     if (debounceTimerRef.current != null) {
       window.clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     }
+    if (skipBlurCommit) {
+      return;
+    }
     if (draftSearchQuery !== initialSearchQuery) {
-      onSearchQueryChange(draftSearchQuery);
+      publishSearchQuery(draftSearchQuery);
     }
   };
   const handleClear = () => {
+    clearTriggeredRef.current = isFocused;
+    if (isFocused) {
+      suppressNextDebounceRef.current = true;
+    }
     setDraftSearchQuery("");
-    onSearchQueryChange("");
+    publishSearchQuery("");
   };
   const handleClearMouseDown = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();

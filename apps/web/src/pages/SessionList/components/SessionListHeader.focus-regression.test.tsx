@@ -85,7 +85,7 @@ describe("SessionListHeader focus regression", () => {
         connectionStatus="healthy"
         connectionIssue={null}
         filter="ALL"
-        searchQuery=""
+        searchQuery="repo"
         filterOptions={FILTER_OPTIONS}
         onFilterChange={vi.fn()}
         onSearchQueryChange={onSearchQueryChange}
@@ -96,7 +96,6 @@ describe("SessionListHeader focus regression", () => {
 
     const input = screen.getByRole("textbox", { name: "Search sessions" });
     input.focus();
-    fireEvent.change(input, { target: { value: "repo" } });
 
     const clearButton = screen.getByRole("button", { name: "Clear search" });
     const mouseDownEvent = createEvent.mouseDown(clearButton);
