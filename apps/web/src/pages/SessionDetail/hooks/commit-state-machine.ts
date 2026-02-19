@@ -55,10 +55,7 @@ export const mergeCommits = (
   return Array.from(unique.values());
 };
 
-export const pruneStateToCommitSet = (
-  state: CommitState,
-  commits: CommitLog["commits"],
-): CommitState => {
+const pruneStateToCommitSet = (state: CommitState, commits: CommitLog["commits"]): CommitState => {
   if (commits.length === 0) {
     return { ...state, commitOpen: {} };
   }

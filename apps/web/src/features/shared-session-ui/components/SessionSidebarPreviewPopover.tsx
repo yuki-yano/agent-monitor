@@ -43,6 +43,33 @@ const resolveSegmentWidthPercent = (durationMs: number, totalDurationMs: number)
   return (durationMs / totalDurationMs) * 100;
 };
 
+const sanitizePreviewHtml = (value: string) => {
+  const html = value || "&#x200B;";
+  if (typeof DOMParser === "undefined") {
+    return html;
+  }
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const blockedElements = doc.body.querySelectorAll("script,style,iframe,object,embed");
+  blockedElements.forEach((element) => {
+    element.remove();
+  });
+  const elements = doc.body.querySelectorAll<HTMLElement>("*");
+  elements.forEach((element) => {
+    Array.from(element.attributes).forEach((attribute) => {
+      const name = attribute.name.toLowerCase();
+      const valueLower = attribute.value.trim().toLowerCase();
+      if (name.startsWith("on")) {
+        element.removeAttribute(attribute.name);
+        return;
+      }
+      if ((name === "href" || name === "src") && valueLower.startsWith("javascript:")) {
+        element.removeAttribute(attribute.name);
+      }
+    });
+  });
+  return doc.body.innerHTML || "&#x200B;";
+};
+
 const SessionPreviewMeta = ({
   sessionName,
   windowIndex,
@@ -127,6 +154,17 @@ const SessionPreviewBody = ({
   timelineLoading: boolean;
   timelineError: string | null;
 }) => {
+  const previewLineRows = useMemo(() => {
+    const lineCounts = new Map<string, number>();
+    return lines.map((line) => {
+      const count = lineCounts.get(line) ?? 0;
+      lineCounts.set(line, count + 1);
+      return {
+        key: `preview-line-${line}-${count}`,
+        line: sanitizePreviewHtml(line),
+      };
+    });
+  }, [lines]);
   const previewBodyClassName =
     "border-latte-surface1/80 bg-latte-crust text-latte-text min-h-0 flex-1 overflow-hidden rounded-xl border px-3 py-3 font-mono text-[12px] leading-[16px]";
   return (
@@ -145,11 +183,11 @@ const SessionPreviewBody = ({
           <p className="text-latte-subtext0 text-xs">Preview unavailable.</p>
         ) : (
           <div className="flex min-h-full flex-col justify-end">
-            {lines.map((line, index) => (
+            {previewLineRows.map((item) => (
               <div
-                key={`preview-${index}`}
+                key={item.key}
                 className="whitespace-pre"
-                dangerouslySetInnerHTML={{ __html: line || "&#x200B;" }}
+                dangerouslySetInnerHTML={{ __html: item.line || "&#x200B;" }}
               />
             ))}
           </div>

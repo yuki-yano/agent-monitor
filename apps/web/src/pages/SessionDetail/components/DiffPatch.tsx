@@ -55,6 +55,9 @@ const extractReferenceCandidateTokens = (lines: string[]) => {
   return ordered;
 };
 
+const areSameStringSet = (left: Set<string>, right: Set<string>) =>
+  left.size === right.size && [...left].every((token) => right.has(token));
+
 const renderLineWithFileReferenceLinks = (line: string, linkableTokens: Set<string>): ReactNode => {
   if (line.length === 0) {
     return " ";
@@ -108,22 +111,43 @@ const DiffPatch = memo(
       () => new Set(referenceCandidateTokens),
       [referenceCandidateTokens],
     );
-    const renderedLines = useMemo(
-      () => lines.map((line) => renderLineWithFileReferenceLinks(line, linkableTokens)),
-      [lines, linkableTokens],
-    );
+    const renderedLines = useMemo(() => {
+      const lineCounts = new Map<string, number>();
+      return lines.map((line) => {
+        const count = lineCounts.get(line) ?? 0;
+        lineCounts.set(line, count + 1);
+        return {
+          key: `diff-line-${line}-${count}`,
+          className: diffLineClass(line),
+          content: renderLineWithFileReferenceLinks(line, linkableTokens),
+        };
+      });
+    }, [lines, linkableTokens]);
 
     useEffect(() => {
+      if (onResolveFileReferenceCandidates && referenceCandidateTokens.length > 0) {
+        return;
+      }
+      setLinkableTokens((previous) => (previous.size === 0 ? previous : new Set()));
+    }, [onResolveFileReferenceCandidates, referenceCandidateTokens.length]);
+
+    useEffect(() => {
+      if (!onResolveFileReferenceCandidates || referenceCandidateTokens.length === 0) {
+        return;
+      }
       const requestId = activeResolveCandidatesRequestIdRef.current + 1;
       activeResolveCandidatesRequestIdRef.current = requestId;
       let cancelled = false;
 
-      if (!onResolveFileReferenceCandidates || referenceCandidateTokens.length === 0) {
-        setLinkableTokens((previous) => (previous.size === 0 ? previous : new Set()));
-        return () => {
-          cancelled = true;
-        };
-      }
+      setLinkableTokens((previous) => {
+        const next = new Set<string>();
+        previous.forEach((token) => {
+          if (referenceCandidateTokenSet.has(token)) {
+            next.add(token);
+          }
+        });
+        return areSameStringSet(next, previous) ? previous : next;
+      });
 
       void onResolveFileReferenceCandidates(referenceCandidateTokens)
         .then((resolvedTokens) => {
@@ -138,29 +162,10 @@ const DiffPatch = memo(
                 next.add(token);
               }
             });
-            if (next.size === previous.size && [...next].every((token) => previous.has(token))) {
-              return previous;
-            }
-            return next;
+            return areSameStringSet(next, previous) ? previous : next;
           });
         })
-        .catch(() => {
-          if (cancelled || activeResolveCandidatesRequestIdRef.current !== requestId) {
-            return;
-          }
-          setLinkableTokens((previous) => {
-            const next = new Set<string>();
-            previous.forEach((token) => {
-              if (referenceCandidateTokenSet.has(token)) {
-                next.add(token);
-              }
-            });
-            if (next.size === previous.size && [...next].every((token) => previous.has(token))) {
-              return previous;
-            }
-            return next;
-          });
-        });
+        .catch(() => undefined);
 
       return () => {
         cancelled = true;
@@ -203,15 +208,10 @@ const DiffPatch = memo(
     );
 
     return (
-      <MonoBlock>
-        {renderedLines.map((line, index) => (
-          <div
-            key={`${index}-${lines[index]?.slice(0, 12) ?? ""}`}
-            className={cn(diffLineClass(lines[index] ?? ""), "-mx-2 block w-full rounded-sm px-2")}
-            onClick={handleResolveFileReference}
-            onKeyDown={handleResolveFileReferenceKeyDown}
-          >
-            {line}
+      <MonoBlock onClick={handleResolveFileReference} onKeyDown={handleResolveFileReferenceKeyDown}>
+        {renderedLines.map((line) => (
+          <div key={line.key} className={cn(line.className, "-mx-2 block w-full rounded-sm px-2")}>
+            {line.content}
           </div>
         ))}
       </MonoBlock>

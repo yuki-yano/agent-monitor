@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { SessionDetailPage } from "./index";
+import { SessionDetailPage } from "./SessionDetailPage";
 
 const viewModel = { meta: { paneId: "pane-1" } };
 

@@ -1,65 +1,81 @@
-import type { ApiAppType } from "@vde-monitor/server/http/api-router";
-import type { InferRequestType } from "hono/client";
+import type {
+  ApiClientContract as SharedApiClientContract,
+  CommitFileQuery,
+  CommitLogQuery,
+  DiffFileQuery,
+  ForceQuery,
+  LaunchAgentJson,
+  NoteIdParam,
+  PaneHashParam,
+  PaneParam,
+  RepoFileContentQuery,
+  RepoFileSearchQuery,
+  RepoFileTreeQuery,
+  RepoNotePayloadJson,
+  ScreenRequestJson,
+  SendKeysJson,
+  SendRawJson,
+  SendTextJson,
+  SessionTitleJson,
+  TimelineQuery,
+  UploadImageForm as SharedUploadImageForm,
+} from "@vde-monitor/shared";
 import { hc } from "hono/client";
 
-export const createApiClient = (apiBasePath: string, authHeaders: Record<string, string>) =>
-  hc<ApiAppType>(apiBasePath, {
+export type ApiClientContract = SharedApiClientContract<RequestInit, Response, File>;
+export type UploadImageForm = SharedUploadImageForm<File>;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  (typeof value === "object" || typeof value === "function") && value != null;
+
+const hasMethod = (value: unknown, method: "$get" | "$post" | "$put") =>
+  isRecord(value) && typeof value[method] === "function";
+
+const assertApiClientContract: (value: unknown) => asserts value is ApiClientContract = (value) => {
+  if (!isRecord(value) || !isRecord(value.sessions)) {
+    throw new Error("Invalid API client: missing sessions root.");
+  }
+  const sessionsRoot = value.sessions;
+  if (!hasMethod(sessionsRoot, "$get") || !isRecord(sessionsRoot.launch)) {
+    throw new Error("Invalid API client: missing sessions routes.");
+  }
+  if (!hasMethod(sessionsRoot.launch, "$post")) {
+    throw new Error("Invalid API client: missing sessions launch route.");
+  }
+  const paneRoutes = isRecord(sessionsRoot[":paneId"]) ? sessionsRoot[":paneId"] : null;
+  if (!paneRoutes || !isRecord(paneRoutes.screen) || !hasMethod(paneRoutes.screen, "$post")) {
+    throw new Error("Invalid API client: missing pane screen route.");
+  }
+};
+
+export const createApiClient = (
+  apiBasePath: string,
+  authHeaders: Record<string, string>,
+): ApiClientContract => {
+  const client: unknown = hc(apiBasePath, {
     headers: authHeaders,
   });
+  assertApiClientContract(client);
+  return client;
+};
 
-type ApiClientContract = ReturnType<typeof createApiClient>;
-type SessionsClient = ApiClientContract["sessions"];
-type SessionClient = ApiClientContract["sessions"][":paneId"];
-type NotesClient = SessionClient["notes"];
-
-export type PaneParam = NonNullable<InferRequestType<SessionClient["focus"]["$post"]>["param"]>;
-export type PaneHashParam = NonNullable<
-  InferRequestType<SessionClient["commits"][":hash"]["$get"]>["param"]
->;
-export type ForceQuery = NonNullable<InferRequestType<SessionClient["diff"]["$get"]>["query"]>;
-export type DiffFileQuery = NonNullable<
-  InferRequestType<SessionClient["diff"]["file"]["$get"]>["query"]
->;
-export type CommitLogQuery = NonNullable<
-  InferRequestType<SessionClient["commits"]["$get"]>["query"]
->;
-export type CommitFileQuery = NonNullable<
-  InferRequestType<SessionClient["commits"][":hash"]["file"]["$get"]>["query"]
->;
-export type ScreenRequestJson = NonNullable<
-  InferRequestType<SessionClient["screen"]["$post"]>["json"]
->;
-export type SendTextJson = NonNullable<
-  InferRequestType<SessionClient["send"]["text"]["$post"]>["json"]
->;
-export type SendKeysJson = NonNullable<
-  InferRequestType<SessionClient["send"]["keys"]["$post"]>["json"]
->;
-export type SendRawJson = NonNullable<
-  InferRequestType<SessionClient["send"]["raw"]["$post"]>["json"]
->;
-export type LaunchAgentJson = NonNullable<
-  InferRequestType<SessionsClient["launch"]["$post"]>["json"]
->;
-export type SessionTitleJson = NonNullable<
-  InferRequestType<SessionClient["title"]["$put"]>["json"]
->;
-export type UploadImageForm = NonNullable<
-  InferRequestType<SessionClient["attachments"]["image"]["$post"]>["form"]
->;
-export type TimelineQuery = NonNullable<
-  InferRequestType<SessionClient["timeline"]["$get"]>["query"]
->;
-export type RepoNotePayloadJson = NonNullable<InferRequestType<NotesClient["$post"]>["json"]>;
-export type RepoFileTreeQuery = NonNullable<
-  InferRequestType<SessionClient["files"]["tree"]["$get"]>["query"]
->;
-export type RepoFileSearchQuery = NonNullable<
-  InferRequestType<SessionClient["files"]["search"]["$get"]>["query"]
->;
-export type RepoFileContentQuery = NonNullable<
-  InferRequestType<SessionClient["files"]["content"]["$get"]>["query"]
->;
-export type NoteIdParam = NonNullable<InferRequestType<NotesClient[":noteId"]["$put"]>["param"]>;
-
-export type { ApiClientContract };
+export type {
+  CommitFileQuery,
+  CommitLogQuery,
+  DiffFileQuery,
+  ForceQuery,
+  LaunchAgentJson,
+  NoteIdParam,
+  PaneHashParam,
+  PaneParam,
+  RepoFileContentQuery,
+  RepoFileSearchQuery,
+  RepoFileTreeQuery,
+  RepoNotePayloadJson,
+  ScreenRequestJson,
+  SendKeysJson,
+  SendRawJson,
+  SendTextJson,
+  SessionTitleJson,
+  TimelineQuery,
+};

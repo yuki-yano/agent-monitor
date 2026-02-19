@@ -33,7 +33,7 @@ const SessionListSearchInput = ({
   initialSearchQuery,
   onSearchQueryChange,
 }: SessionListSearchInputProps) => {
-  const [draftSearchQuery, setDraftSearchQuery] = useState(initialSearchQuery);
+  const [draftSearchQuery, setDraftSearchQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const debounceTimerRef = useRef<number | null>(null);
   const suppressNextDebounceRef = useRef(false);

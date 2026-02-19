@@ -21,7 +21,7 @@ export const isCurrentScopedRequest = ({
   scopeKey: string;
 }) => isCurrentRequest(requestIdRef, requestId) && activeScopeRef.current === scopeKey;
 
-export const isCurrentPaneRequest = ({
+const isCurrentPaneRequest = ({
   requestIdRef,
   requestId,
   activePaneIdRef,

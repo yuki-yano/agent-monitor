@@ -13,6 +13,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -160,6 +161,7 @@ export const ChatGridTile = ({
   uploadImageAttachment,
 }: ChatGridTileProps) => {
   const textInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
   const previousAutoEnterRef = useRef<boolean | null>(null);
   const virtuosoRef = useRef<VirtuosoHandle | null>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
@@ -469,6 +471,18 @@ export const ChatGridTile = ({
     onRemoveFromGrid?.(session.paneId);
   }, [onRemoveFromGrid, session.paneId]);
 
+  useEffect(() => {
+    if (!titleEditing) {
+      return;
+    }
+    const input = titleInputRef.current;
+    if (!input) {
+      return;
+    }
+    input.focus();
+    input.select();
+  }, [titleEditing]);
+
   const currentComposerError = composerError ?? sendError;
   const callout =
     currentComposerError != null
@@ -487,6 +501,7 @@ export const ChatGridTile = ({
             <div className="flex min-w-0 items-center gap-1">
               {titleEditing ? (
                 <input
+                  ref={titleInputRef}
                   type="text"
                   value={titleDraft}
                   onChange={(event) => {
@@ -500,7 +515,6 @@ export const ChatGridTile = ({
                   disabled={titleSaving}
                   className="border-latte-surface2 text-latte-text focus:border-latte-lavender focus:ring-latte-lavender/30 bg-latte-base/70 shadow-elev-1 w-full min-w-[160px] rounded-2xl border px-2.5 py-1 text-[15px] font-semibold leading-snug outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
                   aria-label="Custom session title"
-                  autoFocus
                 />
               ) : (
                 <TextButton

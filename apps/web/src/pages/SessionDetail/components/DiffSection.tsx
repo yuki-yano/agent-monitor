@@ -99,20 +99,29 @@ const syncExpandedDiffs = (
 const buildDiffBodyClassName = (diffLoading: boolean) =>
   `relative ${diffLoading ? "min-h-[120px]" : ""}`;
 
-const renderDiffLoadingOverlay = (diffLoading: boolean) =>
-  diffLoading ? <LoadingOverlay label="Loading changes..." blocking={false} /> : null;
+const DiffLoadingOverlay = memo(({ visible }: { visible: boolean }) =>
+  visible ? <LoadingOverlay label="Loading changes..." blocking={false} /> : null,
+);
 
-const renderCleanState = (showCleanState: boolean) =>
-  showCleanState ? (
+DiffLoadingOverlay.displayName = "DiffLoadingOverlay";
+
+const DiffCleanState = memo(({ visible }: { visible: boolean }) =>
+  visible ? (
     <EmptyState
       icon={<FileCheck className="text-latte-green h-6 w-6" />}
       message="Working directory is clean"
       iconWrapperClassName="bg-latte-green/10"
     />
-  ) : null;
+  ) : null,
+);
 
-const renderRepoRoot = (repoRoot: string | null | undefined) =>
-  repoRoot ? <p className="text-latte-subtext0 text-xs">Repo: {formatPath(repoRoot)}</p> : null;
+DiffCleanState.displayName = "DiffCleanState";
+
+const DiffRepoRoot = memo(({ repoRoot }: { repoRoot: string | null | undefined }) =>
+  repoRoot ? <p className="text-latte-subtext0 text-xs">Repo: {formatPath(repoRoot)}</p> : null,
+);
+
+DiffRepoRoot.displayName = "DiffRepoRoot";
 
 const DiffSummaryReasonCallout = memo(
   ({ reason }: { reason: DiffSummary["reason"] | undefined }) => {
@@ -270,7 +279,7 @@ export const DiffSection = memo(({ state, actions }: DiffSectionProps) => {
       }
       status={
         <>
-          {renderRepoRoot(diffSummary?.repoRoot)}
+          <DiffRepoRoot repoRoot={diffSummary?.repoRoot} />
           <DiffSummaryReasonCallout reason={diffSummary?.reason} />
           <DiffErrorCallout diffError={diffError} />
         </>
@@ -278,8 +287,8 @@ export const DiffSection = memo(({ state, actions }: DiffSectionProps) => {
       headerTestId="changes-header"
     >
       <div className={buildDiffBodyClassName(diffLoading)}>
-        {renderDiffLoadingOverlay(diffLoading)}
-        {renderCleanState(showCleanState)}
+        <DiffLoadingOverlay visible={diffLoading} />
+        <DiffCleanState visible={showCleanState} />
         <DiffFileList
           files={files}
           diffOpen={diffOpen}

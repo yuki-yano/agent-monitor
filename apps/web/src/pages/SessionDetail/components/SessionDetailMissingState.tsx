@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import type { CSSProperties } from "react";
+import { type CSSProperties, useMemo } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Card } from "@/components/ui";
@@ -50,6 +50,18 @@ export const SessionDetailMissingState = ({
   loading,
   sidebarWidth = 240,
 }: SessionDetailMissingStateProps) => {
+  const missingDetailRows = useMemo(() => {
+    const detailCounts = new Map<string, number>();
+    return missingSessionState.details.map((detail) => {
+      const count = detailCounts.get(detail) ?? 0;
+      detailCounts.set(detail, count + 1);
+      return {
+        key: `missing-detail-${detail}-${count}`,
+        detail,
+      };
+    });
+  }, [missingSessionState.details]);
+
   if (loading) {
     return (
       <>
@@ -167,9 +179,9 @@ export const SessionDetailMissingState = ({
           <p className="text-latte-subtext0 text-sm">{missingSessionState.title}</p>
           {missingSessionState.details.length > 0 ? (
             <div className="mt-2 space-y-1">
-              {missingSessionState.details.map((detail, index) => (
-                <p key={`${index}-${detail}`} className="text-latte-subtext1 break-all text-xs">
-                  {detail}
+              {missingDetailRows.map((item) => (
+                <p key={item.key} className="text-latte-subtext1 break-all text-xs">
+                  {item.detail}
                 </p>
               ))}
             </div>

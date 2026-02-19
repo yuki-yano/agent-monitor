@@ -28,7 +28,7 @@ import { defaultLaunchConfig, type LaunchAgentRequestOptions } from "./launch-ag
 
 export type SessionConnectionStatus = "healthy" | "degraded" | "disconnected";
 
-export type SessionApi = {
+type SessionApi = {
   reconnect: () => void;
   refreshSessions: () => Promise<void>;
   requestWorktrees: (paneId: string) => Promise<WorktreeList>;
@@ -126,10 +126,7 @@ const rejectMissingSessionProvider = async <T>(): Promise<T> => {
   throw missingSessionProviderError();
 };
 
-export const sessionTokenAtom = atom<string | null>(null);
 export const sessionConnectedAtom = atom(false);
-export const sessionConnectionStatusAtom = atom<SessionConnectionStatus>("degraded");
-export const sessionConnectionIssueAtom = atom<string | null>(null);
 export const sessionHighlightCorrectionsAtom = atom<HighlightCorrectionConfig>({
   codex: true,
   claude: true,

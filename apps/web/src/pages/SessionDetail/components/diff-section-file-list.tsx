@@ -21,7 +21,7 @@ import {
 } from "../sessionDetailUtils";
 import { DiffPatch } from "./DiffPatch";
 
-export type RenderedPatch = {
+type RenderedPatch = {
   lines: string[];
   truncated: boolean;
   totalLines: number;

@@ -16,26 +16,26 @@ const toUniqueSessions = (nextSessions: SessionSummary[]) => {
   return Array.from(unique.values());
 };
 
-export const sessionsAtom = atom<SessionSummary[]>([]);
-export const setSessionsAtom = atom(null, (_get, set, nextSessions: SessionSummary[]) => {
+const sessionsAtom = atom<SessionSummary[]>([]);
+const setSessionsAtom = atom(null, (_get, set, nextSessions: SessionSummary[]) => {
   set(sessionsAtom, nextSessions);
 });
-export const applySessionsSnapshotAtom = atom(null, (_get, set, nextSessions: SessionSummary[]) => {
+const applySessionsSnapshotAtom = atom(null, (_get, set, nextSessions: SessionSummary[]) => {
   set(sessionsAtom, toUniqueSessions(nextSessions));
 });
-export const updateSessionAtom = atom(null, (get, set, session: SessionSummary) => {
+const updateSessionAtom = atom(null, (get, set, session: SessionSummary) => {
   const next = new Map<string, SessionSummary>();
   get(sessionsAtom).forEach((item) => next.set(item.paneId, item));
   next.set(session.paneId, session);
   set(sessionsAtom, Array.from(next.values()));
 });
-export const removeSessionAtom = atom(null, (get, set, paneId: string) => {
+const removeSessionAtom = atom(null, (get, set, paneId: string) => {
   set(
     sessionsAtom,
     get(sessionsAtom).filter((item) => item.paneId !== paneId),
   );
 });
-export const getSessionDetailByPaneAtom = atom((get) => (paneId: string) => {
+const getSessionDetailByPaneAtom = atom((get) => (paneId: string) => {
   const session = get(sessionsAtom).find((item) => item.paneId === paneId);
   return session ? toSessionDetail(session) : null;
 });

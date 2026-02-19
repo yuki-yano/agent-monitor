@@ -14,13 +14,10 @@ export {
   formatPath,
   formatRelativeTime,
   formatStateLabel,
-  formatWorktreeFlag,
   getLastInputTone,
   isEditorCommand,
   isKnownAgent,
-  isVwManagedWorktreePath,
   stateTone,
-  worktreeFlagClass,
 } from "@/lib/session-format";
 
 const compilePatterns = () =>

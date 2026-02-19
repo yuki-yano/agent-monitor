@@ -9,7 +9,7 @@ export type ChatGridLayout = {
   rows: ChatGridRows;
 };
 
-export const clampChatGridPaneCount = (value: number) => {
+const clampChatGridPaneCount = (value: number) => {
   const normalized = Number.isFinite(value) ? Math.trunc(value) : CHAT_GRID_MIN_PANE_COUNT;
   return Math.max(CHAT_GRID_MIN_PANE_COUNT, Math.min(CHAT_GRID_MAX_PANE_COUNT, normalized));
 };

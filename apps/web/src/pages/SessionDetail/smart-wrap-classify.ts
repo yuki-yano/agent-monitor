@@ -11,11 +11,7 @@ import {
 import { extractTextContentFromHtml } from "./smart-wrap-text";
 import type { SmartWrapAgent, SmartWrapLineClassification } from "./smart-wrap-types";
 
-export type {
-  SmartWrapAgent,
-  SmartWrapLineClassification,
-  SmartWrapLineRule,
-} from "./smart-wrap-types";
+export type { SmartWrapLineClassification } from "./smart-wrap-types";
 
 const buildClassification = (
   rule: SmartWrapLineClassification["rule"],

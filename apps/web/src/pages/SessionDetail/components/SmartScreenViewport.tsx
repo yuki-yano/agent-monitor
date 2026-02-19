@@ -59,6 +59,19 @@ export const SmartScreenViewport = ({
     () => decorateSmartWrapLines(lines, classifications),
     [classifications, lines],
   );
+  const decoratedLineRows = useMemo(() => {
+    const lineCounts = new Map<string, number>();
+    return decoratedLines.map((line, index) => {
+      const signature = `${line.className}\u0000${line.lineHtml}`;
+      const count = lineCounts.get(signature) ?? 0;
+      lineCounts.set(signature, count + 1);
+      return {
+        key: `smart-line-${signature}-${count}`,
+        dataIndex: index,
+        line,
+      };
+    });
+  }, [decoratedLines]);
 
   useEffect(() => {
     if (lines.length === 0) {
@@ -153,15 +166,15 @@ export const SmartScreenViewport = ({
           onClick={onLineClick}
           onKeyDown={onLineKeyDown}
         >
-          {decoratedLines.map((line, index) => (
+          {decoratedLineRows.map((item) => (
             <div
-              key={index}
-              data-index={index}
-              className={cn("vde-screen-line-smart min-h-4 leading-4", line.className)}
+              key={item.key}
+              data-index={item.dataIndex}
+              className={cn("vde-screen-line-smart min-h-4 leading-4", item.line.className)}
               // lineHtml must come from the controlled screen pipeline
               // (server terminal output -> ansi escape -> DOM-only transforms),
               // never from unvalidated user input.
-              dangerouslySetInnerHTML={{ __html: line.lineHtml || "&#x200B;" }}
+              dangerouslySetInnerHTML={{ __html: item.line.lineHtml || "&#x200B;" }}
             />
           ))}
         </div>

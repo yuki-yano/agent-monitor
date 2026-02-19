@@ -1,5 +1,6 @@
 import type {
   HighlightCorrectionConfig,
+  ScreenResponse,
   SessionStateTimeline,
   SessionSummary,
 } from "@vde-monitor/shared";
@@ -20,7 +21,7 @@ import { useSessionPreview } from "./useSessionPreview";
 import { useSidebarPreviewHoverController } from "./useSidebarPreviewHoverController";
 import { useSidebarPreviewTimelineCache } from "./useSidebarPreviewTimelineCache";
 
-export type SidebarPreview = {
+type SidebarPreview = {
   paneId: string;
   sessionName: string | null;
   windowIndex: number | null;
@@ -50,7 +51,7 @@ type UseSidebarPreviewParams = {
   requestScreen: (
     paneId: string,
     options: { lines?: number; mode?: "text" | "image"; cursor?: string },
-  ) => Promise<import("@vde-monitor/shared").ScreenResponse>;
+  ) => Promise<ScreenResponse>;
   resolvedTheme: Theme;
   highlightCorrections?: HighlightCorrectionConfig;
 };
@@ -311,5 +312,3 @@ export const useSidebarPreview = ({
     registerItemRef,
   };
 };
-
-export type { PreviewFrame };

@@ -22,7 +22,11 @@ vi.mock("@/features/shared-session-ui/components/AnsiVirtualizedViewport", () =>
           const count = lineCounts.get(line) ?? 0;
           lineCounts.set(line, count + 1);
           const lineKey = `${line}-${count}`;
-          return <div key={lineKey} dangerouslySetInnerHTML={{ __html: line }} />;
+          return (
+            <div key={lineKey} data-line-html={line}>
+              {line}
+            </div>
+          );
         })}
       </div>
     );
@@ -339,14 +343,13 @@ describe("ChatGridTile", () => {
     );
 
     const viewport = screen.getByTestId("ansi-viewport");
-    const fileRef = viewport.querySelector<HTMLElement>("[data-vde-file-ref='src/main.ts:12']");
-    const urlLink = viewport.querySelector<HTMLAnchorElement>(
-      "a[data-vde-log-url='https://example.com/docs']",
-    );
+    const renderedHtml = viewport.querySelector<HTMLElement>("[data-line-html]")?.dataset.lineHtml;
 
-    expect(fileRef).toBeTruthy();
-    expect(urlLink?.getAttribute("href")).toBe("https://example.com/docs");
-    expect(urlLink?.getAttribute("target")).toBe("_blank");
-    expect(urlLink?.getAttribute("rel")).toBe("noreferrer noopener");
+    expect(renderedHtml).toContain("data-vde-file-ref=");
+    expect(renderedHtml).toContain("src/main.ts:12");
+    expect(renderedHtml).toContain("data-vde-log-url=");
+    expect(renderedHtml).toContain("https://example.com/docs");
+    expect(renderedHtml).toContain('target="_blank"');
+    expect(renderedHtml).toContain('rel="noreferrer noopener"');
   });
 });

@@ -164,12 +164,15 @@ export const ChatGridCandidateModal = ({
                 {filteredCandidateItems.map((session) => {
                   const checked = selectedPaneSet.has(session.paneId);
                   const disabled = !checked && reachedMaxSelection;
+                  const checkboxId = `chat-grid-candidate-${session.paneId}`;
                   return (
                     <label
                       key={session.paneId}
+                      htmlFor={checkboxId}
                       className="border-latte-surface1/65 hover:border-latte-lavender/45 hover:bg-latte-surface0/60 flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition"
                     >
                       <Checkbox
+                        id={checkboxId}
                         checked={checked}
                         onChange={() => onTogglePane(session.paneId)}
                         disabled={disabled}
