@@ -148,6 +148,7 @@ export const SmartScreenViewport = ({
       >
         <div
           data-testid="smart-screen-lines"
+          role="log"
           className="text-latte-text w-full min-w-full max-w-full px-1 py-1 font-mono text-xs sm:px-2 sm:py-2"
           onClick={onLineClick}
           onKeyDown={onLineKeyDown}
