@@ -400,6 +400,7 @@ export const ChatGridTile = ({
     }));
     try {
       await updateSessionTitle(session.paneId, nextCustomTitle);
+      updateTitleState((state) => ({ ...state, editing: false, saving: false, error: null }));
     } catch (error) {
       updateTitleState((state) => ({
         ...state,
@@ -427,6 +428,13 @@ export const ChatGridTile = ({
     }));
     try {
       await updateSessionTitle(session.paneId, nextTitle);
+      updateTitleState((state) => ({
+        ...state,
+        editing: false,
+        saving: false,
+        draft: nextTitle ?? "",
+        error: null,
+      }));
     } catch (error) {
       updateTitleState((state) => ({
         ...state,

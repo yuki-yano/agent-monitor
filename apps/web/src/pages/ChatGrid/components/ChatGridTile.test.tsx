@@ -170,6 +170,7 @@ describe("ChatGridTile", () => {
 
     await waitFor(() => {
       expect(updateSessionTitle).toHaveBeenCalledWith("pane-1", "Updated Title");
+      expect(screen.queryByRole("textbox", { name: "Custom session title" })).toBeNull();
     });
   });
 
