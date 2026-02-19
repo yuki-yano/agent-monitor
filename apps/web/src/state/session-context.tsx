@@ -26,25 +26,19 @@ import type {
 } from "@vde-monitor/shared";
 import { createStore, Provider as JotaiProvider, useAtomValue, useSetAtom } from "jotai";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from "react";
 
 import { defaultLaunchConfig, type LaunchAgentRequestOptions } from "./launch-agent-options";
 import {
-  type SessionApi,
-  sessionApiAtom,
-  sessionConnectedAtom,
-  sessionConnectionIssueAtom,
   type SessionConnectionStatus,
-  sessionConnectionStatusAtom,
   sessionFileNavigatorConfigAtom,
   sessionHighlightCorrectionsAtom,
   sessionLaunchConfigAtom,
-  sessionTokenAtom,
 } from "./session-state-atoms";
 import { useSessionApi } from "./use-session-api";
 import { useSessionConnectionState } from "./use-session-connection-state";
 import { useSessionPolling } from "./use-session-polling";
-import { getSessionDetailByPaneAtom, sessionsAtom, useSessionStore } from "./use-session-store";
+import { useSessionStore } from "./use-session-store";
 import { useSessionToken } from "./use-session-token";
 
 type SessionContextValue = {
@@ -144,23 +138,18 @@ type SessionContextValue = {
   getSessionDetail: (paneId: string) => SessionDetail | null;
 };
 
-const useSyncAtomValue = <T,>(value: T, setValue: (nextValue: T) => void) => {
-  useEffect(() => {
-    setValue(value);
-  }, [setValue, value]);
-};
+const SessionContext = createContext<SessionContextValue | null>(null);
 
 const SessionRuntime = ({ children }: { children: ReactNode }) => {
   const { token, apiBaseUrl } = useSessionToken();
-  const { setSessions, updateSession, removeSession } = useSessionStore();
+  const { sessions, setSessions, updateSession, removeSession, getSessionDetail } =
+    useSessionStore();
+  const highlightCorrections = useAtomValue(sessionHighlightCorrectionsAtom);
+  const fileNavigatorConfig = useAtomValue(sessionFileNavigatorConfigAtom);
+  const launchConfig = useAtomValue(sessionLaunchConfigAtom);
   const setHighlightCorrections = useSetAtom(sessionHighlightCorrectionsAtom);
   const setFileNavigatorConfig = useSetAtom(sessionFileNavigatorConfigAtom);
   const setLaunchConfig = useSetAtom(sessionLaunchConfigAtom);
-  const setToken = useSetAtom(sessionTokenAtom);
-  const setConnected = useSetAtom(sessionConnectedAtom);
-  const setConnectionStatus = useSetAtom(sessionConnectionStatusAtom);
-  const setConnectionIssueAtom = useSetAtom(sessionConnectionIssueAtom);
-  const setSessionApi = useSetAtom(sessionApiAtom);
   const {
     connectionIssue,
     setConnectionIssue,
@@ -243,7 +232,7 @@ const SessionRuntime = ({ children }: { children: ReactNode }) => {
     setLaunchConfig(defaultLaunchConfig);
   }, [setFileNavigatorConfig, setLaunchConfig, token]);
 
-  const sessionApi = useMemo<SessionApi>(
+  const sessionApi = useMemo(
     () => ({
       reconnect,
       refreshSessions,
@@ -304,48 +293,7 @@ const SessionRuntime = ({ children }: { children: ReactNode }) => {
     ],
   );
 
-  useSyncAtomValue(token, setToken);
-  useSyncAtomValue(connected, setConnected);
-  useSyncAtomValue(connectionStatus, setConnectionStatus);
-  useSyncAtomValue(connectionIssue, setConnectionIssueAtom);
-  useSyncAtomValue(sessionApi, setSessionApi);
-
-  return <>{children}</>;
-};
-
-export const SessionProvider = ({ children }: { children: ReactNode }) => {
-  const storeRef = useRef<null | ReturnType<typeof createStore>>(null);
-  if (storeRef.current == null) {
-    storeRef.current = createStore();
-  }
-
-  return (
-    <JotaiProvider store={storeRef.current}>
-      <SessionRuntime>{children}</SessionRuntime>
-    </JotaiProvider>
-  );
-};
-
-export const useSessions = () => {
-  const token = useAtomValue(sessionTokenAtom);
-  const sessions = useAtomValue(sessionsAtom);
-  const connected = useAtomValue(sessionConnectedAtom);
-  const connectionStatus = useAtomValue(sessionConnectionStatusAtom);
-  const connectionIssue = useAtomValue(sessionConnectionIssueAtom);
-  const highlightCorrections = useAtomValue(sessionHighlightCorrectionsAtom);
-  const fileNavigatorConfig = useAtomValue(sessionFileNavigatorConfigAtom);
-  const launchConfig = useAtomValue(sessionLaunchConfigAtom);
-  const sessionApi = useAtomValue(sessionApiAtom);
-  const getSessionDetailFromPane = useAtomValue(getSessionDetailByPaneAtom);
-
-  const getSessionDetail = useCallback(
-    (paneId: string) => {
-      return getSessionDetailFromPane(paneId);
-    },
-    [getSessionDetailFromPane],
-  );
-
-  return useMemo<SessionContextValue>(
+  const contextValue = useMemo<SessionContextValue>(
     () => ({
       token,
       sessions,
@@ -371,4 +319,27 @@ export const useSessions = () => {
       getSessionDetail,
     ],
   );
+
+  return <SessionContext.Provider value={contextValue}>{children}</SessionContext.Provider>;
+};
+
+export const SessionProvider = ({ children }: { children: ReactNode }) => {
+  const storeRef = useRef<null | ReturnType<typeof createStore>>(null);
+  if (storeRef.current == null) {
+    storeRef.current = createStore();
+  }
+
+  return (
+    <JotaiProvider store={storeRef.current}>
+      <SessionRuntime>{children}</SessionRuntime>
+    </JotaiProvider>
+  );
+};
+
+export const useSessions = () => {
+  const context = useContext(SessionContext);
+  if (context == null) {
+    throw new Error("SessionProvider is required");
+  }
+  return context;
 };

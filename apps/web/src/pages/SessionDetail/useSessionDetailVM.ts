@@ -52,7 +52,7 @@ export const useSessionDetailVM = (paneId: string) => {
     createRepoNote,
     updateRepoNote,
     deleteRepoNote,
-  } = useSessionDetailVMState();
+  } = useSessionDetailVMState(paneId);
 
   const { getRepoSortAnchorAt, paneRepoRootMap, touchRepoSortAnchor, sessionGroups } =
     useSessionRepoPins({
@@ -109,6 +109,9 @@ export const useSessionDetailVM = (paneId: string) => {
     paneId,
     connected,
     connectionIssue,
+    resolvedTheme,
+    sessionAgent: session?.agent ?? null,
+    highlightCorrections,
     requestScreen,
     sendText,
     sendKeys,

@@ -16,7 +16,6 @@ import {
   screenModeLoadedAtom,
   screenTextAtom,
 } from "../atoms/screenAtoms";
-import { paneIdAtom, sessionsAtom } from "../atoms/sessionDetailAtoms";
 import { useSessionScreen } from "./useSessionScreen";
 
 vi.mock("@/lib/ansi", () => ({
@@ -26,8 +25,6 @@ vi.mock("@/lib/ansi", () => ({
 describe("useSessionScreen", () => {
   const createWrapper = () => {
     const store = createStore();
-    store.set(paneIdAtom, "pane-1");
-    store.set(sessionsAtom, []);
     store.set(screenModeAtom, "text");
     store.set(screenModeLoadedAtom, { text: false, image: false });
     store.set(screenAtBottomAtom, true);
@@ -42,17 +39,22 @@ describe("useSessionScreen", () => {
     );
   };
 
+  const buildArgs = (overrides: Partial<Parameters<typeof useSessionScreen>[0]> = {}) => ({
+    paneId: "pane-1",
+    connected: true,
+    connectionIssue: null,
+    resolvedTheme: "mocha" as const,
+    sessionAgent: "codex",
+    highlightCorrections: { codex: true, claude: true },
+    requestScreen: vi.fn(),
+    ...overrides,
+  });
+
   it("sets disconnected error when not connected", async () => {
     const requestScreen = vi.fn();
     const wrapper = createWrapper();
     const { result } = renderHook(
-      () =>
-        useSessionScreen({
-          paneId: "pane-1",
-          connected: false,
-          connectionIssue: null,
-          requestScreen,
-        }),
+      () => useSessionScreen(buildArgs({ connected: false, requestScreen })),
       { wrapper },
     );
 
@@ -66,16 +68,9 @@ describe("useSessionScreen", () => {
   it("shows loading before first response arrives", () => {
     const requestScreen = vi.fn().mockImplementation(() => new Promise<never>(() => {}));
     const wrapper = createWrapper();
-    const { result } = renderHook(
-      () =>
-        useSessionScreen({
-          paneId: "pane-1",
-          connected: true,
-          connectionIssue: null,
-          requestScreen,
-        }),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useSessionScreen(buildArgs({ requestScreen })), {
+      wrapper,
+    });
 
     expect(result.current.isScreenLoading).toBe(true);
   });
@@ -90,16 +85,9 @@ describe("useSessionScreen", () => {
     });
 
     const wrapper = createWrapper();
-    const { result } = renderHook(
-      () =>
-        useSessionScreen({
-          paneId: "pane-1",
-          connected: true,
-          connectionIssue: null,
-          requestScreen,
-        }),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useSessionScreen(buildArgs({ requestScreen })), {
+      wrapper,
+    });
 
     await waitFor(() => {
       expect(result.current.screenLines).toEqual(["hello"]);
@@ -118,12 +106,12 @@ describe("useSessionScreen", () => {
     const wrapper = createWrapper();
     const { result, rerender } = renderHook(
       ({ connected }) =>
-        useSessionScreen({
-          paneId: "pane-1",
-          connected,
-          connectionIssue: null,
-          requestScreen,
-        }),
+        useSessionScreen(
+          buildArgs({
+            connected,
+            requestScreen,
+          }),
+        ),
       { wrapper, initialProps: { connected: true } },
     );
 
@@ -161,16 +149,9 @@ describe("useSessionScreen", () => {
       });
 
     const wrapper = createWrapper();
-    const { result } = renderHook(
-      () =>
-        useSessionScreen({
-          paneId: "pane-1",
-          connected: true,
-          connectionIssue: null,
-          requestScreen,
-        }),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useSessionScreen(buildArgs({ requestScreen })), {
+      wrapper,
+    });
 
     await waitFor(() => {
       expect(result.current.screenLines).toEqual(["hello", "world"]);
@@ -197,16 +178,9 @@ describe("useSessionScreen", () => {
     });
 
     const wrapper = createWrapper();
-    const { result } = renderHook(
-      () =>
-        useSessionScreen({
-          paneId: "pane-1",
-          connected: true,
-          connectionIssue: null,
-          requestScreen,
-        }),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useSessionScreen(buildArgs({ requestScreen })), {
+      wrapper,
+    });
 
     act(() => {
       result.current.handleModeChange("image");
@@ -234,16 +208,9 @@ describe("useSessionScreen", () => {
       });
 
     const wrapper = createWrapper();
-    const { result } = renderHook(
-      () =>
-        useSessionScreen({
-          paneId: "pane-1",
-          connected: true,
-          connectionIssue: null,
-          requestScreen,
-        }),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useSessionScreen(buildArgs({ requestScreen })), {
+      wrapper,
+    });
 
     await waitFor(() => {
       expect(result.current.screenLines).toEqual(["first"]);
@@ -295,16 +262,9 @@ describe("useSessionScreen", () => {
       });
 
     const wrapper = createWrapper();
-    const { result } = renderHook(
-      () =>
-        useSessionScreen({
-          paneId: "pane-1",
-          connected: true,
-          connectionIssue: null,
-          requestScreen,
-        }),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useSessionScreen(buildArgs({ requestScreen })), {
+      wrapper,
+    });
 
     await waitFor(() => {
       expect(result.current.screenLines).toEqual(["first"]);

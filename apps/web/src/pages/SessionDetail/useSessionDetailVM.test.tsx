@@ -3,25 +3,55 @@ import { createStore, Provider as JotaiProvider } from "jotai";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import { defaultLaunchConfig } from "@/state/launch-agent-options";
+
 import { screenTextAtom } from "./atoms/screenAtoms";
-import {
-  connectedAtom,
-  connectionIssueAtom,
-  highlightCorrectionsAtom,
-  paneIdAtom,
-  resolvedThemeAtom,
-  sessionApiAtom,
-  sessionsAtom,
-} from "./atoms/sessionDetailAtoms";
 import { createSessionDetail } from "./test-helpers";
 import { useSessionDetailVM } from "./useSessionDetailVM";
 
 const session = createSessionDetail({ paneId: "pane-1" });
 const sessionGroups = [{ repoRoot: null, sessions: [session] }];
 const setScreenErrorMock = vi.fn();
+let mockResolvedTheme: "latte" | "mocha" = "mocha";
+let mockSessionsContext: Record<string, unknown> = {};
+
+const buildSessionContext = ({
+  sessions,
+  sessionApi,
+  connected = true,
+  connectionIssue = null,
+}: {
+  sessions: Array<typeof session>;
+  sessionApi: Record<string, unknown>;
+  connected?: boolean;
+  connectionIssue?: string | null;
+}) => ({
+  token: "token",
+  sessions,
+  connected,
+  connectionStatus: connected ? "healthy" : "degraded",
+  connectionIssue,
+  highlightCorrections: { codex: false, claude: true },
+  fileNavigatorConfig: { autoExpandMatchLimit: 100 },
+  launchConfig: defaultLaunchConfig,
+  ...sessionApi,
+  getSessionDetail: (paneId: string) => sessions.find((item) => item.paneId === paneId) ?? null,
+});
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
+}));
+
+vi.mock("@/state/session-context", () => ({
+  useSessions: () => mockSessionsContext,
+}));
+
+vi.mock("@/state/theme-context", () => ({
+  useTheme: () => ({
+    preference: "system",
+    resolvedTheme: mockResolvedTheme,
+    setPreference: vi.fn(),
+  }),
 }));
 
 vi.mock("@/lib/session-group", () => ({
@@ -279,13 +309,13 @@ describe("useSessionDetailVM", () => {
     };
 
     const store = createStore();
-    store.set(paneIdAtom, "pane-1");
-    store.set(sessionsAtom, [session]);
-    store.set(connectedAtom, true);
-    store.set(connectionIssueAtom, "issue");
-    store.set(highlightCorrectionsAtom, { codex: false, claude: true });
-    store.set(resolvedThemeAtom, "mocha");
-    store.set(sessionApiAtom, sessionApi);
+    mockResolvedTheme = "mocha";
+    mockSessionsContext = buildSessionContext({
+      sessions: [session],
+      sessionApi,
+      connected: true,
+      connectionIssue: "issue",
+    });
 
     const wrapper = ({ children }: { children: ReactNode }) => (
       <JotaiProvider store={store}>{children}</JotaiProvider>
@@ -337,13 +367,13 @@ describe("useSessionDetailVM", () => {
     };
 
     const store = createStore();
-    store.set(paneIdAtom, "pane-1");
-    store.set(sessionsAtom, [session]);
-    store.set(connectedAtom, true);
-    store.set(connectionIssueAtom, null);
-    store.set(highlightCorrectionsAtom, { codex: false, claude: true });
-    store.set(resolvedThemeAtom, "mocha");
-    store.set(sessionApiAtom, sessionApi);
+    mockResolvedTheme = "mocha";
+    mockSessionsContext = buildSessionContext({
+      sessions: [session],
+      sessionApi,
+      connected: true,
+      connectionIssue: null,
+    });
 
     const wrapper = ({ children }: { children: ReactNode }) => (
       <JotaiProvider store={store}>{children}</JotaiProvider>
@@ -392,13 +422,13 @@ describe("useSessionDetailVM", () => {
     };
 
     const store = createStore();
-    store.set(paneIdAtom, "pane-1");
-    store.set(sessionsAtom, [session]);
-    store.set(connectedAtom, true);
-    store.set(connectionIssueAtom, null);
-    store.set(highlightCorrectionsAtom, { codex: false, claude: true });
-    store.set(resolvedThemeAtom, "mocha");
-    store.set(sessionApiAtom, sessionApi);
+    mockResolvedTheme = "mocha";
+    mockSessionsContext = buildSessionContext({
+      sessions: [session],
+      sessionApi,
+      connected: true,
+      connectionIssue: null,
+    });
 
     const wrapper = ({ children }: { children: ReactNode }) => (
       <JotaiProvider store={store}>{children}</JotaiProvider>
@@ -445,14 +475,14 @@ describe("useSessionDetailVM", () => {
     };
 
     const store = createStore();
-    store.set(paneIdAtom, "pane-1");
-    store.set(sessionsAtom, [session]);
-    store.set(connectedAtom, true);
-    store.set(connectionIssueAtom, null);
-    store.set(highlightCorrectionsAtom, { codex: false, claude: true });
-    store.set(resolvedThemeAtom, "mocha");
     store.set(screenTextAtom, "91% context left\n\u001b[32m74% context left\u001b[0m");
-    store.set(sessionApiAtom, sessionApi);
+    mockResolvedTheme = "mocha";
+    mockSessionsContext = buildSessionContext({
+      sessions: [session],
+      sessionApi,
+      connected: true,
+      connectionIssue: null,
+    });
 
     const wrapper = ({ children }: { children: ReactNode }) => (
       <JotaiProvider store={store}>{children}</JotaiProvider>
@@ -495,14 +525,14 @@ describe("useSessionDetailVM", () => {
     };
 
     const store = createStore();
-    store.set(paneIdAtom, "pane-1");
-    store.set(sessionsAtom, [createSessionDetail({ paneId: "pane-1", agent: "claude" })]);
-    store.set(connectedAtom, true);
-    store.set(connectionIssueAtom, null);
-    store.set(highlightCorrectionsAtom, { codex: false, claude: true });
-    store.set(resolvedThemeAtom, "mocha");
     store.set(screenTextAtom, "63% context left");
-    store.set(sessionApiAtom, sessionApi);
+    mockResolvedTheme = "mocha";
+    mockSessionsContext = buildSessionContext({
+      sessions: [createSessionDetail({ paneId: "pane-1", agent: "claude" })],
+      sessionApi,
+      connected: true,
+      connectionIssue: null,
+    });
 
     const wrapper = ({ children }: { children: ReactNode }) => (
       <JotaiProvider store={store}>{children}</JotaiProvider>

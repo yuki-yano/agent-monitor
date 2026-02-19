@@ -1,18 +1,19 @@
-import type { ScreenResponse } from "@vde-monitor/shared";
+import type { HighlightCorrectionConfig, ScreenResponse } from "@vde-monitor/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { startTransition, useCallback, useEffect, useRef } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef } from "react";
 
+import { renderAnsiLines } from "@/lib/ansi";
 import {
   initialScreenLoadingState,
   screenLoadingReducer,
   type ScreenMode,
 } from "@/lib/screen-loading";
+import type { Theme } from "@/lib/theme";
 
 import {
   screenErrorAtom,
   screenFallbackReasonAtom,
   screenImageAtom,
-  screenLinesAtom,
   screenLoadingAtom,
   screenModeAtom,
   screenTextAtom,
@@ -27,6 +28,9 @@ type UseSessionScreenParams = {
   paneId: string;
   connected: boolean;
   connectionIssue: string | null;
+  resolvedTheme: Theme;
+  sessionAgent: string | null;
+  highlightCorrections: HighlightCorrectionConfig;
   requestScreen: (
     paneId: string,
     options: { lines?: number; mode?: "text" | "image"; cursor?: string },
@@ -37,14 +41,16 @@ export const useSessionScreen = ({
   paneId,
   connected,
   connectionIssue,
+  resolvedTheme,
+  sessionAgent,
+  highlightCorrections,
   requestScreen,
 }: UseSessionScreenParams) => {
-  const [, setScreen] = useAtom(screenTextAtom);
+  const [screenText, setScreen] = useAtom(screenTextAtom);
   const [imageBase64, setImageBase64] = useAtom(screenImageAtom);
   const [screenLoadingState, setScreenLoadingState] = useAtom(screenLoadingAtom);
   const setScreenFallbackReason = useSetAtom(screenFallbackReasonAtom);
   const setScreenError = useSetAtom(screenErrorAtom);
-  const screenLines = useAtomValue(screenLinesAtom);
   const mode = useAtomValue(screenModeAtom);
   const { wrapMode, toggleWrapMode } = useScreenWrapMode();
 
@@ -87,6 +93,30 @@ export const useSessionScreen = ({
   const clearPendingScreen = useCallback(() => {
     pendingScreenRef.current = null;
   }, []);
+
+  const screenLines = useMemo(() => {
+    if (mode !== "text") {
+      return [];
+    }
+    const isTextLoading = screenLoadingState.loading && screenLoadingState.mode === "text";
+    if (screenText.length === 0 && (isTextLoading || !modeLoaded.text)) {
+      return [];
+    }
+    const agent = sessionAgent === "codex" || sessionAgent === "claude" ? sessionAgent : "unknown";
+    return renderAnsiLines(screenText || "No screen data", resolvedTheme, {
+      agent,
+      highlightCorrections,
+    });
+  }, [
+    highlightCorrections,
+    mode,
+    modeLoaded.text,
+    resolvedTheme,
+    screenLoadingState.loading,
+    screenLoadingState.mode,
+    screenText,
+    sessionAgent,
+  ]);
 
   const {
     isAtBottom,
