@@ -372,6 +372,19 @@ export const ChatGridTile = ({
   const handleTitleSave = useCallback(async () => {
     if (titleSaving) return;
     const trimmed = titleDraft.trim();
+    const nextCustomTitle = trimmed.length > 0 ? trimmed : null;
+
+    if (nextCustomTitle === sessionCustomTitle) {
+      updateTitleState((state) => ({
+        ...state,
+        draft: nextCustomTitle ?? "",
+        editing: false,
+        saving: false,
+        error: null,
+      }));
+      return;
+    }
+
     if (trimmed.length > 80) {
       updateTitleState((state) => ({
         ...state,
@@ -386,14 +399,7 @@ export const ChatGridTile = ({
       error: null,
     }));
     try {
-      await updateSessionTitle(session.paneId, trimmed.length > 0 ? trimmed : null);
-      updateTitleState((state) => ({
-        ...state,
-        draft: trimmed,
-        editing: false,
-        saving: false,
-        error: null,
-      }));
+      await updateSessionTitle(session.paneId, nextCustomTitle);
     } catch (error) {
       updateTitleState((state) => ({
         ...state,
@@ -401,7 +407,14 @@ export const ChatGridTile = ({
         error: resolveUnknownErrorMessage(error, API_ERROR_MESSAGES.updateTitle),
       }));
     }
-  }, [session.paneId, titleDraft, titleSaving, updateSessionTitle, updateTitleState]);
+  }, [
+    session.paneId,
+    sessionCustomTitle,
+    titleDraft,
+    titleSaving,
+    updateSessionTitle,
+    updateTitleState,
+  ]);
 
   const handleTitleReset = useCallback(async () => {
     if (titleSaving) return;
@@ -414,13 +427,6 @@ export const ChatGridTile = ({
     }));
     try {
       await updateSessionTitle(session.paneId, nextTitle);
-      updateTitleState((state) => ({
-        ...state,
-        draft: nextTitle ?? "",
-        editing: false,
-        saving: false,
-        error: null,
-      }));
     } catch (error) {
       updateTitleState((state) => ({
         ...state,
