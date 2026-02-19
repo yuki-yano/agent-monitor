@@ -5,8 +5,19 @@ import { describe, expect, it, vi } from "vitest";
 import { ChatGridBoard } from "./ChatGridBoard";
 
 vi.mock("./ChatGridTile", () => ({
-  ChatGridTile: ({ session }: { session: { paneId: string } }) => (
-    <div data-testid="chat-grid-tile">{session.paneId}</div>
+  ChatGridTile: ({
+    session,
+    onRemoveFromGrid,
+  }: {
+    session: { paneId: string };
+    onRemoveFromGrid?: (paneId: string) => void;
+  }) => (
+    <div data-testid="chat-grid-tile">
+      <span>{session.paneId}</span>
+      <button type="button" onClick={() => onRemoveFromGrid?.(session.paneId)}>
+        remove
+      </button>
+    </div>
   ),
 }));
 
@@ -57,6 +68,7 @@ describe("ChatGridBoard", () => {
         screenLoadingByPane={{}}
         screenErrorByPane={{}}
         onTouchSession={vi.fn(async () => undefined)}
+        onRemovePaneFromGrid={vi.fn()}
         sendText={vi.fn(async () => ({ ok: true }))}
         sendKeys={vi.fn(async () => ({ ok: true }))}
         sendRaw={vi.fn(async () => ({ ok: true }))}
@@ -79,6 +91,7 @@ describe("ChatGridBoard", () => {
         screenLoadingByPane={{}}
         screenErrorByPane={{}}
         onTouchSession={vi.fn(async () => undefined)}
+        onRemovePaneFromGrid={vi.fn()}
         sendText={vi.fn(async () => ({ ok: true }))}
         sendKeys={vi.fn(async () => ({ ok: true }))}
         sendRaw={vi.fn(async () => ({ ok: true }))}
@@ -108,6 +121,7 @@ describe("ChatGridBoard", () => {
         screenLoadingByPane={{}}
         screenErrorByPane={{}}
         onTouchSession={vi.fn(async () => undefined)}
+        onRemovePaneFromGrid={vi.fn()}
         sendText={vi.fn(async () => ({ ok: true }))}
         sendKeys={vi.fn(async () => ({ ok: true }))}
         sendRaw={vi.fn(async () => ({ ok: true }))}
@@ -119,5 +133,30 @@ describe("ChatGridBoard", () => {
     expect(grid?.className).toContain("xl:grid-cols-3");
     expect(grid?.className).toContain("md:grid-rows-2");
     expect(screen.getAllByTestId("chat-grid-tile")).toHaveLength(5);
+  });
+
+  it("wires remove action for each tile", () => {
+    const onRemovePaneFromGrid = vi.fn();
+    render(
+      <ChatGridBoard
+        sessions={[buildSession({ paneId: "pane-1" })]}
+        isRestoringSelection={false}
+        layout={{ columns: 2, rows: 1 }}
+        nowMs={Date.now()}
+        connected
+        screenByPane={{}}
+        screenLoadingByPane={{}}
+        screenErrorByPane={{}}
+        onTouchSession={vi.fn(async () => undefined)}
+        onRemovePaneFromGrid={onRemovePaneFromGrid}
+        sendText={vi.fn(async () => ({ ok: true }))}
+        sendKeys={vi.fn(async () => ({ ok: true }))}
+        sendRaw={vi.fn(async () => ({ ok: true }))}
+        updateSessionTitle={vi.fn(async () => undefined)}
+      />,
+    );
+
+    screen.getByRole("button", { name: "remove" }).click();
+    expect(onRemovePaneFromGrid).toHaveBeenCalledWith("pane-1");
   });
 });

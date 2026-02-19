@@ -35,6 +35,8 @@ type ChatGridCandidateModalProps = {
   selectedPaneIds: string[];
   nowMs: number;
   onOpenChange: (open: boolean) => void;
+  canSyncSelectionFromCurrentGrid: boolean;
+  onSyncSelectionFromCurrentGrid: () => void;
   onTogglePane: (paneId: string) => void;
   onApply: () => void;
 };
@@ -55,6 +57,8 @@ export const ChatGridCandidateModal = ({
   selectedPaneIds,
   nowMs,
   onOpenChange,
+  canSyncSelectionFromCurrentGrid,
+  onSyncSelectionFromCurrentGrid,
   onTogglePane,
   onApply,
 }: ChatGridCandidateModalProps) => {
@@ -211,14 +215,25 @@ export const ChatGridCandidateModal = ({
             </Callout>
           ) : null}
 
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <Button type="button" variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-              Cancel
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onSyncSelectionFromCurrentGrid}
+              disabled={!canSyncSelectionFromCurrentGrid}
+            >
+              Use Current Grid Selection
             </Button>
-            <Button type="button" size="sm" onClick={onApply} disabled={hasSelectionError}>
-              <MousePointerClick className="h-4 w-4" />
-              Apply
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="button" size="sm" onClick={onApply} disabled={hasSelectionError}>
+                <MousePointerClick className="h-4 w-4" />
+                Apply
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

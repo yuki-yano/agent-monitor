@@ -115,7 +115,31 @@ describe("ChatGridTile", () => {
     expect(screen.getByText("feature/chat-grid")).toBeTruthy();
     expect(screen.getByText("Window 1")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open detail" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Remove from Chat Grid" })).toBeTruthy();
     expect(screen.queryByLabelText("Refresh pane pane-1")).toBeNull();
+  });
+
+  it("removes pane from chat grid when remove button is clicked", () => {
+    const onRemoveFromGrid = vi.fn();
+    renderWithRouter(
+      <ChatGridTile
+        session={buildSession()}
+        nowMs={Date.parse("2026-02-17T00:10:00.000Z")}
+        connected
+        screenLines={["line 1"]}
+        screenLoading={false}
+        screenError={null}
+        onRemoveFromGrid={onRemoveFromGrid}
+        onTouchSession={vi.fn(async () => undefined)}
+        sendText={vi.fn(async () => ({ ok: true }))}
+        sendKeys={vi.fn(async () => ({ ok: true }))}
+        sendRaw={vi.fn(async () => ({ ok: true }))}
+        updateSessionTitle={vi.fn(async () => undefined)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove from Chat Grid" }));
+    expect(onRemoveFromGrid).toHaveBeenCalledWith("pane-1");
   });
 
   it("edits and saves session title with Enter", async () => {

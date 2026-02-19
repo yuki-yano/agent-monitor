@@ -65,6 +65,7 @@ type ChatGridTileProps = {
   screenLoading: boolean;
   screenError: string | null;
   onTouchSession?: (paneId: string) => Promise<void> | void;
+  onRemoveFromGrid?: (paneId: string) => void;
   sendText: (
     paneId: string,
     text: string,
@@ -119,6 +120,7 @@ export const ChatGridTile = ({
   screenLoading,
   screenError,
   onTouchSession,
+  onRemoveFromGrid,
   sendText,
   sendKeys,
   sendRaw,
@@ -374,6 +376,9 @@ export const ChatGridTile = ({
     }
     closeTitleEditor();
   }, [closeTitleEditor, titleSaving]);
+  const handleRemoveFromGrid = useCallback(() => {
+    onRemoveFromGrid?.(session.paneId);
+  }, [onRemoveFromGrid, session.paneId]);
 
   const currentComposerError = composerError ?? sendError;
   const callout =
@@ -435,7 +440,7 @@ export const ChatGridTile = ({
             </div>
             {titleError ? <p className="text-latte-red text-xs">{titleError}</p> : null}
           </div>
-          <div className="flex shrink-0 items-center">
+          <div className="flex shrink-0 items-center gap-1">
             <Link
               to="/sessions/$paneId"
               params={{ paneId: session.paneId }}
@@ -444,6 +449,16 @@ export const ChatGridTile = ({
             >
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
+            <IconButton
+              type="button"
+              onClick={handleRemoveFromGrid}
+              variant="dangerOutline"
+              size="xs"
+              aria-label="Remove from Chat Grid"
+              title="Remove from Chat Grid"
+            >
+              <X className="h-3.5 w-3.5" />
+            </IconButton>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">

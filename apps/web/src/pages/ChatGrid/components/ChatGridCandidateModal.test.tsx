@@ -51,6 +51,8 @@ describe("ChatGridCandidateModal", () => {
         selectedPaneIds={["pane-1"]}
         nowMs={Date.parse("2026-02-17T00:10:00.000Z")}
         onOpenChange={vi.fn()}
+        canSyncSelectionFromCurrentGrid
+        onSyncSelectionFromCurrentGrid={vi.fn()}
         onTogglePane={vi.fn()}
         onApply={vi.fn()}
       />,
@@ -74,6 +76,8 @@ describe("ChatGridCandidateModal", () => {
         selectedPaneIds={["pane-1", "pane-2"]}
         nowMs={Date.parse("2026-02-17T00:10:00.000Z")}
         onOpenChange={vi.fn()}
+        canSyncSelectionFromCurrentGrid
+        onSyncSelectionFromCurrentGrid={vi.fn()}
         onTogglePane={onTogglePane}
         onApply={onApply}
       />,
@@ -84,6 +88,47 @@ describe("ChatGridCandidateModal", () => {
 
     expect(onTogglePane).toHaveBeenCalledWith("pane-1");
     expect(onApply).toHaveBeenCalledTimes(1);
+  });
+
+  it("emits sync action for current grid selection button", () => {
+    const onSyncSelectionFromCurrentGrid = vi.fn();
+    render(
+      <ChatGridCandidateModal
+        open
+        candidateItems={[buildSession({ paneId: "pane-1", title: "First Session" })]}
+        selectedPaneIds={["pane-1"]}
+        nowMs={Date.parse("2026-02-17T00:10:00.000Z")}
+        onOpenChange={vi.fn()}
+        canSyncSelectionFromCurrentGrid
+        onSyncSelectionFromCurrentGrid={onSyncSelectionFromCurrentGrid}
+        onTogglePane={vi.fn()}
+        onApply={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Use Current Grid Selection" }));
+    expect(onSyncSelectionFromCurrentGrid).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables sync button when current grid selection is unavailable", () => {
+    render(
+      <ChatGridCandidateModal
+        open
+        candidateItems={[buildSession({ paneId: "pane-1", title: "First Session" })]}
+        selectedPaneIds={["pane-1"]}
+        nowMs={Date.parse("2026-02-17T00:10:00.000Z")}
+        onOpenChange={vi.fn()}
+        canSyncSelectionFromCurrentGrid={false}
+        onSyncSelectionFromCurrentGrid={vi.fn()}
+        onTogglePane={vi.fn()}
+        onApply={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Use Current Grid Selection" })).toHaveProperty(
+      "disabled",
+      true,
+    );
   });
 
   it("filters candidates by session and window fields", () => {
@@ -108,6 +153,8 @@ describe("ChatGridCandidateModal", () => {
         selectedPaneIds={[]}
         nowMs={Date.parse("2026-02-17T00:10:00.000Z")}
         onOpenChange={vi.fn()}
+        canSyncSelectionFromCurrentGrid
+        onSyncSelectionFromCurrentGrid={vi.fn()}
         onTogglePane={vi.fn()}
         onApply={vi.fn()}
       />,
@@ -151,6 +198,8 @@ describe("ChatGridCandidateModal", () => {
         selectedPaneIds={[]}
         nowMs={Date.parse("2026-02-17T00:10:00.000Z")}
         onOpenChange={vi.fn()}
+        canSyncSelectionFromCurrentGrid
+        onSyncSelectionFromCurrentGrid={vi.fn()}
         onTogglePane={vi.fn()}
         onApply={vi.fn()}
       />,
@@ -179,6 +228,8 @@ describe("ChatGridCandidateModal", () => {
       selectedPaneIds: [],
       nowMs: Date.parse("2026-02-17T00:10:00.000Z"),
       onOpenChange: vi.fn(),
+      canSyncSelectionFromCurrentGrid: true,
+      onSyncSelectionFromCurrentGrid: vi.fn(),
       onTogglePane: vi.fn(),
       onApply: vi.fn(),
     };

@@ -105,6 +105,12 @@ export const useChatGridVM = () => {
         .filter((session): session is SessionSummary => session != null),
     [selectedPaneIds, sessionByPaneId],
   );
+  const currentGridCandidatePaneIds = useMemo(() => {
+    const candidatePaneIdSet = new Set(candidateItems.map((session) => session.paneId));
+    return selectedPaneIds
+      .filter((paneId) => candidatePaneIdSet.has(paneId))
+      .slice(0, CHAT_GRID_MAX_PANE_COUNT);
+  }, [candidateItems, selectedPaneIds]);
   const sidebarSessionGroups = useMemo(
     () => buildSessionGroups(sessions, { getRepoSortAnchorAt }),
     [getRepoSortAnchorAt, sessions],
@@ -241,6 +247,22 @@ export const useChatGridVM = () => {
     },
     [navigate],
   );
+  const handleRemovePaneFromGrid = useCallback(
+    (paneId: string) => {
+      const nextPaneIds = selectedPaneIds.filter((id) => id !== paneId);
+      void navigate({
+        search: (prev) => ({
+          ...prev,
+          panes: serializeChatGridPaneParam(nextPaneIds),
+        }),
+        replace: true,
+      });
+    },
+    [navigate, selectedPaneIds],
+  );
+  const handleSyncCandidateSelectionFromCurrentGrid = useCallback(() => {
+    setSelectedCandidatePaneIds(currentGridCandidatePaneIds);
+  }, [currentGridCandidatePaneIds]);
 
   const handleLaunchAgentInSession = useCallback(
     async (sessionName: string, agent: "codex" | "claude", options?: LaunchAgentRequestOptions) => {
@@ -296,10 +318,13 @@ export const useChatGridVM = () => {
     onRefreshAllTiles: handleRefreshAllTiles,
     onBackToSessionList: handleBackToSessionList,
     onOpenPaneHere: handleOpenPaneHere,
+    onRemovePaneFromGrid: handleRemovePaneFromGrid,
     onLaunchAgentInSession: handleLaunchAgentInSession,
     onTouchRepoPin: touchRepoPin,
     onTouchPanePin: touchPanePin,
     onSidebarResizeStart: handlePointerDown,
+    canSyncCandidateSelectionFromCurrentGrid: currentGridCandidatePaneIds.length > 0,
+    onSyncCandidateSelectionFromCurrentGrid: handleSyncCandidateSelectionFromCurrentGrid,
   };
 };
 

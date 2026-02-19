@@ -68,6 +68,9 @@ export type ChatGridViewProps = {
   onRefreshAllTiles: () => void;
   onBackToSessionList: () => void;
   onOpenPaneHere: (paneId: string) => void;
+  onRemovePaneFromGrid: (paneId: string) => void;
+  canSyncCandidateSelectionFromCurrentGrid: boolean;
+  onSyncCandidateSelectionFromCurrentGrid: () => void;
   onLaunchAgentInSession: (
     sessionName: string,
     agent: "codex" | "claude",
@@ -118,6 +121,9 @@ export const ChatGridView = ({
   onRefreshAllTiles,
   onBackToSessionList,
   onOpenPaneHere,
+  onRemovePaneFromGrid,
+  canSyncCandidateSelectionFromCurrentGrid,
+  onSyncCandidateSelectionFromCurrentGrid,
   onLaunchAgentInSession,
   onTouchRepoPin,
   onTouchPanePin,
@@ -199,6 +205,7 @@ export const ChatGridView = ({
             screenLoadingByPane={screenLoadingByPane}
             screenErrorByPane={screenErrorByPane}
             onTouchSession={onTouchPanePin}
+            onRemovePaneFromGrid={onRemovePaneFromGrid}
             sendText={sendText}
             sendKeys={sendKeys}
             sendRaw={sendRaw}
@@ -217,6 +224,8 @@ export const ChatGridView = ({
             onCloseCandidateModal();
           }
         }}
+        canSyncSelectionFromCurrentGrid={canSyncCandidateSelectionFromCurrentGrid}
+        onSyncSelectionFromCurrentGrid={onSyncCandidateSelectionFromCurrentGrid}
         onTogglePane={onToggleCandidatePane}
         onApply={onApplyCandidates}
       />

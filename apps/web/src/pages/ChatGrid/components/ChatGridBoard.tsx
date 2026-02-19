@@ -24,6 +24,7 @@ type ChatGridBoardProps = {
   screenLoadingByPane: Record<string, boolean>;
   screenErrorByPane: Record<string, string | null>;
   onTouchSession: (paneId: string) => Promise<void> | void;
+  onRemovePaneFromGrid: (paneId: string) => void;
   sendText: (
     paneId: string,
     text: string,
@@ -59,6 +60,7 @@ export const ChatGridBoard = ({
   screenLoadingByPane,
   screenErrorByPane,
   onTouchSession,
+  onRemovePaneFromGrid,
   sendText,
   sendKeys,
   sendRaw,
@@ -105,6 +107,7 @@ export const ChatGridBoard = ({
             screenLoading={Boolean(screenLoadingByPane[session.paneId])}
             screenError={screenErrorByPane[session.paneId] ?? null}
             onTouchSession={onTouchSession}
+            onRemoveFromGrid={onRemovePaneFromGrid}
             sendText={sendText}
             sendKeys={sendKeys}
             sendRaw={sendRaw}
