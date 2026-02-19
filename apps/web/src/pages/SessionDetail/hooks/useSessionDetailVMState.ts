@@ -1,34 +1,52 @@
 import { useAtomValue } from "jotai";
 
 import { useNowMs } from "@/lib/use-now-ms";
+import { useSessions } from "@/state/session-context";
+import { useTheme } from "@/state/theme-context";
 
 import { screenTextAtom } from "../atoms/screenAtoms";
-import {
-  connectedAtom,
-  connectionIssueAtom,
-  connectionStatusAtom,
-  currentSessionAtom,
-  fileNavigatorConfigAtom,
-  highlightCorrectionsAtom,
-  launchConfigAtom,
-  resolvedThemeAtom,
-  sessionApiAtom,
-  sessionsAtom,
-} from "../atoms/sessionDetailAtoms";
 
-export const useSessionDetailVMState = () => {
-  const sessions = useAtomValue(sessionsAtom);
-  const connected = useAtomValue(connectedAtom);
-  const connectionStatus = useAtomValue(connectionStatusAtom);
-  const connectionIssue = useAtomValue(connectionIssueAtom);
-  const highlightCorrections = useAtomValue(highlightCorrectionsAtom);
-  const fileNavigatorConfig = useAtomValue(fileNavigatorConfigAtom);
-  const launchConfig = useAtomValue(launchConfigAtom);
-  const resolvedTheme = useAtomValue(resolvedThemeAtom);
-  const session = useAtomValue(currentSessionAtom);
+export const useSessionDetailVMState = (paneId: string) => {
+  const {
+    sessions,
+    connected,
+    connectionStatus,
+    connectionIssue,
+    highlightCorrections,
+    fileNavigatorConfig,
+    launchConfig,
+    refreshSessions,
+    requestWorktrees,
+    requestDiffSummary,
+    requestDiffFile,
+    requestCommitLog,
+    requestCommitDetail,
+    requestCommitFile,
+    requestStateTimeline,
+    requestRepoNotes,
+    requestRepoFileTree,
+    requestRepoFileSearch,
+    requestRepoFileContent,
+    requestScreen,
+    focusPane,
+    killPane,
+    killWindow,
+    launchAgentInSession,
+    uploadImageAttachment,
+    sendText,
+    sendKeys,
+    sendRaw,
+    touchSession,
+    updateSessionTitle,
+    createRepoNote,
+    updateRepoNote,
+    deleteRepoNote,
+    getSessionDetail,
+  } = useSessions();
+  const { resolvedTheme } = useTheme();
   const screenText = useAtomValue(screenTextAtom);
-  const sessionApi = useAtomValue(sessionApiAtom);
   const nowMs = useNowMs();
+  const session = getSessionDetail(paneId);
 
   return {
     sessions,
@@ -42,6 +60,31 @@ export const useSessionDetailVMState = () => {
     session,
     screenText,
     nowMs,
-    ...sessionApi,
+    refreshSessions,
+    requestWorktrees,
+    requestDiffSummary,
+    requestDiffFile,
+    requestCommitLog,
+    requestCommitDetail,
+    requestCommitFile,
+    requestStateTimeline,
+    requestRepoNotes,
+    requestRepoFileTree,
+    requestRepoFileSearch,
+    requestRepoFileContent,
+    requestScreen,
+    focusPane,
+    killPane,
+    killWindow,
+    launchAgentInSession,
+    uploadImageAttachment,
+    sendText,
+    sendKeys,
+    sendRaw,
+    touchSession,
+    updateSessionTitle,
+    createRepoNote,
+    updateRepoNote,
+    deleteRepoNote,
   };
 };

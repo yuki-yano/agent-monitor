@@ -13,17 +13,20 @@ import { describe, expect, it, vi } from "vitest";
 import { ChatGridTile } from "./ChatGridTile";
 
 vi.mock("@/features/shared-session-ui/components/AnsiVirtualizedViewport", () => ({
-  AnsiVirtualizedViewport: ({ lines }: { lines: string[] }) => (
-    <div data-testid="ansi-viewport">
-      {lines.map((line, index) => (
-        <div
-          key={index}
-          data-testid={`ansi-line-${index}`}
-          dangerouslySetInnerHTML={{ __html: line }}
-        />
-      ))}
-    </div>
-  ),
+  AnsiVirtualizedViewport: ({ lines }: { lines: string[] }) => {
+    const lineCounts = new Map<string, number>();
+
+    return (
+      <div data-testid="ansi-viewport">
+        {lines.map((line) => {
+          const count = lineCounts.get(line) ?? 0;
+          lineCounts.set(line, count + 1);
+          const lineKey = `${line}-${count}`;
+          return <div key={lineKey} dangerouslySetInnerHTML={{ __html: line }} />;
+        })}
+      </div>
+    );
+  },
 }));
 
 vi.mock("@/pages/SessionDetail/hooks/useRawInputHandlers", () => ({
@@ -167,6 +170,36 @@ describe("ChatGridTile", () => {
 
     await waitFor(() => {
       expect(updateSessionTitle).toHaveBeenCalledWith("pane-1", "Updated Title");
+      expect(screen.queryByRole("textbox", { name: "Custom session title" })).toBeNull();
+    });
+  });
+
+  it("closes title editor without mutation when title is unchanged", async () => {
+    const updateSessionTitle = vi.fn(async () => undefined);
+    renderWithRouter(
+      <ChatGridTile
+        session={buildSession({ customTitle: "Pinned Title" })}
+        nowMs={Date.parse("2026-02-17T00:10:00.000Z")}
+        connected
+        screenLines={["line 1"]}
+        screenLoading={false}
+        screenError={null}
+        onTouchSession={vi.fn(async () => undefined)}
+        sendText={vi.fn(async () => ({ ok: true }))}
+        sendKeys={vi.fn(async () => ({ ok: true }))}
+        sendRaw={vi.fn(async () => ({ ok: true }))}
+        updateSessionTitle={updateSessionTitle}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit session title" }));
+    const input = screen.getByRole("textbox", { name: "Custom session title" });
+    fireEvent.change(input, { target: { value: "Pinned Title" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(updateSessionTitle).not.toHaveBeenCalled();
+      expect(screen.queryByRole("textbox", { name: "Custom session title" })).toBeNull();
     });
   });
 

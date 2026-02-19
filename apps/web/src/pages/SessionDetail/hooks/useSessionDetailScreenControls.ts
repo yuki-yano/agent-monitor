@@ -1,10 +1,13 @@
 import type {
   AllowedKey,
   CommandResponse,
+  HighlightCorrectionConfig,
   ImageAttachment,
   RawItem,
   ScreenResponse,
 } from "@vde-monitor/shared";
+
+import type { Theme } from "@/lib/theme";
 
 import { useSessionControls } from "./useSessionControls";
 import { useSessionScreen } from "./useSessionScreen";
@@ -13,6 +16,9 @@ type UseSessionDetailScreenControlsArgs = {
   paneId: string;
   connected: boolean;
   connectionIssue: string | null;
+  resolvedTheme: Theme;
+  sessionAgent: string | null;
+  highlightCorrections: HighlightCorrectionConfig;
   requestScreen: (
     paneId: string,
     options: { lines?: number; mode?: "text" | "image"; cursor?: string },
@@ -34,6 +40,9 @@ export const useSessionDetailScreenControls = ({
   paneId,
   connected,
   connectionIssue,
+  resolvedTheme,
+  sessionAgent,
+  highlightCorrections,
   requestScreen,
   sendText,
   sendKeys,
@@ -46,6 +55,9 @@ export const useSessionDetailScreenControls = ({
     paneId,
     connected,
     connectionIssue,
+    resolvedTheme,
+    sessionAgent,
+    highlightCorrections,
     requestScreen,
   });
 

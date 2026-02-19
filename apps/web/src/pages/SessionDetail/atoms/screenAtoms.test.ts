@@ -1,47 +1,62 @@
 import { createStore } from "jotai";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { initialScreenLoadingState } from "@/lib/screen-loading";
 
 import {
-  screenLinesAtom,
+  screenAtBottomAtom,
+  screenErrorAtom,
+  screenFallbackReasonAtom,
+  screenForceFollowAtom,
+  screenImageAtom,
   screenLoadingAtom,
   screenModeAtom,
   screenModeLoadedAtom,
   screenTextAtom,
+  screenWrapModeAtom,
 } from "./screenAtoms";
 
-vi.mock("@/lib/ansi", () => ({
-  renderAnsiLines: (text: string) => (text.length > 0 ? text.split("\n") : []),
-}));
-
-describe("screenLinesAtom", () => {
-  it("does not show fallback text while text screen is loading", () => {
+describe("screen atoms", () => {
+  it("has expected defaults", () => {
     const store = createStore();
-    store.set(screenModeAtom, "text");
-    store.set(screenTextAtom, "");
-    store.set(screenLoadingAtom, { loading: true, mode: "text" });
 
-    expect(store.get(screenLinesAtom)).toEqual([]);
+    expect(store.get(screenModeAtom)).toBe("text");
+    expect(store.get(screenWrapModeAtom)).toBe("off");
+    expect(store.get(screenModeLoadedAtom)).toEqual({ text: false, image: false });
+    expect(store.get(screenAtBottomAtom)).toBe(true);
+    expect(store.get(screenForceFollowAtom)).toBe(false);
+    expect(store.get(screenTextAtom)).toBe("");
+    expect(store.get(screenImageAtom)).toBeNull();
+    expect(store.get(screenFallbackReasonAtom)).toBeNull();
+    expect(store.get(screenErrorAtom)).toBeNull();
+    expect(store.get(screenLoadingAtom)).toEqual(initialScreenLoadingState);
   });
 
-  it("does not show fallback text before initial text load completes", () => {
+  it("supports updating core atoms", () => {
     const store = createStore();
-    store.set(screenModeAtom, "text");
-    store.set(screenTextAtom, "");
-    store.set(screenModeLoadedAtom, { text: false, image: false });
-    store.set(screenLoadingAtom, initialScreenLoadingState);
+    const nextLoaded = { text: true, image: true } as const;
+    const nextLoading = { loading: true, mode: "image" as const };
 
-    expect(store.get(screenLinesAtom)).toEqual([]);
-  });
+    store.set(screenModeAtom, "image");
+    store.set(screenWrapModeAtom, "smart");
+    store.set(screenModeLoadedAtom, nextLoaded);
+    store.set(screenAtBottomAtom, false);
+    store.set(screenForceFollowAtom, true);
+    store.set(screenTextAtom, "hello");
+    store.set(screenImageAtom, "abc123");
+    store.set(screenFallbackReasonAtom, "fallback");
+    store.set(screenErrorAtom, "error");
+    store.set(screenLoadingAtom, nextLoading);
 
-  it("shows fallback text when text screen is idle with no data", () => {
-    const store = createStore();
-    store.set(screenModeAtom, "text");
-    store.set(screenTextAtom, "");
-    store.set(screenModeLoadedAtom, { text: true, image: false });
-    store.set(screenLoadingAtom, initialScreenLoadingState);
-
-    expect(store.get(screenLinesAtom)).toEqual(["No screen data"]);
+    expect(store.get(screenModeAtom)).toBe("image");
+    expect(store.get(screenWrapModeAtom)).toBe("smart");
+    expect(store.get(screenModeLoadedAtom)).toEqual(nextLoaded);
+    expect(store.get(screenAtBottomAtom)).toBe(false);
+    expect(store.get(screenForceFollowAtom)).toBe(true);
+    expect(store.get(screenTextAtom)).toBe("hello");
+    expect(store.get(screenImageAtom)).toBe("abc123");
+    expect(store.get(screenFallbackReasonAtom)).toBe("fallback");
+    expect(store.get(screenErrorAtom)).toBe("error");
+    expect(store.get(screenLoadingAtom)).toEqual(nextLoading);
   });
 });
