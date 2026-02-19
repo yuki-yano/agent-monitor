@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { SessionSummary } from "@vde-monitor/shared";
 import { ArrowLeft, ChevronDown, ChevronUp, Clock, GitBranch, Github, Pin, X } from "lucide-react";
-import { type KeyboardEvent, useId, useState } from "react";
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -104,6 +104,17 @@ const SessionTitleInput = ({
   onTitleSave,
   onCloseTitleEditor,
 }: SessionTitleInputProps) => {
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    const input = titleInputRef.current;
+    if (!input) {
+      return;
+    }
+    input.focus();
+    input.select();
+  }, []);
+
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -125,6 +136,7 @@ const SessionTitleInput = ({
 
   return (
     <input
+      ref={titleInputRef}
       type="text"
       value={titleDraft}
       onChange={(event) => {
@@ -138,7 +150,6 @@ const SessionTitleInput = ({
       disabled={titleSaving}
       className="border-latte-surface2 text-latte-text focus:border-latte-lavender focus:ring-latte-lavender/30 bg-latte-base/70 shadow-elev-1 min-w-[180px] flex-1 rounded-2xl border px-2.5 py-1 text-xl outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3 sm:py-1.5"
       aria-label="Custom session title"
-      autoFocus
     />
   );
 };

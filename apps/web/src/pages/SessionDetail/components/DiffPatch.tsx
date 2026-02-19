@@ -108,10 +108,18 @@ const DiffPatch = memo(
       () => new Set(referenceCandidateTokens),
       [referenceCandidateTokens],
     );
-    const renderedLines = useMemo(
-      () => lines.map((line) => renderLineWithFileReferenceLinks(line, linkableTokens)),
-      [lines, linkableTokens],
-    );
+    const renderedLines = useMemo(() => {
+      const lineCounts = new Map<string, number>();
+      return lines.map((line) => {
+        const count = lineCounts.get(line) ?? 0;
+        lineCounts.set(line, count + 1);
+        return {
+          key: `diff-line-${line}-${count}`,
+          className: diffLineClass(line),
+          content: renderLineWithFileReferenceLinks(line, linkableTokens),
+        };
+      });
+    }, [lines, linkableTokens]);
 
     useEffect(() => {
       const requestId = activeResolveCandidatesRequestIdRef.current + 1;
@@ -203,15 +211,13 @@ const DiffPatch = memo(
     );
 
     return (
-      <MonoBlock>
-        {renderedLines.map((line, index) => (
+      <MonoBlock onClick={handleResolveFileReference} onKeyDown={handleResolveFileReferenceKeyDown}>
+        {renderedLines.map((line) => (
           <div
-            key={`${index}-${lines[index]?.slice(0, 12) ?? ""}`}
-            className={cn(diffLineClass(lines[index] ?? ""), "-mx-2 block w-full rounded-sm px-2")}
-            onClick={handleResolveFileReference}
-            onKeyDown={handleResolveFileReferenceKeyDown}
+            key={line.key}
+            className={cn(line.className, "-mx-2 block w-full rounded-sm px-2")}
           >
-            {line}
+            {line.content}
           </div>
         ))}
       </MonoBlock>

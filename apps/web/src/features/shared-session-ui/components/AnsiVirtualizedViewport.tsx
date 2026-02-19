@@ -136,6 +136,7 @@ export const AnsiVirtualizedViewport = ({
         style={{ height }}
         itemContent={(_index, line) => (
           <div
+            role="presentation"
             className={lineClassName}
             onClick={onLineClick}
             onKeyDown={onLineKeyDown}

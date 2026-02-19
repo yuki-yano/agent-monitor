@@ -127,6 +127,17 @@ const SessionPreviewBody = ({
   timelineLoading: boolean;
   timelineError: string | null;
 }) => {
+  const previewLineRows = useMemo(() => {
+    const lineCounts = new Map<string, number>();
+    return lines.map((line) => {
+      const count = lineCounts.get(line) ?? 0;
+      lineCounts.set(line, count + 1);
+      return {
+        key: `preview-line-${line}-${count}`,
+        line,
+      };
+    });
+  }, [lines]);
   const previewBodyClassName =
     "border-latte-surface1/80 bg-latte-crust text-latte-text min-h-0 flex-1 overflow-hidden rounded-xl border px-3 py-3 font-mono text-[12px] leading-[16px]";
   return (
@@ -145,11 +156,11 @@ const SessionPreviewBody = ({
           <p className="text-latte-subtext0 text-xs">Preview unavailable.</p>
         ) : (
           <div className="flex min-h-full flex-col justify-end">
-            {lines.map((line, index) => (
+            {previewLineRows.map((item) => (
               <div
-                key={`preview-${index}`}
+                key={item.key}
                 className="whitespace-pre"
-                dangerouslySetInnerHTML={{ __html: line || "&#x200B;" }}
+                dangerouslySetInnerHTML={{ __html: item.line || "&#x200B;" }}
               />
             ))}
           </div>

@@ -13,9 +13,14 @@ vi.mock("react-virtuoso", () => ({
     itemContent: (index: number, item: string) => ReactNode;
   }) => (
     <div data-testid="virtuoso">
-      {data.map((item, index) => (
-        <div key={index}>{itemContent(index, item)}</div>
-      ))}
+      {(() => {
+        const itemCounts = new Map<string, number>();
+        return data.map((item, index) => {
+          const count = itemCounts.get(item) ?? 0;
+          itemCounts.set(item, count + 1);
+          return <div key={`${item}-${count}`}>{itemContent(index, item)}</div>;
+        });
+      })()}
     </div>
   ),
 }));

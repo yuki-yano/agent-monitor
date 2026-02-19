@@ -125,7 +125,6 @@ export const NotesSectionList = ({
                       className="text-latte-text min-h-[96px] w-full resize-y bg-transparent px-3 py-2 text-base outline-none"
                       maxLength={10_000}
                       value={editingBody}
-                      autoFocus
                       onChange={(event) => onSetEditingBody(event.target.value)}
                       onBlur={onFinishEdit}
                     />
@@ -190,6 +189,20 @@ export const NotesDeleteDialog = ({
   const deleteTargetPreview = deleteTargetNote
     ? buildDeleteTargetPreview(deleteTargetNote.body, emptyNotePreview)
     : null;
+  const deleteTargetPreviewRows = (() => {
+    if (!deleteTargetPreview) {
+      return [];
+    }
+    const lineCounts = new Map<string, number>();
+    return deleteTargetPreview.lines.map((line) => {
+      const count = lineCounts.get(line) ?? 0;
+      lineCounts.set(line, count + 1);
+      return {
+        key: `delete-preview-${line}-${count}`,
+        line,
+      };
+    });
+  })();
 
   return (
     <Dialog
@@ -208,9 +221,9 @@ export const NotesDeleteDialog = ({
         {deleteTargetPreview ? (
           <div className="border-latte-surface2/70 bg-latte-base/70 mt-1.5 rounded-xl border px-2.5 py-2">
             <div className="text-latte-subtext0 flex flex-col gap-0.5 text-[13px] leading-5">
-              {deleteTargetPreview.lines.map((line, index) => (
-                <p key={index} className="whitespace-pre-wrap break-words">
-                  {line}
+              {deleteTargetPreviewRows.map((item) => (
+                <p key={item.key} className="whitespace-pre-wrap break-words">
+                  {item.line}
                 </p>
               ))}
               {deleteTargetPreview.isTruncated ? (

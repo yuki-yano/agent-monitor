@@ -166,9 +166,14 @@ export const ShikiCodeBlock = ({
   }, [error, highlightLine, highlightedHtml]);
 
   const fallbackLinesContent = useMemo(() => {
+    const lineCounts = new Map<string, number>();
     return fallbackLines.map((line, index) => (
       <span
-        key={`${index}:${line}`}
+        key={(() => {
+          const count = lineCounts.get(line) ?? 0;
+          lineCounts.set(line, count + 1);
+          return `fallback-line-${line}-${count}`;
+        })()}
         className={cn(
           "line block min-w-max",
           highlightLine === index + 1 ? "vde-shiki-target-line" : "",

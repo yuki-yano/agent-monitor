@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 import {
   Command,
@@ -36,6 +37,19 @@ type LogFileCandidateModalProps = {
 export const LogFileCandidateModal = ({ state, actions }: LogFileCandidateModalProps) => {
   const { open, reference, items } = state;
   const { onClose, onSelect } = actions;
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const rafId = window.requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [open]);
 
   if (!open) {
     return null;
@@ -72,7 +86,7 @@ export const LogFileCandidateModal = ({ state, actions }: LogFileCandidateModalP
 
         <div className="px-2.5 pb-2.5 sm:px-3 sm:pb-3 md:px-4 md:pb-4">
           <Command>
-            <CommandInput placeholder="Search files..." autoFocus />
+            <CommandInput ref={searchInputRef} placeholder="Search files..." />
             <CommandList>
               <CommandEmpty>No file candidates found.</CommandEmpty>
               <CommandGroup>

@@ -62,16 +62,23 @@ const TestHarness = ({
       ref={scrollerRef}
       style={{ overflow: "auto", height: 100 }}
     >
-      {items.map((item, index) => (
-        <div
-          key={`${item}-${index}`}
-          data-index={hideDataIndex ? undefined : index}
-          data-top={index * 10}
-          data-height="10"
-        >
-          {item}
-        </div>
-      ))}
+      {(() => {
+        const itemCounts = new Map<string, number>();
+        return items.map((item, index) => {
+          const count = itemCounts.get(item) ?? 0;
+          itemCounts.set(item, count + 1);
+          return (
+            <div
+              key={`${item}-${count}`}
+              data-index={hideDataIndex ? undefined : index}
+              data-top={index * 10}
+              data-height="10"
+            >
+              {item}
+            </div>
+          );
+        });
+      })()}
     </div>
   );
 };
