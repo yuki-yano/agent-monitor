@@ -70,11 +70,6 @@ export const formatBranchLabel = (value: string | null | undefined) => {
   return trimmed.length > 0 ? trimmed : "No branch";
 };
 
-export const formatWorktreeFlag = (value: boolean | null | undefined) => {
-  if (value == null) return "?";
-  return value ? "Y" : "N";
-};
-
 type WorktreeFlagKind = "dirty" | "locked" | "pr" | "merged";
 
 const WORKTREE_FLAG_CLASS_MAP: Record<WorktreeFlagKind, string> = {

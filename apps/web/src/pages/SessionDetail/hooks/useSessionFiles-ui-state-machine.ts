@@ -5,7 +5,7 @@ import type { LogFileCandidateItem } from "./useSessionFiles-log-resolve-state";
 
 type SessionFilesUiStateKey = keyof SessionFilesUiState;
 
-export type SessionFilesUiState = {
+type SessionFilesUiState = {
   selectedFilePath: string | null;
   searchQuery: string;
   searchResult: RepoFileSearchPage | null;

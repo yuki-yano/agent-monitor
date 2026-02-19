@@ -1,6 +1,6 @@
 const sharedParser = typeof DOMParser === "undefined" ? null : new DOMParser();
 
-export const stripInvisibleChars = (value: string) => value.replace(/[\u200B\uFEFF]/g, "");
+const stripInvisibleChars = (value: string) => value.replace(/[\u200B\uFEFF]/g, "");
 
 export const extractTextContentFromHtml = (lineHtml: string) => {
   if (!lineHtml) {

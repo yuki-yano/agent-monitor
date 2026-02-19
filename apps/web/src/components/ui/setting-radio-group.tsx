@@ -97,4 +97,3 @@ const SettingRadioGroup = <T extends string>({
 };
 
 export { SettingRadioGroup };
-export type { SettingRadioGroupProps, SettingRadioOption };

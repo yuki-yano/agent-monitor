@@ -327,5 +327,3 @@ export const useChatGridVM = () => {
     onSyncCandidateSelectionFromCurrentGrid: handleSyncCandidateSelectionFromCurrentGrid,
   };
 };
-
-export type ChatGridVM = ReturnType<typeof useChatGridVM>;

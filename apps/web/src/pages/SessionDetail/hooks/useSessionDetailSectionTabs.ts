@@ -21,7 +21,7 @@ export const SECTION_TAB_TEXT_CLASS =
   "inline-flex h-8 items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] leading-tight sm:h-9 sm:gap-1.5 sm:px-2 sm:text-[11px]";
 
 export type DetailSectionTab = (typeof DETAIL_SECTION_TAB_VALUES)[number];
-export type SectionTabValue = DetailSectionTab | typeof CLOSE_DETAIL_TAB_VALUE;
+type SectionTabValue = DetailSectionTab | typeof CLOSE_DETAIL_TAB_VALUE;
 
 type SectionTabStorageScope = {
   repoRoot?: null | string;

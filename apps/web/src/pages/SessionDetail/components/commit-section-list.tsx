@@ -86,7 +86,7 @@ type CommitItemProps = {
   onResolveFileReferenceCandidates?: (rawTokens: string[]) => Promise<string[]>;
 };
 
-export type CommitListProps = {
+type CommitListProps = {
   commits: CommitLog["commits"];
   commitDetails: Record<string, CommitDetail>;
   commitLoadingDetails: Record<string, boolean>;
@@ -103,7 +103,7 @@ export type CommitListProps = {
   onResolveFileReferenceCandidates?: (rawTokens: string[]) => Promise<string[]>;
 };
 
-export type CommitLoadMoreButtonProps = {
+type CommitLoadMoreButtonProps = {
   canLoadMore: boolean;
   commitLoadingMore: boolean;
   onLoadMore: () => void;

@@ -20,7 +20,7 @@ import { useSessionPreview } from "./useSessionPreview";
 import { useSidebarPreviewHoverController } from "./useSidebarPreviewHoverController";
 import { useSidebarPreviewTimelineCache } from "./useSidebarPreviewTimelineCache";
 
-export type SidebarPreview = {
+type SidebarPreview = {
   paneId: string;
   sessionName: string | null;
   windowIndex: number | null;
@@ -311,5 +311,3 @@ export const useSidebarPreview = ({
     registerItemRef,
   };
 };
-
-export type { PreviewFrame };
