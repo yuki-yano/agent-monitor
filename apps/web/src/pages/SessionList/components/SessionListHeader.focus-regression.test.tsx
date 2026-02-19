@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SessionListHeader } from "./SessionListHeader";
 
@@ -27,6 +27,11 @@ const HeaderHarness = () => {
 };
 
 describe("SessionListHeader focus regression", () => {
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
   it("keeps focus on search input after debounced query sync", () => {
     vi.useFakeTimers();
     render(<HeaderHarness />);
@@ -44,5 +49,31 @@ describe("SessionListHeader focus regression", () => {
     const latestInput = screen.getByRole("textbox", { name: "Search sessions" });
     expect((latestInput as HTMLInputElement).value).toBe("repo");
     expect(document.activeElement).toBe(latestInput);
+  });
+
+  it("flushes pending query update on blur", () => {
+    vi.useFakeTimers();
+    const onSearchQueryChange = vi.fn();
+    render(
+      <SessionListHeader
+        connectionStatus="healthy"
+        connectionIssue={null}
+        filter="ALL"
+        searchQuery=""
+        filterOptions={FILTER_OPTIONS}
+        onFilterChange={vi.fn()}
+        onSearchQueryChange={onSearchQueryChange}
+        onRefresh={vi.fn()}
+        onOpenChatGrid={vi.fn()}
+      />,
+    );
+
+    const input = screen.getByRole("textbox", { name: "Search sessions" });
+    input.focus();
+    fireEvent.change(input, { target: { value: "repo" } });
+    fireEvent.blur(input);
+
+    expect(onSearchQueryChange).toHaveBeenCalledWith("repo");
+    expect(onSearchQueryChange).toHaveBeenCalledTimes(1);
   });
 });

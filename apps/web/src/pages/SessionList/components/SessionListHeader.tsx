@@ -1,5 +1,5 @@
 import { LayoutGrid, RefreshCw, Search, X } from "lucide-react";
-import { type ChangeEvent, useEffect, useState } from "react";
+import { type ChangeEvent, useEffect, useRef, useState } from "react";
 
 import {
   Button,
@@ -35,6 +35,7 @@ const SessionListSearchInput = ({
 }: SessionListSearchInputProps) => {
   const [draftSearchQuery, setDraftSearchQuery] = useState(initialSearchQuery);
   const [isFocused, setIsFocused] = useState(false);
+  const debounceTimerRef = useRef<number | null>(null);
   const activeSearchQuery = isFocused ? draftSearchQuery : initialSearchQuery;
 
   useEffect(() => {
@@ -46,11 +47,16 @@ const SessionListSearchInput = ({
     }
     const debounceMs = draftSearchQuery.length === 0 ? 0 : SEARCH_INPUT_DEBOUNCE_MS;
     const timeoutId = window.setTimeout(() => {
+      debounceTimerRef.current = null;
       onSearchQueryChange(draftSearchQuery);
     }, debounceMs);
+    debounceTimerRef.current = timeoutId;
 
     return () => {
       window.clearTimeout(timeoutId);
+      if (debounceTimerRef.current === timeoutId) {
+        debounceTimerRef.current = null;
+      }
     };
   }, [draftSearchQuery, initialSearchQuery, isFocused, onSearchQueryChange]);
 
@@ -64,6 +70,13 @@ const SessionListSearchInput = ({
   };
   const handleBlur = () => {
     setIsFocused(false);
+    if (debounceTimerRef.current != null) {
+      window.clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    if (draftSearchQuery !== initialSearchQuery) {
+      onSearchQueryChange(draftSearchQuery);
+    }
   };
   const handleClear = () => {
     setDraftSearchQuery("");

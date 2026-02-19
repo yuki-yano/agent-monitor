@@ -1,5 +1,4 @@
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
 
 import { useNowMs } from "@/lib/use-now-ms";
 import { useSessions } from "@/state/session-context";
@@ -16,13 +15,38 @@ export const useSessionDetailVMState = (paneId: string) => {
     highlightCorrections,
     fileNavigatorConfig,
     launchConfig,
+    refreshSessions,
+    requestWorktrees,
+    requestDiffSummary,
+    requestDiffFile,
+    requestCommitLog,
+    requestCommitDetail,
+    requestCommitFile,
+    requestStateTimeline,
+    requestRepoNotes,
+    requestRepoFileTree,
+    requestRepoFileSearch,
+    requestRepoFileContent,
+    requestScreen,
+    focusPane,
+    killPane,
+    killWindow,
+    launchAgentInSession,
+    uploadImageAttachment,
+    sendText,
+    sendKeys,
+    sendRaw,
+    touchSession,
+    updateSessionTitle,
+    createRepoNote,
+    updateRepoNote,
+    deleteRepoNote,
     getSessionDetail,
-    ...sessionApi
   } = useSessions();
   const { resolvedTheme } = useTheme();
   const screenText = useAtomValue(screenTextAtom);
   const nowMs = useNowMs();
-  const session = useMemo(() => getSessionDetail(paneId), [getSessionDetail, paneId]);
+  const session = getSessionDetail(paneId);
 
   return {
     sessions,
@@ -36,6 +60,31 @@ export const useSessionDetailVMState = (paneId: string) => {
     session,
     screenText,
     nowMs,
-    ...sessionApi,
+    refreshSessions,
+    requestWorktrees,
+    requestDiffSummary,
+    requestDiffFile,
+    requestCommitLog,
+    requestCommitDetail,
+    requestCommitFile,
+    requestStateTimeline,
+    requestRepoNotes,
+    requestRepoFileTree,
+    requestRepoFileSearch,
+    requestRepoFileContent,
+    requestScreen,
+    focusPane,
+    killPane,
+    killWindow,
+    launchAgentInSession,
+    uploadImageAttachment,
+    sendText,
+    sendKeys,
+    sendRaw,
+    touchSession,
+    updateSessionTitle,
+    createRepoNote,
+    updateRepoNote,
+    deleteRepoNote,
   };
 };

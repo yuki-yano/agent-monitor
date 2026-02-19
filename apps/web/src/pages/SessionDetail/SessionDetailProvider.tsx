@@ -5,7 +5,6 @@ type SessionDetailProviderProps = {
   children: ReactNode;
 };
 
-export const SessionDetailProvider = ({ paneId, children }: SessionDetailProviderProps) => {
-  void paneId;
-  return <>{children}</>;
+export const SessionDetailProvider = (props: SessionDetailProviderProps) => {
+  return <>{props.children}</>;
 };
