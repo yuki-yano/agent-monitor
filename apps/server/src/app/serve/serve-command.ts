@@ -7,7 +7,7 @@ import { createApp } from "../../app";
 import { ensureConfig } from "../../config";
 import { createSessionMonitor } from "../../monitor";
 import { createMultiplexerRuntime } from "../../multiplexer/runtime";
-import { getLocalIP, getTailscaleIP } from "../../network";
+import { getLocalIP, getTailscaleDnsName, getTailscaleIP } from "../../network";
 import { findAvailablePort } from "../../ports";
 import { type ParsedArgs, parsePort, resolveHosts, resolveMultiplexerOverrides } from "../cli/cli";
 
@@ -65,6 +65,17 @@ export const buildAccessUrl = ({
     hashParams.set("api", apiBaseUrl);
   }
   return `http://${displayHost}:${displayPort}/#${hashParams.toString()}`;
+};
+
+export const buildTailscaleHttpsAccessUrl = ({
+  dnsName,
+  token,
+}: {
+  dnsName: string;
+  token: string;
+}) => {
+  const hashParams = new URLSearchParams({ token });
+  return `https://${dnsName}/#${hashParams.toString()}`;
 };
 
 export const runServe = async (args: ParsedArgs) => {
@@ -130,8 +141,34 @@ export const runServe = async (args: ParsedArgs) => {
     apiBaseUrl,
   });
   console.log(`vde-monitor: ${url}`);
+  let qrUrl = url;
 
-  qrcode.generate(url, { small: true });
+  if (args.tailscale === true) {
+    const tailscaleDnsName = getTailscaleDnsName();
+    console.log(
+      `[vde-monitor] Push notification testing requires HTTPS. Run: tailscale serve --bg ${displayPort}`,
+    );
+    console.log("[vde-monitor] Confirm serve endpoint: tailscale serve status");
+    if (tailscaleDnsName) {
+      const secureUrl = buildTailscaleHttpsAccessUrl({
+        dnsName: tailscaleDnsName,
+        token: config.token,
+      });
+      qrUrl = secureUrl;
+      console.log(`vde-monitor (tailscale-https): ${secureUrl}`);
+      if (apiBaseUrl) {
+        console.log(
+          "[vde-monitor] Use the tailscale-https URL above for push tests (it intentionally omits #api).",
+        );
+      }
+    } else {
+      console.log(
+        "[vde-monitor] Could not resolve Tailscale DNSName automatically. Use your <device>.<tailnet>.ts.net host.",
+      );
+    }
+  }
+
+  qrcode.generate(qrUrl, { small: true });
 
   process.on("SIGINT", () => {
     monitor.stop();

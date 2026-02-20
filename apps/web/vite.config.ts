@@ -9,6 +9,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 24180,
+    allowedHosts: [".ts.net"],
     proxy: {
       "/api": {
         target: apiProxyTarget,

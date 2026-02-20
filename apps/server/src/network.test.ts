@@ -14,7 +14,7 @@ vi.mock("node:os", () => ({
   networkInterfaces: mocks.networkInterfaces,
 }));
 
-import { getLocalIP, getTailscaleIP, isTailscaleIP } from "./network";
+import { getLocalIP, getTailscaleDnsName, getTailscaleIP, isTailscaleIP } from "./network";
 
 type InterfaceInfo = {
   address: string;
@@ -29,7 +29,8 @@ const iface = (address: string, options?: Partial<InterfaceInfo>): InterfaceInfo
 });
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  mocks.execaSync.mockReset();
+  mocks.networkInterfaces.mockReset();
   mocks.networkInterfaces.mockReturnValue({});
 });
 
@@ -94,6 +95,50 @@ describe("getTailscaleIP", () => {
       2,
       "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
       ["ip", "-4"],
+      expect.objectContaining({ timeout: 2000, reject: false }),
+    );
+  });
+});
+
+describe("getTailscaleDnsName", () => {
+  it("returns DNSName from tailscale status JSON and strips trailing dot", () => {
+    mocks.execaSync.mockReturnValueOnce({
+      exitCode: 0,
+      stdout: JSON.stringify({ Self: { DNSName: "macbook.example.ts.net." } }),
+    });
+
+    expect(getTailscaleDnsName()).toBe("macbook.example.ts.net");
+    expect(mocks.execaSync).toHaveBeenCalledWith(
+      "tailscale",
+      ["status", "--json"],
+      expect.objectContaining({ timeout: 2000, reject: false }),
+    );
+  });
+
+  it("returns null when status JSON is invalid", () => {
+    mocks.execaSync.mockReturnValueOnce({
+      exitCode: 0,
+      stdout: "{not-json}",
+    });
+
+    expect(getTailscaleDnsName()).toBeNull();
+  });
+
+  it("tries alternate CLI binary when primary tailscale command throws", () => {
+    mocks.execaSync
+      .mockImplementationOnce(() => {
+        throw new Error("missing command");
+      })
+      .mockReturnValueOnce({
+        exitCode: 0,
+        stdout: JSON.stringify({ Self: { DNSName: "mbp.example.ts.net" } }),
+      });
+
+    expect(getTailscaleDnsName()).toBe("mbp.example.ts.net");
+    expect(mocks.execaSync).toHaveBeenNthCalledWith(
+      2,
+      "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
+      ["status", "--json"],
       expect.objectContaining({ timeout: 2000, reject: false }),
     );
   });

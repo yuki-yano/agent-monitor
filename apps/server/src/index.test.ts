@@ -43,7 +43,12 @@ vi.mock("./multiplexer/runtime", () => ({
   })),
 }));
 
-import { buildAccessUrl, ensureBackendAvailable, runLaunchAgentCommand } from "./index";
+import {
+  buildAccessUrl,
+  buildTailscaleHttpsAccessUrl,
+  ensureBackendAvailable,
+  runLaunchAgentCommand,
+} from "./index";
 
 describe("ensureBackendAvailable", () => {
   beforeEach(() => {
@@ -138,6 +143,22 @@ describe("buildAccessUrl", () => {
     expect(parsed.origin).toBe("http://100.102.60.85:24181");
     expect(hashParams.get("token")).toBe("abc123");
     expect(hashParams.get("api")).toBe("http://100.102.60.85:11081/api");
+  });
+});
+
+describe("buildTailscaleHttpsAccessUrl", () => {
+  it("builds a ts.net HTTPS URL with token hash", () => {
+    const url = buildTailscaleHttpsAccessUrl({
+      dnsName: "macbook.example.ts.net",
+      token: "abc123",
+    });
+    const parsed = new URL(url);
+    const hash = parsed.hash.startsWith("#") ? parsed.hash.slice(1) : parsed.hash;
+    const hashParams = new URLSearchParams(hash);
+
+    expect(parsed.origin).toBe("https://macbook.example.ts.net");
+    expect(hashParams.get("token")).toBe("abc123");
+    expect(hashParams.has("api")).toBe(false);
   });
 });
 
