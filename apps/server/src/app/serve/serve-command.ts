@@ -142,8 +142,9 @@ export const runServe = async (args: ParsedArgs) => {
   });
   console.log(`vde-monitor: ${url}`);
   let qrUrl = url;
+  const useTailscaleHttps = args.tailscale === true && args.https === true;
 
-  if (args.tailscale === true) {
+  if (useTailscaleHttps) {
     const tailscaleDnsName = getTailscaleDnsName();
     console.log(
       `[vde-monitor] Push notification testing requires HTTPS. Run: tailscale serve --bg ${displayPort}`,

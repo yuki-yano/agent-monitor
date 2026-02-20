@@ -47,11 +47,12 @@ describe("parseArgs", () => {
   });
 
   it("ignores separators passed through tsx/pnpm", () => {
-    const result = parseArgs(["--", "--", "--public", "--tailscale"]);
+    const result = parseArgs(["--", "--", "--public", "--tailscale", "--https"]);
 
     expect(result.command).toBeUndefined();
     expect(result.public).toBe(true);
     expect(result.tailscale).toBe(true);
+    expect(result.https).toBe(true);
   });
 
   it("keeps raw string values without numeric coercion", () => {

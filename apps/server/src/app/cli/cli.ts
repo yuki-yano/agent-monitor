@@ -14,6 +14,7 @@ const cliArgDefinitions = {
   bind: { type: "string" },
   public: { type: "boolean" },
   tailscale: { type: "boolean" },
+  https: { type: "boolean" },
   port: { type: "string" },
   webPort: { type: "string" },
   socketName: { type: "string" },

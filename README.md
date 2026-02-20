@@ -80,7 +80,7 @@ Typical flow:
 
 For PWA push notification testing on mobile, use Tailscale HTTPS:
 
-1. Start with Tailscale mode (example): `vde-monitor --tailscale` (or `pnpm dev -- --tailscale`).
+1. Start with Tailscale + HTTPS mode (example): `vde-monitor --tailscale --https` (or `pnpm dev -- --tailscale --https`).
 2. Run `tailscale serve --bg <printed-web-port>`.
 3. Open `https://<device>.<tailnet>.ts.net/#token=...` (not the plain `http://100.x.x.x/...` URL).
 4. Verify with `tailscale serve status`.
@@ -99,6 +99,7 @@ Common options:
 --port <port>           API/UI port
 --public                Bind to 0.0.0.0
 --tailscale             Use Tailscale IP for access URL
+--https                 Enable Tailscale HTTPS guidance/QR (effective with `--tailscale`)
 --bind <ip>             Bind to specific IPv4
 --web-port <port>       Override displayed web port in URL
 --multiplexer <name>    `tmux` or `wezterm`
@@ -116,6 +117,7 @@ Notes:
 - `--tailscale` requires a resolvable Tailscale IP
 - `--tailscale` without `--public` binds to the Tailscale IP
 - `--public --tailscale` binds to `0.0.0.0` and prints a Tailscale URL
+- `--https` only takes effect when used with `--tailscale` (otherwise standard HTTP guidance is shown)
 - Push notification checks require HTTPS (`tailscale serve` / `tailscale funnel`), HTTP on Tailscale IP is not enough
 
 ### Launch agent in tmux session
