@@ -188,10 +188,10 @@ export const resolveExistingPaneLaunchTarget = async ({
   | { ok: false; error: ApiError }
 > => {
   const listed = await adapter.run([
-    "list-panes",
+    "display-message",
+    "-p",
     "-t",
     paneId,
-    "-F",
     "#{window_id}\t#{window_index}\t#{window_name}\t#{pane_id}",
   ]);
   if (listed.exitCode !== 0) {
@@ -206,7 +206,7 @@ export const resolveExistingPaneLaunchTarget = async ({
   if (!windowId || !indexRaw || !windowName || !resolvedPaneId) {
     return {
       ok: false,
-      error: buildError("INTERNAL", "unexpected tmux list-panes output"),
+      error: buildError("INTERNAL", "unexpected tmux display-message output"),
     };
   }
   const windowIndex = Number.parseInt(indexRaw, 10);

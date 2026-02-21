@@ -488,7 +488,7 @@ describe("createTmuxActions.launchAgentInSession", () => {
           return { stdout: "", stderr: "", exitCode: 0 };
         }
         if (
-          args[0] === "list-panes" &&
+          args[0] === "display-message" &&
           args.includes("#{window_id}\t#{window_index}\t#{window_name}\t#{pane_id}")
         ) {
           return { stdout: "@7\t1\tmain\t%13\n", stderr: "", exitCode: 0 };
@@ -546,7 +546,7 @@ describe("createTmuxActions.launchAgentInSession", () => {
           return { stdout: "", stderr: "", exitCode: 0 };
         }
         if (
-          args[0] === "list-panes" &&
+          args[0] === "display-message" &&
           args.includes("#{window_id}\t#{window_index}\t#{window_name}\t#{pane_id}")
         ) {
           return { stdout: "@7\t1\tmain\t%13\n", stderr: "", exitCode: 0 };
