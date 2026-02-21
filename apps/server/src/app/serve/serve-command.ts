@@ -83,6 +83,17 @@ export const buildTailscaleHttpsAccessUrl = ({
   return `https://${dnsName}/#${hashParams.toString()}`;
 };
 
+export const buildTailscaleServeProxyTarget = ({
+  displayHost,
+  displayPort,
+}: {
+  displayHost: string;
+  displayPort: number;
+}) => `http://${displayHost}:${displayPort}`;
+
+export const buildTailscaleServeCommand = (proxyTarget: string) =>
+  `tailscale serve --bg ${proxyTarget}`;
+
 const TAILSCALE_COMMAND_CANDIDATES = [
   "tailscale",
   "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
@@ -161,6 +172,59 @@ const parseJson = (raw: string): unknown | null => {
   }
 };
 
+const normalizeServeProxyTarget = (value: string) => {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+};
+
+export const collectServeProxyTargets = (value: unknown): string[] => {
+  const targets = new Set<string>();
+  const visit = (node: unknown): void => {
+    if (typeof node === "string") {
+      const normalized = normalizeServeProxyTarget(node.trim());
+      if (normalized) {
+        targets.add(normalized);
+      }
+      return;
+    }
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        visit(item);
+      }
+      return;
+    }
+    if (isObject(node)) {
+      for (const child of Object.values(node)) {
+        visit(child);
+      }
+    }
+  };
+
+  visit(value);
+  return [...targets];
+};
+
+export const matchesExpectedTailscaleServeTarget = ({
+  serveStatus,
+  expectedProxyTarget,
+}: {
+  serveStatus: unknown;
+  expectedProxyTarget: string;
+}) => {
+  const expected = normalizeServeProxyTarget(expectedProxyTarget);
+  if (!expected) {
+    return false;
+  }
+  return collectServeProxyTargets(serveStatus).includes(expected);
+};
+
 const hasExistingServeConfig = (value: unknown) => {
   if (!isObject(value)) {
     return false;
@@ -197,7 +261,7 @@ const askRunTailscaleServe = async () => {
   }
 };
 
-const runTailscaleHttpsPreflight = async (displayPort: number) => {
+const runTailscaleHttpsPreflight = async (expectedProxyTarget: string) => {
   const tailscaleBin = resolveTailscaleBinary();
   if (!tailscaleBin) {
     console.log("[vde-monitor] tailscale command not found. Install Tailscale and log in first.");
@@ -220,7 +284,7 @@ const runTailscaleHttpsPreflight = async (displayPort: number) => {
     return { dnsName: null as string | null };
   }
 
-  const manualCommand = `tailscale serve --bg ${displayPort}`;
+  const manualCommand = buildTailscaleServeCommand(expectedProxyTarget);
   const serveStatus = runTailscaleCommand(tailscaleBin, ["serve", "status", "--json"]);
   if (!serveStatus || serveStatus.exitCode !== 0) {
     console.log("[vde-monitor] Could not read existing tailscale serve settings.");
@@ -234,10 +298,30 @@ const runTailscaleHttpsPreflight = async (displayPort: number) => {
     return { dnsName };
   }
   if (hasExistingServeConfig(parsedServeStatus)) {
+    if (
+      matchesExpectedTailscaleServeTarget({
+        serveStatus: parsedServeStatus,
+        expectedProxyTarget,
+      })
+    ) {
+      console.log(
+        "[vde-monitor] Existing tailscale serve settings detected and match expected upstream.",
+      );
+      console.log("[vde-monitor] Skipping auto configuration.");
+      return { dnsName };
+    }
+    const existingTargets = collectServeProxyTargets(parsedServeStatus);
     console.log(
-      "[vde-monitor] Existing tailscale serve settings detected. Skipping auto configuration.",
+      "[vde-monitor] Existing tailscale serve settings detected, but upstream does not match this run.",
     );
-    console.log(`[vde-monitor] Keep existing settings or run manually: ${manualCommand}`);
+    if (existingTargets.length > 0) {
+      console.log(`[vde-monitor] Current upstream(s): ${existingTargets.join(", ")}`);
+    } else {
+      console.log("[vde-monitor] Current upstream(s): (not detected from serve status)");
+    }
+    console.log(`[vde-monitor] Expected upstream: ${expectedProxyTarget}`);
+    console.log("[vde-monitor] Automatic overwrite is disabled for safety.");
+    console.log(`[vde-monitor] Keep existing settings or update manually: ${manualCommand}`);
     return { dnsName };
   }
 
@@ -248,7 +332,7 @@ const runTailscaleHttpsPreflight = async (displayPort: number) => {
     return { dnsName };
   }
 
-  const serveBg = runTailscaleCommand(tailscaleBin, ["serve", "--bg", String(displayPort)]);
+  const serveBg = runTailscaleCommand(tailscaleBin, ["serve", "--bg", expectedProxyTarget]);
   if (!serveBg || serveBg.exitCode !== 0) {
     const reason = serveBg?.stderr?.trim() || serveBg?.stdout?.trim() || "unknown error";
     console.log(`[vde-monitor] tailscale serve auto-setup failed: ${reason}`);
@@ -338,11 +422,17 @@ export const runServe = async (args: ParsedArgs) => {
   const useTailscaleHttps = args.tailscale === true && args.https === true;
 
   if (useTailscaleHttps) {
+    const expectedProxyTarget = buildTailscaleServeProxyTarget({
+      displayHost,
+      displayPort,
+    });
+    const manualCommand = buildTailscaleServeCommand(expectedProxyTarget);
     console.log(
-      `[vde-monitor] Push notification testing requires HTTPS. Run: tailscale serve --bg ${displayPort}`,
+      `[vde-monitor] Push notification testing requires HTTPS. Expected tailscale upstream: ${expectedProxyTarget}`,
     );
+    console.log(`[vde-monitor] Run (or update) serve: ${manualCommand}`);
     console.log("[vde-monitor] Confirm serve endpoint: tailscale serve status");
-    const preflight = await runTailscaleHttpsPreflight(displayPort);
+    const preflight = await runTailscaleHttpsPreflight(expectedProxyTarget);
     const tailscaleDnsName = preflight.dnsName ?? getTailscaleDnsName();
     if (tailscaleDnsName) {
       const secureUrl = buildTailscaleHttpsAccessUrl({
