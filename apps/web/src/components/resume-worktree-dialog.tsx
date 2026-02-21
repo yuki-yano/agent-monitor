@@ -245,21 +245,25 @@ export const ResumeWorktreeDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="top-[calc(env(safe-area-inset-top)_+_4rem)] flex w-[min(760px,calc(100vw-1rem))] max-h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom)_-_5rem)] max-w-none translate-y-0 flex-col overflow-hidden sm:top-[50%] sm:max-h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom)_-_3rem)] sm:w-[min(760px,calc(100vw-1.5rem))] sm:translate-y-[-50%]">
+      <DialogContent className="top-[calc(env(safe-area-inset-top)_+_4rem)] flex max-h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom)_-_5rem)] w-[min(760px,calc(100vw-1rem))] max-w-none translate-y-0 flex-col overflow-hidden sm:top-[50%] sm:max-h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom)_-_3rem)] sm:w-[min(760px,calc(100vw-1.5rem))] sm:translate-y-[-50%]">
         <DialogHeader>
           <DialogTitle>Resume / Move Worktree</DialogTitle>
           <DialogDescription>
             Session <span className="font-mono">{sessionName}</span>
           </DialogDescription>
         </DialogHeader>
-        <form className="mt-3 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden" onSubmit={handleSubmit}>
+        <form
+          className="mt-3 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden"
+          onSubmit={handleSubmit}
+        >
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-1">
             <div className="space-y-2">
               <p className="text-latte-subtext0 text-xs font-semibold uppercase tracking-[0.2em]">
                 Agent Options
               </p>
               <p className="text-latte-subtext1 text-xs">
-                Current agent: <span className="font-mono">{launchAgentLabels[inheritedAgent]}</span>
+                Current agent:{" "}
+                <span className="font-mono">{launchAgentLabels[inheritedAgent]}</span>
               </p>
               <label className="border-latte-surface2/80 bg-latte-mantle/45 text-latte-subtext0 hover:border-latte-lavender/35 hover:bg-latte-mantle/65 flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 transition">
                 <input
@@ -362,7 +366,9 @@ export const ResumeWorktreeDialog = ({
                     <p className="text-latte-subtext0 text-xs">
                       Current target:{" "}
                       <span className="font-mono">
-                        {selectedWorktree.branch ?? selectedWorktreeRelativePath ?? selectedWorktree.path}
+                        {selectedWorktree.branch ??
+                          selectedWorktreeRelativePath ??
+                          selectedWorktree.path}
                       </span>
                     </p>
                   ) : null}

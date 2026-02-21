@@ -482,6 +482,7 @@ describe("createTmuxActions.launchAgentInSession", () => {
   });
 
   it("relaunches on the source pane when resumeFromPaneId is provided", async () => {
+    let paneCommandQueryCount = 0;
     const adapter = {
       run: vi.fn(async (args: string[]) => {
         if (args[0] === "has-session") {
@@ -492,6 +493,21 @@ describe("createTmuxActions.launchAgentInSession", () => {
           args.includes("#{window_id}\t#{window_index}\t#{window_name}\t#{pane_id}")
         ) {
           return { stdout: "@7\t1\tmain\t%13\n", stderr: "", exitCode: 0 };
+        }
+        if (
+          args[0] === "display-message" &&
+          args.length >= 5 &&
+          args[4] === "#{pane_current_command}"
+        ) {
+          paneCommandQueryCount += 1;
+          return {
+            stdout: paneCommandQueryCount === 1 ? "codex\n" : "zsh\n",
+            stderr: "",
+            exitCode: 0,
+          };
+        }
+        if (args[0] === "display-message" && args.length >= 5 && args[4] === "#{pane_pid}") {
+          return { stdout: "7777\n", stderr: "", exitCode: 0 };
         }
         if (args[0] === "list-panes" && args.includes("#{pane_current_command}")) {
           return { stdout: "codex\n", stderr: "", exitCode: 0 };
@@ -510,36 +526,50 @@ describe("createTmuxActions.launchAgentInSession", () => {
       },
     };
     const tmuxActions = createTmuxActions(adapter, config);
+    const killSpy = vi
+      .spyOn(process, "kill")
+      .mockImplementation((() => true) as typeof process.kill);
+    vi.mocked(execa).mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: "7777 1 -zsh\n8800 7777 codex\n",
+      stderr: "",
+    } as never);
 
-    const result = await tmuxActions.launchAgentInSession({
-      sessionName: "dev-main",
-      agent: "codex",
-      cwd: "/tmp",
-      resumeSessionId: "sess-1",
-      resumeFromPaneId: "%13",
-    });
+    try {
+      const result = await tmuxActions.launchAgentInSession({
+        sessionName: "dev-main",
+        agent: "codex",
+        cwd: "/tmp",
+        resumeSessionId: "sess-1",
+        resumeFromPaneId: "%13",
+      });
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) {
-      return;
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+      expect(result.result.windowId).toBe("@7");
+      expect(result.result.windowIndex).toBe(1);
+      expect(result.result.windowName).toBe("main");
+      expect(result.result.paneId).toBe("%13");
+      expect(killSpy).toHaveBeenCalledWith(8800, "SIGTERM");
+      expect(adapter.run).not.toHaveBeenCalledWith(["send-keys", "-t", "%13", "C-c"]);
+      expect(adapter.run).toHaveBeenCalledWith([
+        "send-keys",
+        "-l",
+        "-t",
+        "%13",
+        "--",
+        "cd '/tmp' && codex resume 'sess-1' --model gpt-5-codex",
+      ]);
+      expect(adapter.run.mock.calls.some((call) => call[0]?.[0] === "new-window")).toBe(false);
+    } finally {
+      killSpy.mockRestore();
     }
-    expect(result.result.windowId).toBe("@7");
-    expect(result.result.windowIndex).toBe(1);
-    expect(result.result.windowName).toBe("main");
-    expect(result.result.paneId).toBe("%13");
-    expect(adapter.run).toHaveBeenCalledWith(["send-keys", "-t", "%13", "C-c"]);
-    expect(adapter.run).toHaveBeenCalledWith([
-      "send-keys",
-      "-l",
-      "-t",
-      "%13",
-      "--",
-      "cd '/tmp' && codex resume 'sess-1' --model gpt-5-codex",
-    ]);
-    expect(adapter.run.mock.calls.some((call) => call[0]?.[0] === "new-window")).toBe(false);
   });
 
   it("changes cwd before relaunch even when resume session id is unavailable", async () => {
+    let paneCommandQueryCount = 0;
     const adapter = {
       run: vi.fn(async (args: string[]) => {
         if (args[0] === "has-session") {
@@ -550,6 +580,21 @@ describe("createTmuxActions.launchAgentInSession", () => {
           args.includes("#{window_id}\t#{window_index}\t#{window_name}\t#{pane_id}")
         ) {
           return { stdout: "@7\t1\tmain\t%13\n", stderr: "", exitCode: 0 };
+        }
+        if (
+          args[0] === "display-message" &&
+          args.length >= 5 &&
+          args[4] === "#{pane_current_command}"
+        ) {
+          paneCommandQueryCount += 1;
+          return {
+            stdout: paneCommandQueryCount === 1 ? "codex\n" : "zsh\n",
+            stderr: "",
+            exitCode: 0,
+          };
+        }
+        if (args[0] === "display-message" && args.length >= 5 && args[4] === "#{pane_pid}") {
+          return { stdout: "7777\n", stderr: "", exitCode: 0 };
         }
         if (args[0] === "list-panes" && args.includes("#{pane_current_command}")) {
           return { stdout: "codex\n", stderr: "", exitCode: 0 };
@@ -568,24 +613,38 @@ describe("createTmuxActions.launchAgentInSession", () => {
       },
     };
     const tmuxActions = createTmuxActions(adapter, config);
+    const killSpy = vi
+      .spyOn(process, "kill")
+      .mockImplementation((() => true) as typeof process.kill);
+    vi.mocked(execa).mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: "7777 1 -zsh\n8800 7777 codex\n",
+      stderr: "",
+    } as never);
 
-    const result = await tmuxActions.launchAgentInSession({
-      sessionName: "dev-main",
-      agent: "codex",
-      cwd: "/tmp",
-      resumeFromPaneId: "%13",
-    });
+    try {
+      const result = await tmuxActions.launchAgentInSession({
+        sessionName: "dev-main",
+        agent: "codex",
+        cwd: "/tmp",
+        resumeFromPaneId: "%13",
+      });
 
-    expect(result.ok).toBe(true);
-    expect(adapter.run).toHaveBeenCalledWith([
-      "send-keys",
-      "-l",
-      "-t",
-      "%13",
-      "--",
-      "cd '/tmp' && codex --model gpt-5-codex",
-    ]);
-    expect(adapter.run.mock.calls.some((call) => call[0]?.[0] === "new-window")).toBe(false);
+      expect(result.ok).toBe(true);
+      expect(killSpy).toHaveBeenCalledWith(8800, "SIGTERM");
+      expect(adapter.run).not.toHaveBeenCalledWith(["send-keys", "-t", "%13", "C-c"]);
+      expect(adapter.run).toHaveBeenCalledWith([
+        "send-keys",
+        "-l",
+        "-t",
+        "%13",
+        "--",
+        "cd '/tmp' && codex --model gpt-5-codex",
+      ]);
+      expect(adapter.run.mock.calls.some((call) => call[0]?.[0] === "new-window")).toBe(false);
+    } finally {
+      killSpy.mockRestore();
+    }
   });
 
   it("overrides configured launch options when agentOptions are provided", async () => {

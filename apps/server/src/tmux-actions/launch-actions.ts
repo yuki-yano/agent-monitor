@@ -129,8 +129,7 @@ export const createLaunchActions = ({
     }
     if (
       normalizedResumeFromPaneId &&
-      (normalizedResumeFromPaneId.length > 64 ||
-        containsNulOrLineBreak(normalizedResumeFromPaneId))
+      (normalizedResumeFromPaneId.length > 64 || containsNulOrLineBreak(normalizedResumeFromPaneId))
     ) {
       return launchError(
         buildError("INVALID_PAYLOAD", "resumeFromPaneId contains an invalid value"),
@@ -202,6 +201,7 @@ export const createLaunchActions = ({
       const interruptError = await interruptPaneForRelaunch({
         adapter,
         paneId: target.paneId,
+        agent,
         exitCopyModeIfNeeded,
       });
       if (interruptError) {

@@ -72,7 +72,9 @@ describe("ResumeWorktreeDialog", () => {
     expect(screen.queryByText(/repo root:/)).toBeNull();
     expect(screen.queryByRole("radio", { name: /Best effort/i })).toBeNull();
     expect(screen.queryByRole("radio", { name: /Required/i })).toBeNull();
-    expect(screen.getByText("Existing session reuse is always enabled for this action.")).toBeTruthy();
+    expect(
+      screen.getByText("Existing session reuse is always enabled for this action."),
+    ).toBeTruthy();
     expect(screen.getByText("Current agent:")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Resume / Move" }));
