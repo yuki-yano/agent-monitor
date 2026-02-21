@@ -1,4 +1,4 @@
-import type { AgentMonitorConfig } from "@vde-monitor/shared";
+import type { AgentMonitorConfig, LaunchResumePolicy } from "@vde-monitor/shared";
 import type { ArgsDef, ParsedArgs as CittyParsedArgs } from "citty";
 import { parseArgs as parseCittyArgs } from "citty";
 
@@ -30,6 +30,9 @@ const cliArgDefinitions = {
   cwd: { type: "string" },
   worktreePath: { type: "string" },
   worktreeBranch: { type: "string" },
+  resumeSessionId: { type: "string" },
+  resumeFromPane: { type: "string" },
+  resumePolicy: { type: "string" },
   output: { type: "enum", options: [...launchOutputModes] },
 } satisfies ArgsDef;
 
@@ -55,6 +58,9 @@ export type LaunchAgentArgs = {
   cwd?: string;
   worktreePath?: string;
   worktreeBranch?: string;
+  resumeSessionId?: string;
+  resumeFromPaneId?: string;
+  resumePolicy?: LaunchResumePolicy;
   output: (typeof launchOutputModes)[number];
 };
 
@@ -112,6 +118,17 @@ const readRequiredString = (value: unknown, flag: string): string => {
     throw new Error(`${flag} is required.`);
   }
   return resolved;
+};
+
+const readOptionalResumePolicy = (value: unknown): LaunchResumePolicy | undefined => {
+  const resolved = readOptionalTrimmedString(value, "--resume-policy");
+  if (resolved == null) {
+    return undefined;
+  }
+  if (resolved === "required" || resolved === "best_effort") {
+    return resolved;
+  }
+  throw new Error("--resume-policy must be required or best_effort.");
 };
 
 const isIPv4 = (value: string) => {
@@ -267,8 +284,14 @@ export const resolveLaunchAgentArgs = (args: ParsedArgs): LaunchAgentArgs => {
   const cwd = readOptionalTrimmedString(args.cwd, "--cwd");
   const worktreePath = readOptionalTrimmedString(args.worktreePath, "--worktree-path");
   const worktreeBranch = readOptionalTrimmedString(args.worktreeBranch, "--worktree-branch");
+  const resumeSessionId = readOptionalTrimmedString(args.resumeSessionId, "--resume-session-id");
+  const resumeFromPaneId = readOptionalTrimmedString(args.resumeFromPane, "--resume-from-pane");
+  const resumePolicy = readOptionalResumePolicy(args.resumePolicy);
   if (cwd && (worktreePath || worktreeBranch)) {
     throw new Error("--cwd cannot be combined with --worktree-path/--worktree-branch.");
+  }
+  if (!resumeSessionId && !resumeFromPaneId && resumePolicy) {
+    throw new Error("--resume-policy requires --resume-session-id or --resume-from-pane.");
   }
   const output = (args.output ?? "json") as LaunchAgentArgs["output"];
 
@@ -280,6 +303,9 @@ export const resolveLaunchAgentArgs = (args: ParsedArgs): LaunchAgentArgs => {
     cwd,
     worktreePath,
     worktreeBranch,
+    resumeSessionId,
+    resumeFromPaneId,
+    resumePolicy,
     output,
   };
 };

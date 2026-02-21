@@ -41,6 +41,10 @@ type BuildSessionDetailArgs = {
   lastOutputAt: string | null;
   lastEventAt: string | null;
   lastInputAt: string | null;
+  agentSessionId?: string | null;
+  agentSessionSource?: "hook" | "lsof" | "history" | null;
+  agentSessionConfidence?: "high" | "medium" | "low" | null;
+  agentSessionObservedAt?: string | null;
   pipeAttached: boolean;
   pipeConflict: boolean;
   customTitle: string | null;
@@ -63,6 +67,10 @@ export const buildSessionDetail = ({
   lastOutputAt,
   lastEventAt,
   lastInputAt,
+  agentSessionId,
+  agentSessionSource,
+  agentSessionConfidence,
+  agentSessionObservedAt,
   pipeAttached,
   pipeConflict,
   customTitle,
@@ -107,6 +115,10 @@ export const buildSessionDetail = ({
   lastOutputAt,
   lastEventAt,
   lastInputAt,
+  agentSessionId: agentSessionId ?? null,
+  agentSessionSource: agentSessionSource ?? null,
+  agentSessionConfidence: agentSessionConfidence ?? null,
+  agentSessionObservedAt: agentSessionObservedAt ?? null,
   paneDead: pane.paneDead,
   alternateOn: pane.alternateOn,
   pipeAttached,

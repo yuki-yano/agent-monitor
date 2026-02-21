@@ -3,6 +3,7 @@ import type {
   ApiError,
   LaunchAgent,
   LaunchAgentResult,
+  LaunchResumePolicy,
   LaunchRollback,
   LaunchVerification,
   PaneMeta,
@@ -36,6 +37,9 @@ export type LaunchAgentInSessionInput = {
   worktreePath?: string;
   worktreeBranch?: string;
   worktreeCreateIfMissing?: boolean;
+  resumeSessionId?: string;
+  resumeFromPaneId?: string;
+  resumePolicy?: LaunchResumePolicy;
 };
 
 export type MultiplexerLaunchRollback = LaunchRollback;

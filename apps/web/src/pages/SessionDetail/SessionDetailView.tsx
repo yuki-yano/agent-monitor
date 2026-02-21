@@ -165,6 +165,7 @@ export const SessionDetailView = ({
     controls,
     files,
     diffs,
+    actions,
   });
   const {
     quickPanelProps,

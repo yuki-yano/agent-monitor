@@ -8,6 +8,14 @@ import type { ParsedArgs } from "../cli/cli";
 import { resolveLaunchAgentArgs } from "../cli/cli";
 
 const renderLaunchText = (result: LaunchCommandResponse) => {
+  const resumeLines = result.resume
+    ? [
+        `resume.requested=${String(result.resume.requested)}`,
+        `resume.reused=${String(result.resume.reused)}`,
+        `resume.source=${result.resume.source ?? "none"}`,
+        result.resume.sessionId ? `resume.sessionId=${result.resume.sessionId}` : "",
+      ].filter((line) => line.length > 0)
+    : [];
   if (result.ok) {
     const { result: launched } = result;
     return [
@@ -18,6 +26,7 @@ const renderLaunchText = (result: LaunchCommandResponse) => {
       `pane=${launched.paneId}`,
       `verification=${launched.verification.status}`,
       `options=${launched.resolvedOptions.join(" ")}`.trim(),
+      ...resumeLines,
     ].join("\n");
   }
   return [
@@ -26,6 +35,7 @@ const renderLaunchText = (result: LaunchCommandResponse) => {
     `rollback.attempted=${String(result.rollback.attempted)}`,
     `rollback.ok=${String(result.rollback.ok)}`,
     result.rollback.message ? `rollback.message=${result.rollback.message}` : "",
+    ...resumeLines,
   ]
     .filter((line) => line.length > 0)
     .join("\n");
@@ -40,6 +50,9 @@ const resolveLaunchExitCode = (result: LaunchCommandResponse) => {
   }
   if (result.error.code === "NOT_FOUND") {
     return 3;
+  }
+  if (result.error.code.startsWith("RESUME_")) {
+    return 5;
   }
   return 4;
 };
@@ -65,6 +78,9 @@ export const runLaunchAgentCommand = async (args: ParsedArgs): Promise<number> =
     cwd: launchArgs.cwd,
     worktreePath: launchArgs.worktreePath,
     worktreeBranch: launchArgs.worktreeBranch,
+    resumeSessionId: launchArgs.resumeSessionId,
+    resumeFromPaneId: launchArgs.resumeFromPaneId,
+    resumePolicy: launchArgs.resumePolicy,
   });
 
   if (launchArgs.output === "text") {

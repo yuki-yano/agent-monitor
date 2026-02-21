@@ -6,6 +6,7 @@ import {
   RouterContextProvider,
 } from "@tanstack/react-router";
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import type { LaunchCommandResponse } from "@vde-monitor/shared";
 import type { MutableRefObject, ReactNode } from "react";
 import type { VirtuosoHandle } from "react-virtuoso";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -66,6 +67,25 @@ type SessionDetailViewOverrides = {
 };
 
 const createViewProps = (overrides: SessionDetailViewOverrides = {}): SessionDetailViewProps => {
+  const defaultLaunchResponse: LaunchCommandResponse = {
+    ok: true as const,
+    result: {
+      sessionName: "session",
+      agent: "codex" as const,
+      windowId: "@1",
+      windowIndex: 1,
+      windowName: "codex-work",
+      paneId: "%1",
+      launchedCommand: "codex" as const,
+      resolvedOptions: [],
+      verification: {
+        status: "verified" as const,
+        observedCommand: "codex",
+        attempts: 1,
+      },
+    },
+    rollback: { attempted: false, ok: true as const },
+  };
   const base: SessionDetailViewProps = {
     meta: {
       paneId: "pane-1",
@@ -294,7 +314,7 @@ const createViewProps = (overrides: SessionDetailViewOverrides = {}): SessionDet
     },
     actions: {
       handleFocusPane: vi.fn(),
-      handleLaunchAgentInSession: vi.fn(async () => undefined),
+      handleLaunchAgentInSession: vi.fn(async () => defaultLaunchResponse),
       handleTouchPane: vi.fn(),
       handleTouchRepoPin: vi.fn(),
       handleOpenPaneHere: vi.fn(),

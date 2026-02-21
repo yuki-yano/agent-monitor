@@ -23,7 +23,11 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { formatPath, isVwManagedWorktreePath } from "@/lib/session-format";
-import type { LaunchAgentHandler } from "@/state/launch-agent-options";
+import {
+  isFailedLaunchResponse,
+  type LaunchAgentHandler,
+  type LaunchAgentRequestOptions,
+} from "@/state/launch-agent-options";
 
 const parseAgentOptions = (value: string) =>
   value.split(/\r?\n/).filter((line) => line.trim().length > 0);
@@ -246,13 +250,7 @@ export const LaunchAgentButton = ({
       }
     }
 
-    const launchOptions: {
-      cwd?: string;
-      agentOptions?: string[];
-      worktreePath?: string;
-      worktreeBranch?: string;
-      worktreeCreateIfMissing?: boolean;
-    } = {};
+    const launchOptions: LaunchAgentRequestOptions = {};
     if (parsedOptions) {
       launchOptions.agentOptions = parsedOptions;
     }
@@ -282,7 +280,11 @@ export const LaunchAgentButton = ({
 
     setSubmitting(true);
     try {
-      await onLaunchAgentInSession(sessionName, launchAgent, launchOptions);
+      const launchResult = await onLaunchAgentInSession(sessionName, launchAgent, launchOptions);
+      if (isFailedLaunchResponse(launchResult)) {
+        setSubmitError(launchResult.error?.message ?? "Failed to launch the agent.");
+        return;
+      }
       setOpen(false);
     } catch {
       setSubmitError("Failed to launch the agent.");
@@ -464,18 +466,18 @@ export const LaunchAgentButton = ({
 
             {submitError ? <p className="text-latte-red text-xs">{submitError}</p> : null}
 
-            <div className="flex items-center justify-end gap-2 pt-1">
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
               <button
                 type="button"
                 onClick={closeModal}
-                className="border-latte-surface2 text-latte-subtext0 hover:text-latte-text rounded-full border px-3 py-1.5 text-xs font-semibold"
+                className="text-latte-subtext0 hover:text-latte-text rounded-md px-2 py-1 text-xs"
                 disabled={submitting}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="bg-latte-lavender text-latte-base rounded-full px-4 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                className="border-latte-blue/45 bg-latte-blue/15 text-latte-blue hover:bg-latte-blue/20 rounded-md border px-2.5 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={submitting || isPending}
               >
                 {submitting ? "Launching..." : "Launch"}

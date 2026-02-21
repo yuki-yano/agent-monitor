@@ -15,6 +15,7 @@ Japanese version: [`README.ja.md`](README.ja.md)
 - Track session/repo timeline and activity history across restarts
 - Inspect Git diff/commits and keep repo-scoped notes while monitoring
 - Launch Codex/Claude agents into tmux sessions
+- Resume existing Codex/Claude sessions on a source pane and move context to another `vw` worktree (when available)
 - Switch worktree context per session when reviewing timeline, diffs, commits, and files ([`vde-worktree`](https://github.com/yuki-yano/vde-worktree) / `vw` required)
 
 ## Main features
@@ -23,7 +24,7 @@ Japanese version: [`README.ja.md`](README.ja.md)
 - Session Detail: live screen view (text/image), follow mode, and input composer (text/keys/raw)
 - Timeline and context: state timeline, repo notes, git diff/commits, and file browsing
 - Worktree context: inspect timeline/git/files against a selected worktree without leaving the session ([`vde-worktree`](https://github.com/yuki-yano/vde-worktree) / `vw` required)
-- Agent operations: launch Codex/Claude into tmux sessions from CLI/UI
+- Agent operations: launch Codex/Claude, or resume/move an existing session into another worktree context
 - Multi-pane monitoring: desktop-oriented Chat Grid for side-by-side pane tracking
 - Mobile-first UI/UX: primary monitor/control flows are treated as first-class for phone browsers
 - PWA push notifications: per-session notification toggle (default off) plus global config-level enable/disable
@@ -129,9 +130,14 @@ Common options:
 --tailscale             Use Tailscale IP for access URL
 --https                 Enable Tailscale HTTPS guidance/QR (effective with `--tailscale`)
 --bind <ip>             Bind to specific IPv4
---web-port <port>       Override displayed web port in URL
 --multiplexer <name>    `tmux` or `wezterm`
 --backend <name>        image backend (`alacritty`, `terminal`, `iterm`, `wezterm`, `ghostty`)
+```
+
+Advanced options:
+
+```text
+--web-port <port>       Override displayed web port in URL
 --wezterm-cli <path>    wezterm binary path (default: `wezterm`)
 --wezterm-target <t>    wezterm target (`auto` or explicit target)
 --socket-name <name>    tmux socket name
@@ -165,6 +171,10 @@ Common options:
 --worktree-branch <name>
 --output <json|text>
 ```
+
+Behavior notes:
+
+- Resume/move relaunch interrupts the source pane process before sending the new command. If the send fails after interrupt, the pane can remain stopped; re-run the launch command (or invoke launch-agent again) to recover.
 
 ### Utility commands
 

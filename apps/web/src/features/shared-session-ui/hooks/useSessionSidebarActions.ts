@@ -5,16 +5,12 @@ import {
   isSessionListFilter,
   type SessionListFilter,
 } from "@/features/shared-session-ui/model/session-list-filters";
-import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
+import type { LaunchAgentHandler } from "@/state/launch-agent-options";
 
 type UseSessionSidebarActionsArgs = {
   onSelectSession?: (paneId: string) => void;
   onFocusPane?: (paneId: string) => Promise<void> | void;
-  onLaunchAgentInSession?: (
-    sessionName: string,
-    agent: "codex" | "claude",
-    options?: LaunchAgentRequestOptions,
-  ) => Promise<void> | void;
+  onLaunchAgentInSession?: LaunchAgentHandler;
   onTouchSession?: (paneId: string) => void;
   onTouchRepoPin?: (repoRoot: string | null) => void;
 };
@@ -69,8 +65,8 @@ export const useSessionSidebarActions = ({
     [onFocusPane],
   );
 
-  const handleLaunchAgentInSession = useCallback(
-    async (sessionName: string, agent: "codex" | "claude", options?: LaunchAgentRequestOptions) => {
+  const handleLaunchAgentInSession = useCallback<LaunchAgentHandler>(
+    async (sessionName, agent, options) => {
       if (!onLaunchAgentInSession) {
         return;
       }

@@ -7,7 +7,7 @@ export type SessionDetailViewShellSectionsInput = Pick<
 
 export type SessionDetailViewExplorerSectionsInput = Pick<
   SessionDetailVM,
-  "meta" | "sidebar" | "screen" | "controls" | "files" | "diffs"
+  "meta" | "sidebar" | "screen" | "controls" | "files" | "diffs" | "actions"
 >;
 
 export type SessionDetailViewDataSectionsInput = Pick<

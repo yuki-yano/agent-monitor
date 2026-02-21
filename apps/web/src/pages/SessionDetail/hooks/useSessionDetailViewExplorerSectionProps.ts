@@ -10,9 +10,11 @@ export const useSessionDetailViewExplorerSectionProps = ({
   controls,
   files,
   diffs,
+  actions,
 }: SessionDetailViewExplorerSectionsInput) => {
   const { paneId, session, connectionIssue } = meta;
-  const { resolvedTheme } = sidebar;
+  const { resolvedTheme, launchConfig } = sidebar;
+  const { handleLaunchAgentInSession } = actions;
   const {
     mode,
     wrapMode,
@@ -285,6 +287,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
       state: {
         mode,
         wrapMode,
+        sessionName: session?.sessionName ?? "unknown",
         paneId,
         sourceRepoRoot,
         agent: screenAgent,
@@ -312,6 +315,8 @@ export const useSessionDetailViewExplorerSectionProps = ({
         worktreeBaseBranch,
         actualWorktreePath,
         virtualWorktreePath,
+        sourceSession: session ?? null,
+        launchConfig,
         notificationStatus,
         notificationPushEnabled,
         notificationSubscribed,
@@ -335,6 +340,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
         onTogglePaneNotification: () => {
           void togglePaneNotification?.();
         },
+        onLaunchAgentInSession: handleLaunchAgentInSession,
         onResolveFileReference: handleResolveFileReference,
         onResolveFileReferenceCandidates: handleResolveFileReferenceCandidates,
       },
@@ -369,10 +375,13 @@ export const useSessionDetailViewExplorerSectionProps = ({
       worktreeBaseBranch,
       actualWorktreePath,
       virtualWorktreePath,
+      session,
+      launchConfig,
       notificationStatus,
       notificationPushEnabled,
       notificationSubscribed,
       notificationPaneEnabled,
+      handleLaunchAgentInSession,
       handleModeChange,
       handleRefreshScreen,
       handleRefreshWorktrees,

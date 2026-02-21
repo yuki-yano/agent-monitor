@@ -105,6 +105,10 @@ export type SessionSummary = {
   lastOutputAt: string | null;
   lastEventAt: string | null;
   lastInputAt: string | null;
+  agentSessionId?: string | null;
+  agentSessionSource?: "hook" | "lsof" | "history" | null;
+  agentSessionConfidence?: "high" | "medium" | "low" | null;
+  agentSessionObservedAt?: string | null;
   paneDead: boolean;
   alternateOn: boolean;
   pipeAttached: boolean;
@@ -299,6 +303,10 @@ export type ApiErrorCode =
   | "PERMISSION_DENIED"
   | "TMUX_UNAVAILABLE"
   | "WEZTERM_UNAVAILABLE"
+  | "RESUME_NOT_FOUND"
+  | "RESUME_AMBIGUOUS"
+  | "RESUME_UNSUPPORTED"
+  | "RESUME_INVALID_INPUT"
   | "RATE_LIMIT"
   | "PUSH_DISABLED"
   | "INTERNAL";
@@ -436,6 +444,19 @@ export type LaunchVerification = {
   attempts: number;
 };
 
+export type LaunchResumePolicy = "required" | "best_effort";
+
+export type LaunchResumeMeta = {
+  requested: boolean;
+  reused: boolean;
+  sessionId: string | null;
+  source: "manual" | "hook" | "lsof" | "history" | null;
+  confidence: "high" | "medium" | "low" | "none";
+  policy: LaunchResumePolicy | null;
+  fallbackReason?: "not_found" | "ambiguous" | "unsupported" | "invalid_input";
+  failureReason?: "not_found" | "ambiguous" | "unsupported" | "invalid_input";
+};
+
 export type LaunchAgentResult = {
   sessionName: string;
   agent: LaunchAgent;
@@ -449,8 +470,8 @@ export type LaunchAgentResult = {
 };
 
 export type LaunchCommandResponse =
-  | { ok: true; result: LaunchAgentResult; rollback: LaunchRollback }
-  | { ok: false; error: ApiError; rollback: LaunchRollback };
+  | { ok: true; result: LaunchAgentResult; rollback: LaunchRollback; resume?: LaunchResumeMeta }
+  | { ok: false; error: ApiError; rollback: LaunchRollback; resume?: LaunchResumeMeta };
 
 export type ImageAttachment = {
   path: string;

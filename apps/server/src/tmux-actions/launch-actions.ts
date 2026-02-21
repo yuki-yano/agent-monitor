@@ -13,12 +13,15 @@ import type { ActionResult, ActionResultHelpers } from "./action-results";
 import {
   assertSessionExists,
   createDetachedWindow,
+  interruptPaneForRelaunch,
+  resolveExistingPaneLaunchTarget,
   resolveUniqueWindowName,
   rollbackCreatedWindow,
   sendLaunchCommand,
   verifyLaunch,
 } from "./launch-tmux-ops";
 import {
+  containsNulOrLineBreak,
   normalizeLaunchOptions,
   normalizeOptionalText,
   resolveConfiguredLaunchOptions,
@@ -27,7 +30,7 @@ import {
   validateLaunchOptions,
   validateWindowName,
 } from "./launch-validation";
-import { resolveWorktreeCwd } from "./launch-worktree-resolver";
+import { resolveSessionSnapshotCwd, resolveWorktreeCwd } from "./launch-worktree-resolver";
 
 type CreateLaunchActionsParams = {
   adapter: TmuxAdapter;
@@ -71,6 +74,8 @@ export const createLaunchActions = ({
     worktreePath,
     worktreeBranch,
     worktreeCreateIfMissing,
+    resumeSessionId,
+    resumeFromPaneId,
   }: {
     sessionName: string;
     agent: LaunchAgent;
@@ -81,6 +86,8 @@ export const createLaunchActions = ({
     worktreePath?: string;
     worktreeBranch?: string;
     worktreeCreateIfMissing?: boolean;
+    resumeSessionId?: string;
+    resumeFromPaneId?: string;
   }): Promise<LaunchResult> => {
     const normalizedSessionName = sessionName.trim();
     if (!normalizedSessionName) {
@@ -106,6 +113,26 @@ export const createLaunchActions = ({
     const normalizedWorktreePath = normalizeOptionalText(worktreePath);
     const normalizedWorktreeBranch = normalizeOptionalText(worktreeBranch);
     const normalizedWorktreeCreateIfMissing = worktreeCreateIfMissing === true;
+    const normalizedResumeSessionId = normalizeOptionalText(resumeSessionId);
+    const normalizedResumeFromPaneId = normalizeOptionalText(resumeFromPaneId);
+    if (
+      normalizedResumeSessionId &&
+      (normalizedResumeSessionId.length > 256 || containsNulOrLineBreak(normalizedResumeSessionId))
+    ) {
+      return launchError(
+        buildError("INVALID_PAYLOAD", "resumeSessionId contains an invalid value"),
+        defaultLaunchRollback(),
+      );
+    }
+    if (
+      normalizedResumeFromPaneId &&
+      (normalizedResumeFromPaneId.length > 64 || containsNulOrLineBreak(normalizedResumeFromPaneId))
+    ) {
+      return launchError(
+        buildError("INVALID_PAYLOAD", "resumeFromPaneId contains an invalid value"),
+        defaultLaunchRollback(),
+      );
+    }
 
     const launchInputError = validateLaunchInputCombination({
       cwd: normalizedCwd,
@@ -138,6 +165,88 @@ export const createLaunchActions = ({
     if (cwdError) {
       return launchError(cwdError, defaultLaunchRollback());
     }
+    let resumeCommandCwd = finalCwd;
+    if (normalizedResumeSessionId && !resumeCommandCwd) {
+      const snapshotCwd = await resolveSessionSnapshotCwd({
+        adapter,
+        sessionName: normalizedSessionName,
+      });
+      if (snapshotCwd.ok) {
+        resumeCommandCwd = snapshotCwd.cwd;
+      } else {
+        console.warn(
+          `[vde-monitor] failed to resolve snapshot cwd for resume: session=${normalizedSessionName} agent=${agent} error=${snapshotCwd.error.message}`,
+        );
+      }
+    }
+
+    const resolvedOptions = resolveConfiguredLaunchOptions({
+      config,
+      agent,
+      optionsOverride: normalizedAgentOptions,
+    });
+    const resolvedOptionsError = validateLaunchOptions(resolvedOptions);
+    if (resolvedOptionsError) {
+      return launchError(resolvedOptionsError, defaultLaunchRollback());
+    }
+
+    if (normalizedResumeFromPaneId) {
+      const target = await resolveExistingPaneLaunchTarget({
+        adapter,
+        paneId: normalizedResumeFromPaneId,
+      });
+      if (!target.ok) {
+        return launchError(target.error, defaultLaunchRollback());
+      }
+
+      const interruptError = await interruptPaneForRelaunch({
+        adapter,
+        paneId: target.paneId,
+        agent,
+        exitCopyModeIfNeeded,
+      });
+      if (interruptError) {
+        return launchError(interruptError, defaultLaunchRollback());
+      }
+
+      const sendResult = await sendLaunchCommand({
+        adapter,
+        paneId: target.paneId,
+        agent,
+        options: resolvedOptions,
+        resumeSessionId: normalizedResumeSessionId,
+        finalCwd: resumeCommandCwd,
+        exitCopyModeIfNeeded,
+        sendEnterKey,
+        internalError,
+        skipExitCopyMode: true,
+        forceShellCwdPrefix: true,
+      });
+      if (!sendResult.ok) {
+        console.warn(
+          `[vde-monitor] relaunch send failed after interrupt: session=${normalizedSessionName} pane=${target.paneId} window=${target.windowId}:${target.windowName} agent=${agent} error=${sendResult.error.message}`,
+        );
+        return launchError(sendResult.error, defaultLaunchRollback());
+      }
+
+      const verification = await verifyLaunch({
+        adapter,
+        paneId: target.paneId,
+        agent,
+      });
+
+      return launchSuccess({
+        sessionName: normalizedSessionName,
+        agent,
+        windowId: target.windowId,
+        windowIndex: target.windowIndex,
+        windowName: target.windowName,
+        paneId: target.paneId,
+        launchedCommand: agent,
+        resolvedOptions,
+        verification,
+      });
+    }
 
     const resolvedWindowName = await resolveUniqueWindowName({
       adapter,
@@ -149,25 +258,16 @@ export const createLaunchActions = ({
       return launchError(resolvedWindowName.error, defaultLaunchRollback());
     }
 
+    const detachedWindowCwd =
+      finalCwd ?? (normalizedResumeSessionId && !normalizedCwd ? resumeCommandCwd : undefined);
     const created = await createDetachedWindow({
       adapter,
       sessionName: normalizedSessionName,
       windowName: resolvedWindowName.windowName,
-      cwd: finalCwd,
+      cwd: detachedWindowCwd,
     });
     if (!created.ok) {
       return launchError(created.error, defaultLaunchRollback());
-    }
-
-    const resolvedOptions = resolveConfiguredLaunchOptions({
-      config,
-      agent,
-      optionsOverride: normalizedAgentOptions,
-    });
-    const resolvedOptionsError = validateLaunchOptions(resolvedOptions);
-    if (resolvedOptionsError) {
-      const rollback = await rollbackCreatedWindow(adapter, created.windowId);
-      return launchError(resolvedOptionsError, rollback);
     }
 
     const sendResult = await sendLaunchCommand({
@@ -175,6 +275,8 @@ export const createLaunchActions = ({
       paneId: created.paneId,
       agent,
       options: resolvedOptions,
+      resumeSessionId: normalizedResumeSessionId,
+      finalCwd: resumeCommandCwd,
       exitCopyModeIfNeeded,
       sendEnterKey,
       internalError,

@@ -2,7 +2,7 @@ import type { LaunchConfig, WorktreeList } from "@vde-monitor/shared";
 import { useMemo } from "react";
 
 import type { SessionListFilter } from "@/features/shared-session-ui/model/session-list-filters";
-import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
+import type { LaunchAgentHandler } from "@/state/launch-agent-options";
 
 import type { SidebarRepoGroup } from "./useSessionSidebarGroups";
 
@@ -21,11 +21,7 @@ export type SessionSidebarListSectionViewModel = {
   onBlur: (paneId: string) => void;
   onSelect: (paneId: string) => void;
   onFocusPane: (paneId: string) => Promise<void> | void;
-  onLaunchAgentInSession: (
-    sessionName: string,
-    agent: "codex" | "claude",
-    options?: LaunchAgentRequestOptions,
-  ) => Promise<void> | void;
+  onLaunchAgentInSession: LaunchAgentHandler;
   onTouchSession: (paneId: string) => void;
   onTouchRepoPin: (repoRoot: string | null) => void;
   registerItemRef: (paneId: string, node: HTMLDivElement | null) => void;

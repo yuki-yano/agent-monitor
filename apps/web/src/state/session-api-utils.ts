@@ -127,6 +127,9 @@ export const buildLaunchAgentJson = ({
   worktreePath,
   worktreeBranch,
   worktreeCreateIfMissing,
+  resumeSessionId,
+  resumeFromPaneId,
+  resumePolicy,
 }: {
   sessionName: string;
   agent: "codex" | "claude";
@@ -137,6 +140,9 @@ export const buildLaunchAgentJson = ({
   worktreePath?: string;
   worktreeBranch?: string;
   worktreeCreateIfMissing?: boolean;
+  resumeSessionId?: string;
+  resumeFromPaneId?: string;
+  resumePolicy?: "required" | "best_effort";
 }): LaunchAgentJson => {
   if (cwd && (worktreePath || worktreeBranch || worktreeCreateIfMissing)) {
     throw new Error("cwd cannot be combined with worktreePath/worktreeBranch");
@@ -146,6 +152,9 @@ export const buildLaunchAgentJson = ({
   }
   if (worktreeCreateIfMissing && !worktreeBranch) {
     throw new Error("worktreeBranch is required when worktreeCreateIfMissing is true");
+  }
+  if (!resumeSessionId && !resumeFromPaneId && resumePolicy) {
+    throw new Error("resumePolicy requires resumeSessionId or resumeFromPaneId");
   }
 
   const json: LaunchAgentJson = {
@@ -170,6 +179,15 @@ export const buildLaunchAgentJson = ({
   }
   if (worktreeCreateIfMissing) {
     json.worktreeCreateIfMissing = true;
+  }
+  if (resumeSessionId) {
+    json.resumeSessionId = resumeSessionId;
+  }
+  if (resumeFromPaneId) {
+    json.resumeFromPaneId = resumeFromPaneId;
+  }
+  if (resumePolicy) {
+    json.resumePolicy = resumePolicy;
   }
   return json;
 };

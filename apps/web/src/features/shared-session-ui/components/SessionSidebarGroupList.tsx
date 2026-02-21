@@ -5,7 +5,7 @@ import { LaunchAgentButton } from "@/components/launch-agent-button";
 import { IconButton, TagPill } from "@/components/ui";
 import { selectLaunchSourceSession } from "@/features/shared-session-ui/model/launch-source-session";
 import { formatRepoDirLabel } from "@/lib/quick-panel-utils";
-import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
+import type { LaunchAgentHandler } from "@/state/launch-agent-options";
 
 import type { SidebarRepoGroup } from "../hooks/useSessionSidebarGroups";
 import { SessionSidebarItem } from "./SessionSidebarItem";
@@ -24,11 +24,7 @@ type SessionSidebarGroupListProps = {
   onBlur: (paneId: string) => void;
   onSelect: (paneId: string) => void;
   onFocusPane: (paneId: string) => Promise<void> | void;
-  onLaunchAgentInSession: (
-    sessionName: string,
-    agent: "codex" | "claude",
-    options?: LaunchAgentRequestOptions,
-  ) => Promise<void> | void;
+  onLaunchAgentInSession: LaunchAgentHandler;
   onTouchSession: (paneId: string) => void;
   onTouchRepoPin: (repoRoot: string | null) => void;
   registerItemRef: (paneId: string, node: HTMLDivElement | null) => void;

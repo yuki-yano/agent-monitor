@@ -220,6 +220,25 @@ describe("session-api-utils", () => {
       worktreeBranch: "feature/new-worktree",
       worktreeCreateIfMissing: true,
     });
+    expect(
+      buildLaunchAgentJson({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "req-2c",
+        worktreeBranch: "feature/new-worktree",
+        worktreeCreateIfMissing: true,
+        resumeFromPaneId: "%12",
+        resumePolicy: "best_effort",
+      }),
+    ).toEqual({
+      sessionName: "dev-main",
+      agent: "codex",
+      requestId: "req-2c",
+      worktreeBranch: "feature/new-worktree",
+      worktreeCreateIfMissing: true,
+      resumeFromPaneId: "%12",
+      resumePolicy: "best_effort",
+    });
     expect(() =>
       buildLaunchAgentJson({
         sessionName: "dev-main",
@@ -237,6 +256,14 @@ describe("session-api-utils", () => {
         worktreeCreateIfMissing: true,
       }),
     ).toThrow("worktreeBranch is required when worktreeCreateIfMissing is true");
+    expect(() =>
+      buildLaunchAgentJson({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "req-4b",
+        resumePolicy: "required",
+      }),
+    ).toThrow("resumePolicy requires resumeSessionId or resumeFromPaneId");
     const file = new File([new Uint8Array([1, 2, 3])], "sample.png", { type: "image/png" });
     expect(buildUploadImageForm(file)).toEqual({ image: file });
 

@@ -201,6 +201,9 @@ describe("resolveLaunchAgentArgs", () => {
       cwd: undefined,
       worktreePath: undefined,
       worktreeBranch: "feature/launch",
+      resumeSessionId: undefined,
+      resumeFromPaneId: undefined,
+      resumePolicy: undefined,
       output: "text",
     });
   });
@@ -238,5 +241,45 @@ describe("resolveLaunchAgentArgs", () => {
         ]),
       ),
     ).toThrow(/--cwd cannot be combined/);
+  });
+
+  it("resolves resume options", () => {
+    const result = resolveLaunchAgentArgs(
+      parseArgs([
+        "tmux",
+        "launch-agent",
+        "--session",
+        "dev-main",
+        "--agent",
+        "claude",
+        "--resume-from-pane",
+        "%42",
+        "--resume-policy",
+        "required",
+      ]),
+    );
+
+    expect(result).toMatchObject({
+      resumeSessionId: undefined,
+      resumeFromPaneId: "%42",
+      resumePolicy: "required",
+    });
+  });
+
+  it("rejects resume policy without resume options", () => {
+    expect(() =>
+      resolveLaunchAgentArgs(
+        parseArgs([
+          "tmux",
+          "launch-agent",
+          "--session",
+          "dev-main",
+          "--agent",
+          "codex",
+          "--resume-policy",
+          "best_effort",
+        ]),
+      ),
+    ).toThrow(/--resume-policy requires --resume-session-id or --resume-from-pane/);
   });
 });

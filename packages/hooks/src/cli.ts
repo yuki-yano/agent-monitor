@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   type AgentMonitorConfigFile,
@@ -54,7 +54,7 @@ const readStdin = (): string => {
 };
 
 const encodeClaudeCwd = (cwd: string): string => {
-  return cwd.replace(/[/.]/g, "-");
+  return cwd.replace(/\//g, "-");
 };
 
 export const resolveTranscriptPath = (
@@ -64,8 +64,15 @@ export const resolveTranscriptPath = (
   if (!cwd || !sessionId) {
     return null;
   }
-  const encoded = encodeClaudeCwd(cwd);
-  return path.join(os.homedir(), ".claude", "projects", encoded, `${sessionId}.jsonl`);
+  const primaryEncoded = encodeClaudeCwd(cwd);
+  const legacyEncoded = cwd.replace(/[/.]/g, "-");
+  const encodedCandidates =
+    primaryEncoded === legacyEncoded ? [primaryEncoded] : [primaryEncoded, legacyEncoded];
+  const resolvedEncoded =
+    encodedCandidates.find((encoded) =>
+      fs.existsSync(path.join(os.homedir(), ".claude", "projects", encoded, `${sessionId}.jsonl`)),
+    ) ?? primaryEncoded;
+  return path.join(os.homedir(), ".claude", "projects", resolvedEncoded, `${sessionId}.jsonl`);
 };
 
 const ensureDir = (dir: string) => {
@@ -233,12 +240,37 @@ const appendEvent = (event: HookEvent) => {
   fs.appendFileSync(eventsPath, `${JSON.stringify(event)}\n`, "utf8");
 };
 
-const isMainModule = () => {
-  const mainPath = process.argv[1];
+const toCanonicalFileUrlFromPath = (targetPath: string) => {
+  try {
+    return pathToFileURL(fs.realpathSync(targetPath)).href;
+  } catch {
+    return pathToFileURL(path.resolve(targetPath)).href;
+  }
+};
+
+const toCanonicalFileUrlFromModuleUrl = (moduleUrl: string) => {
+  if (!moduleUrl.startsWith("file:")) {
+    return moduleUrl;
+  }
+  try {
+    return pathToFileURL(fs.realpathSync(fileURLToPath(moduleUrl))).href;
+  } catch {
+    try {
+      return pathToFileURL(fileURLToPath(moduleUrl)).href;
+    } catch {
+      return moduleUrl;
+    }
+  }
+};
+
+export const isMainModule = (
+  mainPath: string | undefined = process.argv[1],
+  moduleUrl = import.meta.url,
+) => {
   if (!mainPath) {
     return false;
   }
-  return import.meta.url === pathToFileURL(mainPath).href;
+  return toCanonicalFileUrlFromModuleUrl(moduleUrl) === toCanonicalFileUrlFromPath(mainPath);
 };
 
 const main = () => {
