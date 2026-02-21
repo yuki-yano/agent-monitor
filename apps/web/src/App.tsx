@@ -3,6 +3,11 @@ import PullToRefresh from "react-simple-pull-to-refresh";
 
 import { Spinner } from "@/components/ui";
 import { AuthGate } from "@/features/auth/AuthGate";
+import { PwaWorkspaceTabs } from "@/features/pwa-tabs/components/PwaWorkspaceTabs";
+import {
+  useWorkspaceTabs,
+  WorkspaceTabsProvider,
+} from "@/features/pwa-tabs/context/workspace-tabs-context";
 import {
   isIosPwaPullToRefreshEnabled,
   resolvePullToRefreshEnvironment,
@@ -11,9 +16,17 @@ import { SessionProvider } from "@/state/session-context";
 import { ThemeProvider } from "@/state/theme-context";
 
 const PULL_TO_REFRESH_LOADING_MS = 360;
+const PWA_TABS_OFFSET_STYLE = "var(--vde-pwa-tabs-offset, calc(env(safe-area-inset-top) + 3.8rem))";
 
-const App = () => {
+const AppShell = () => {
+  const { enabled: workspaceTabsEnabled } = useWorkspaceTabs();
   const enablePullToRefresh = isIosPwaPullToRefreshEnabled(resolvePullToRefreshEnvironment());
+  const outlet = (
+    <div style={workspaceTabsEnabled ? { paddingTop: PWA_TABS_OFFSET_STYLE } : undefined}>
+      <Outlet />
+    </div>
+  );
+
   const content = enablePullToRefresh ? (
     <PullToRefresh
       onRefresh={async () => {
@@ -35,16 +48,29 @@ const App = () => {
         </div>
       }
     >
-      <Outlet />
+      {outlet}
     </PullToRefresh>
   ) : (
-    <Outlet />
+    outlet
   );
 
   return (
+    <>
+      <PwaWorkspaceTabs />
+      {content}
+    </>
+  );
+};
+
+const App = () => {
+  return (
     <ThemeProvider>
       <SessionProvider>
-        <AuthGate>{content}</AuthGate>
+        <WorkspaceTabsProvider>
+          <AuthGate>
+            <AppShell />
+          </AuthGate>
+        </WorkspaceTabsProvider>
       </SessionProvider>
     </ThemeProvider>
   );

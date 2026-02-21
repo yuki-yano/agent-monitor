@@ -509,9 +509,16 @@ export type ClientFileNavigatorConfig = {
   autoExpandMatchLimit: number;
 };
 
+export type WorkspaceTabsDisplayMode = "all" | "pwa" | "none";
+
+export type ClientWorkspaceTabsConfig = {
+  displayMode: WorkspaceTabsDisplayMode;
+};
+
 export type ClientConfig = {
   screen: ClientScreenConfig;
   fileNavigator: ClientFileNavigatorConfig;
+  workspaceTabs: ClientWorkspaceTabsConfig;
   launch: LaunchConfig;
 };
 
@@ -582,6 +589,9 @@ export type AgentMonitorConfigBase = {
   notifications: {
     pushEnabled: boolean;
     enabledEventTypes: PushEventType[];
+  };
+  workspaceTabs: {
+    displayMode: WorkspaceTabsDisplayMode;
   };
   fileNavigator: FileNavigatorConfig;
   tmux: { socketName: string | null; socketPath: string | null; primaryClient: string | null };

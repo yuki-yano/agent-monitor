@@ -423,6 +423,13 @@ const clientConfigSchema = z.object({
   fileNavigator: z.object({
     autoExpandMatchLimit: z.number().int().min(1).max(500),
   }),
+  workspaceTabs: z.object({
+    displayMode: z.preprocess(
+      (value) => (typeof value === "string" ? value.toLowerCase() : value),
+      z.enum(["all", "pwa", "none"]),
+    ),
+  }),
+  launch: launchConfigSchema,
 });
 
 const notificationsConfigSchema = z
@@ -590,6 +597,16 @@ export const configSchema = z.object({
     },
   }),
   notifications: notificationsConfigSchema,
+  workspaceTabs: z
+    .object({
+      displayMode: z.preprocess(
+        (value) => (typeof value === "string" ? value.toLowerCase() : value),
+        z.enum(["all", "pwa", "none"]),
+      ),
+    })
+    .default({
+      displayMode: "all",
+    }),
   fileNavigator: z
     .object({
       includeIgnoredPaths: z.array(includeIgnoredPatternSchema).default([]),
@@ -688,6 +705,14 @@ export const configOverrideSchema = strictObject({
   notifications: strictObject({
     pushEnabled: z.boolean().optional(),
     enabledEventTypes: z.array(configPushEventTypeSchema).min(1).optional(),
+  }).optional(),
+  workspaceTabs: strictObject({
+    displayMode: z
+      .preprocess(
+        (value) => (typeof value === "string" ? value.toLowerCase() : value),
+        z.enum(["all", "pwa", "none"]),
+      )
+      .optional(),
   }).optional(),
   fileNavigator: strictObject({
     includeIgnoredPaths: z.array(includeIgnoredPatternSchema).optional(),

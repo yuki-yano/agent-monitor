@@ -277,6 +277,7 @@ describe("createApiRouter", () => {
     expect(data.clientConfig.fileNavigator.autoExpandMatchLimit).toBe(
       config.fileNavigator.autoExpandMatchLimit,
     );
+    expect(data.clientConfig.workspaceTabs.displayMode).toBe(config.workspaceTabs.displayMode);
     expect(data.clientConfig.launch).toEqual(config.launch);
   });
 

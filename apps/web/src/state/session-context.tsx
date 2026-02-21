@@ -36,6 +36,7 @@ import {
   sessionFileNavigatorConfigAtom,
   sessionHighlightCorrectionsAtom,
   sessionLaunchConfigAtom,
+  sessionWorkspaceTabsDisplayModeAtom,
 } from "./session-state-atoms";
 import { useSessionApi } from "./use-session-api";
 import { useSessionConnectionState } from "./use-session-connection-state";
@@ -154,6 +155,7 @@ const SessionRuntime = ({ children }: { children: ReactNode }) => {
   const launchConfig = useAtomValue(sessionLaunchConfigAtom);
   const setHighlightCorrections = useSetAtom(sessionHighlightCorrectionsAtom);
   const setFileNavigatorConfig = useSetAtom(sessionFileNavigatorConfigAtom);
+  const setWorkspaceTabsDisplayMode = useSetAtom(sessionWorkspaceTabsDisplayModeAtom);
   const setLaunchConfig = useSetAtom(sessionLaunchConfigAtom);
   const {
     connectionIssue,
@@ -216,6 +218,7 @@ const SessionRuntime = ({ children }: { children: ReactNode }) => {
     onSessionRemoved: removeSession,
     onHighlightCorrections: applyHighlightCorrections,
     onFileNavigatorConfig: setFileNavigatorConfig,
+    onWorkspaceTabsDisplayMode: setWorkspaceTabsDisplayMode,
     onLaunchConfig: setLaunchConfig,
   });
 
@@ -239,8 +242,9 @@ const SessionRuntime = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     setFileNavigatorConfig({ autoExpandMatchLimit: 100 });
+    setWorkspaceTabsDisplayMode("all");
     setLaunchConfig(defaultLaunchConfig);
-  }, [setFileNavigatorConfig, setLaunchConfig, token]);
+  }, [setFileNavigatorConfig, setLaunchConfig, setWorkspaceTabsDisplayMode, token]);
 
   const sessionApi = useMemo(
     () => ({

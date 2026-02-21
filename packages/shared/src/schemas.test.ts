@@ -454,6 +454,8 @@ describe("wsServerMessageSchema", () => {
         clientConfig: {
           screen: { highlightCorrection: { codex: false, claude: true } },
           fileNavigator: { autoExpandMatchLimit: 100 },
+          workspaceTabs: { displayMode: "all" },
+          launch: defaultConfig.launch,
         },
       },
     });
@@ -642,6 +644,30 @@ describe("configSchema", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.notifications).toEqual(defaultConfig.notifications);
+    }
+  });
+
+  it("fills default workspaceTabs config when missing", () => {
+    const result = configSchema.safeParse({
+      ...defaultConfig,
+      workspaceTabs: undefined,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.workspaceTabs).toEqual(defaultConfig.workspaceTabs);
+    }
+  });
+
+  it("accepts uppercase workspaceTabs display mode and normalizes it", () => {
+    const result = configSchema.safeParse({
+      ...defaultConfig,
+      workspaceTabs: {
+        displayMode: "PWA",
+      },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.workspaceTabs.displayMode).toBe("pwa");
     }
   });
 

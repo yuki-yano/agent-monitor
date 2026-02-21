@@ -141,6 +141,9 @@ export const defaultConfig: AgentMonitorConfigFile = {
     pushEnabled: true,
     enabledEventTypes: ["pane.waiting_permission", "pane.task_completed"],
   },
+  workspaceTabs: {
+    displayMode: "all",
+  },
   fileNavigator: {
     includeIgnoredPaths: [],
     autoExpandMatchLimit: 100,
