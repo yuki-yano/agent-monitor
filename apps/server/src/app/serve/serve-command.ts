@@ -1,6 +1,7 @@
 import { createInterface } from "node:readline/promises";
 
 import { serve } from "@hono/node-server";
+import { isObject } from "@vde-monitor/shared";
 import { createTmuxAdapter } from "@vde-monitor/tmux";
 import { createWeztermAdapter, normalizeWeztermTarget } from "@vde-monitor/wezterm";
 import { execaSync } from "execa";
@@ -86,9 +87,6 @@ const TAILSCALE_COMMAND_CANDIDATES = [
   "tailscale",
   "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
 ] as const;
-
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  value != null && typeof value === "object";
 
 type TailscaleCommandResult = {
   bin: string;

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { isObject } from "@vde-monitor/shared";
 import webpush from "web-push";
 
 type PersistedVapid = {
@@ -48,9 +49,6 @@ const resolveDefaultSubject = () => {
   }
   return DEFAULT_SUBJECT;
 };
-
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  value != null && typeof value === "object";
 
 const isPersistedVapid = (value: unknown): value is PersistedVapid => {
   if (!isObject(value)) {

@@ -1,4 +1,4 @@
-import type { NotificationSettings } from "@vde-monitor/shared";
+import { dedupeStrings, type NotificationSettings } from "@vde-monitor/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSessions } from "@/state/session-context";
@@ -17,18 +17,6 @@ export type PushUiStatus =
   | "subscribed"
   | "denied"
   | "error";
-
-const dedupeStrings = (values: string[]) => {
-  const seen = new Set<string>();
-  const output: string[] = [];
-  values.forEach((value) => {
-    if (!seen.has(value)) {
-      seen.add(value);
-      output.push(value);
-    }
-  });
-  return output;
-};
 
 const areStringArraysEqual = (left: string[], right: string[]) =>
   left.length === right.length && left.every((value, index) => value === right[index]);

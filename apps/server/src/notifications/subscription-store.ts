@@ -3,7 +3,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { type PushEventType, pushEventTypeValues } from "@vde-monitor/shared";
+import {
+  dedupeStrings,
+  isObject,
+  type PushEventType,
+  pushEventTypeValues,
+} from "@vde-monitor/shared";
 
 import type {
   NotificationSubscriptionRecord,
@@ -24,23 +29,8 @@ const getDefaultNotificationsPath = () => {
   return path.join(os.homedir(), ".vde-monitor", "notifications.json");
 };
 
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  value != null && typeof value === "object";
-
 const isPushEventType = (value: unknown): value is PushEventType =>
   typeof value === "string" && PUSH_EVENT_TYPE_SET.has(value);
-
-const dedupeStrings = <T extends string>(values: T[]) => {
-  const seen = new Set<string>();
-  const output: T[] = [];
-  values.forEach((value) => {
-    if (!seen.has(value)) {
-      seen.add(value);
-      output.push(value);
-    }
-  });
-  return output;
-};
 
 const cloneSubscriptionRecord = (
   record: NotificationSubscriptionRecord,

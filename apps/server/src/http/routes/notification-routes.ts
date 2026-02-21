@@ -1,5 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
 import {
+  dedupeStrings,
   notificationSubscriptionRevokeSchema,
   notificationSubscriptionUpsertSchema,
   type PushEventType,
@@ -11,18 +12,6 @@ import { buildError } from "../helpers";
 
 type NotificationRouteDeps = {
   notificationService: NotificationService;
-};
-
-const dedupeStrings = <T extends string>(values: T[]) => {
-  const seen = new Set<string>();
-  const output: T[] = [];
-  values.forEach((value) => {
-    if (!seen.has(value)) {
-      seen.add(value);
-      output.push(value);
-    }
-  });
-  return output;
 };
 
 const normalizeEventTypes = ({
