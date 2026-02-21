@@ -150,6 +150,7 @@ const createViewProps = (overrides: SessionDetailViewOverrides = {}): SessionDet
       notificationPushEnabled: true,
       notificationSubscribed: false,
       notificationPaneEnabled: false,
+      requestNotificationPermission: vi.fn(async () => undefined),
       togglePaneNotification: vi.fn(async () => undefined),
     },
     controls: {

@@ -50,6 +50,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
     notificationPushEnabled = true,
     notificationSubscribed = false,
     notificationPaneEnabled = false,
+    requestNotificationPermission,
     togglePaneNotification,
   } = screen;
   const sourceRepoRoot = effectiveWorktreePath ?? session?.repoRoot ?? null;
@@ -328,6 +329,9 @@ export const useSessionDetailViewExplorerSectionProps = ({
         onUserScrollStateChange: handleUserScrollStateChange,
         onSelectVirtualWorktree: selectVirtualWorktree,
         onClearVirtualWorktree: clearVirtualWorktree,
+        onRequestNotificationPermission: () => {
+          void requestNotificationPermission?.();
+        },
         onTogglePaneNotification: () => {
           void togglePaneNotification?.();
         },
@@ -377,6 +381,7 @@ export const useSessionDetailViewExplorerSectionProps = ({
       handleUserScrollStateChange,
       selectVirtualWorktree,
       clearVirtualWorktree,
+      requestNotificationPermission,
       togglePaneNotification,
       toggleWrapMode,
       handleResolveFileReference,

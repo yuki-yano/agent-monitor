@@ -87,6 +87,7 @@ type ScreenPanelActions = {
   onUserScrollStateChange: (value: boolean) => void;
   onSelectVirtualWorktree?: (path: string) => void;
   onClearVirtualWorktree?: () => void;
+  onRequestNotificationPermission?: () => void;
   onTogglePaneNotification?: () => void;
   onResolveFileReference: (rawToken: string) => Promise<void>;
   onResolveFileReferenceCandidates: (rawTokens: string[]) => Promise<string[]>;
@@ -238,6 +239,7 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     onUserScrollStateChange,
     onSelectVirtualWorktree,
     onClearVirtualWorktree,
+    onRequestNotificationPermission,
     onTogglePaneNotification,
     onResolveFileReference,
     onResolveFileReferenceCandidates,
@@ -310,6 +312,12 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     [agent, effectiveWrapMode, mode, screenLines],
   );
   const showPaneNotificationToggle = notificationStatus !== "needs-ios-install";
+  const paneNotificationClickHandler = notificationSubscribed
+    ? onTogglePaneNotification
+    : onRequestNotificationPermission;
+  const paneNotificationAriaLabel = notificationSubscribed
+    ? "Toggle session notification"
+    : "Enable push notifications";
   const { linkifiedScreenLines, handleScreenRangeChanged } = useScreenPanelLogReferenceLinking({
     mode,
     effectiveWrapMode,
@@ -390,11 +398,9 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
               variant={notificationPaneEnabled ? "primary" : "ghost"}
               size="sm"
               className="h-[30px] w-[30px] p-0"
-              onClick={onTogglePaneNotification ?? undefined}
-              disabled={
-                !notificationPushEnabled || !notificationSubscribed || !onTogglePaneNotification
-              }
-              aria-label="Toggle session notification"
+              onClick={paneNotificationClickHandler ?? undefined}
+              disabled={!notificationPushEnabled || !paneNotificationClickHandler}
+              aria-label={paneNotificationAriaLabel}
               aria-pressed={notificationPaneEnabled}
             >
               {notificationPaneEnabled ? (
