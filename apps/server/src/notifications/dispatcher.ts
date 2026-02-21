@@ -160,7 +160,7 @@ export const createNotificationDispatcher = ({
       return;
     }
 
-    const globalEnabledEventTypes = new Set(config.notifications.enabledEventTypes);
+    const globalEnabledEventTypes = new Set<PushEventType>(config.notifications.enabledEventTypes);
     if (!globalEnabledEventTypes.has(eventType)) {
       return;
     }
@@ -182,81 +182,102 @@ export const createNotificationDispatcher = ({
     const payloadRaw = JSON.stringify(payload);
     const fingerprint = resolveFingerprint(event);
 
-    let sentCount = 0;
-    let retryCount = 0;
-    let failedCount = 0;
-    let expiredCount = 0;
+    const outcomes = await Promise.all(
+      candidates.map(async (subscription) => {
+        let localSentCount = 0;
+        let localRetryCount = 0;
+        let localFailedCount = 0;
+        let localExpiredCount = 0;
+        const previousFingerprint = lastFingerprintBySubscriptionId.get(subscription.id);
+        if (previousFingerprint === fingerprint) {
+          return {
+            sentCount: localSentCount,
+            retryCount: localRetryCount,
+            failedCount: localFailedCount,
+            expiredCount: localExpiredCount,
+          };
+        }
+        const cooldownKey = `${subscription.id}:${event.paneId}:${eventType}`;
+        const previousSentAtMs = lastSentAtByPaneEventBySubscriptionId.get(cooldownKey);
+        if (previousSentAtMs != null && nowMs() - previousSentAtMs < cooldownMs) {
+          return {
+            sentCount: localSentCount,
+            retryCount: localRetryCount,
+            failedCount: localFailedCount,
+            expiredCount: localExpiredCount,
+          };
+        }
 
-    for (const subscription of candidates) {
-      const previousFingerprint = lastFingerprintBySubscriptionId.get(subscription.id);
-      if (previousFingerprint === fingerprint) {
-        continue;
-      }
-      const cooldownKey = `${subscription.id}:${event.paneId}:${eventType}`;
-      const previousSentAtMs = lastSentAtByPaneEventBySubscriptionId.get(cooldownKey);
-      if (previousSentAtMs != null && nowMs() - previousSentAtMs < cooldownMs) {
-        continue;
-      }
-
-      const maxAttempts = 3;
-      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-        try {
-          await sendNotification(toPushSubscriptionJson(subscription), payloadRaw);
-          const deliveredAt = now();
-          subscriptionStore.markDelivered(subscription.id, deliveredAt);
-          sentCount += 1;
-          lastFingerprintBySubscriptionId.set(subscription.id, fingerprint);
-          lastSentAtByPaneEventBySubscriptionId.set(cooldownKey, nowMs());
-          consecutiveFailureCountBySubscriptionId.delete(subscription.id);
-          logger.log(
-            `[vde-monitor][push] event=${eventType} paneId=${event.paneId} subscriptionId=${subscription.id} attempt=${attempt} result=ok`,
-          );
-          break;
-        } catch (error) {
-          if (isExpiredEndpointError(error)) {
-            subscriptionStore.removeById(subscription.id);
-            expiredCount += 1;
+        const maxAttempts = 3;
+        for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+          try {
+            await sendNotification(toPushSubscriptionJson(subscription), payloadRaw);
+            const deliveredAt = now();
+            subscriptionStore.markDelivered(subscription.id, deliveredAt);
+            localSentCount += 1;
+            lastFingerprintBySubscriptionId.set(subscription.id, fingerprint);
+            lastSentAtByPaneEventBySubscriptionId.set(cooldownKey, nowMs());
             consecutiveFailureCountBySubscriptionId.delete(subscription.id);
             logger.log(
-              `[vde-monitor][push] event=${eventType} paneId=${event.paneId} subscriptionId=${subscription.id} attempt=${attempt} result=expired`,
+              `[vde-monitor][push] event=${eventType} paneId=${event.paneId} subscriptionId=${subscription.id} attempt=${attempt} result=ok`,
+            );
+            break;
+          } catch (error) {
+            if (isExpiredEndpointError(error)) {
+              subscriptionStore.removeById(subscription.id);
+              localExpiredCount += 1;
+              consecutiveFailureCountBySubscriptionId.delete(subscription.id);
+              logger.log(
+                `[vde-monitor][push] event=${eventType} paneId=${event.paneId} subscriptionId=${subscription.id} attempt=${attempt} result=expired`,
+              );
+              break;
+            }
+
+            const retryable = isRetryableDeliveryError(error);
+            if (retryable && attempt < maxAttempts) {
+              localRetryCount += 1;
+              logger.log(
+                `[vde-monitor][push] event=${eventType} paneId=${event.paneId} subscriptionId=${subscription.id} attempt=${attempt} result=retry statusCode=${normalizeStatusCode(error) ?? "unknown"}`,
+              );
+              const retryDelayMs =
+                retryDelaysMs[attempt - 1] ??
+                retryDelaysMs[retryDelaysMs.length - 1] ??
+                DEFAULT_RETRY_DELAYS_MS[1];
+              await sleep(retryDelayMs);
+              continue;
+            }
+
+            localFailedCount += 1;
+            const message = toErrorMessage(error, "push delivery failed");
+            subscriptionStore.markDeliveryError(subscription.id, message, now());
+            const nextFailureCount =
+              (consecutiveFailureCountBySubscriptionId.get(subscription.id) ?? 0) + 1;
+            consecutiveFailureCountBySubscriptionId.set(subscription.id, nextFailureCount);
+            if (nextFailureCount >= consecutiveFailureWarnThreshold) {
+              logger.warn(
+                `[vde-monitor][push] repeated delivery failures subscriptionId=${subscription.id} count=${nextFailureCount}`,
+              );
+            }
+            const statusCode = normalizeStatusCode(error);
+            const responseBody = normalizeErrorBody(error);
+            logger.log(
+              `[vde-monitor][push] event=${eventType} paneId=${event.paneId} subscriptionId=${subscription.id} attempt=${attempt} result=fail statusCode=${statusCode ?? "unknown"} message=${JSON.stringify(message)} body=${JSON.stringify(responseBody)}`,
             );
             break;
           }
-
-          const retryable = isRetryableDeliveryError(error);
-          if (retryable && attempt < maxAttempts) {
-            retryCount += 1;
-            logger.log(
-              `[vde-monitor][push] event=${eventType} paneId=${event.paneId} subscriptionId=${subscription.id} attempt=${attempt} result=retry statusCode=${normalizeStatusCode(error) ?? "unknown"}`,
-            );
-            const retryDelayMs =
-              retryDelaysMs[attempt - 1] ??
-              retryDelaysMs[retryDelaysMs.length - 1] ??
-              DEFAULT_RETRY_DELAYS_MS[1];
-            await sleep(retryDelayMs);
-            continue;
-          }
-
-          failedCount += 1;
-          const message = toErrorMessage(error, "push delivery failed");
-          subscriptionStore.markDeliveryError(subscription.id, message, now());
-          const nextFailureCount =
-            (consecutiveFailureCountBySubscriptionId.get(subscription.id) ?? 0) + 1;
-          consecutiveFailureCountBySubscriptionId.set(subscription.id, nextFailureCount);
-          if (nextFailureCount >= consecutiveFailureWarnThreshold) {
-            logger.warn(
-              `[vde-monitor][push] repeated delivery failures subscriptionId=${subscription.id} count=${nextFailureCount}`,
-            );
-          }
-          const statusCode = normalizeStatusCode(error);
-          const responseBody = normalizeErrorBody(error);
-          logger.log(
-            `[vde-monitor][push] event=${eventType} paneId=${event.paneId} subscriptionId=${subscription.id} attempt=${attempt} result=fail statusCode=${statusCode ?? "unknown"} message=${JSON.stringify(message)} body=${JSON.stringify(responseBody)}`,
-          );
-          break;
         }
-      }
-    }
+        return {
+          sentCount: localSentCount,
+          retryCount: localRetryCount,
+          failedCount: localFailedCount,
+          expiredCount: localExpiredCount,
+        };
+      }),
+    );
+    const sentCount = outcomes.reduce((total, item) => total + item.sentCount, 0);
+    const retryCount = outcomes.reduce((total, item) => total + item.retryCount, 0);
+    const failedCount = outcomes.reduce((total, item) => total + item.failedCount, 0);
+    const expiredCount = outcomes.reduce((total, item) => total + item.expiredCount, 0);
 
     logger.log(
       `[vde-monitor][push] summary event=${eventType} paneId=${event.paneId} candidateCount=${candidates.length} sentCount=${sentCount} retryCount=${retryCount} failedCount=${failedCount} expiredCount=${expiredCount} elapsedMs=${Math.max(

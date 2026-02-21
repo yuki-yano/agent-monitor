@@ -30,7 +30,7 @@ export const apiErrorSchema = z.object({
   message: z.string(),
 });
 
-const pushEventTypeValues = [
+export const pushEventTypeValues = [
   "pane.waiting_permission",
   "pane.task_completed",
   "pane.error",

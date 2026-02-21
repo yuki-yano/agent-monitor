@@ -72,7 +72,6 @@ describe("ScreenPanel", () => {
     notificationPushEnabled: true,
     notificationSubscribed: false,
     notificationPaneEnabled: false,
-    notificationErrorMessage: null,
     ...overrides,
   });
 
@@ -83,8 +82,6 @@ describe("ScreenPanel", () => {
     onAtBottomChange: vi.fn(),
     onScrollToBottom: vi.fn(),
     onUserScrollStateChange: vi.fn(),
-    onRequestNotificationPermission: vi.fn(),
-    onDisableNotifications: vi.fn(),
     onTogglePaneNotification: vi.fn(),
     onResolveFileReference: vi.fn(async () => undefined),
     onResolveFileReferenceCandidates: vi.fn(async (rawTokens: string[]) => rawTokens),
@@ -163,6 +160,20 @@ describe("ScreenPanel", () => {
 
     expect(screen.queryByRole("button", { name: "Toggle session notification" })).toBeNull();
     expect(screen.getByRole("button", { name: "Toggle wrap mode" })).toBeTruthy();
+  });
+
+  it("disables notification toggle when handler is missing", () => {
+    const state = buildState({
+      notificationPushEnabled: true,
+      notificationSubscribed: true,
+    });
+    const actions = buildActions({
+      onTogglePaneNotification: undefined,
+    });
+    render(<ScreenPanel state={state} actions={actions} controls={null} />);
+
+    const toggleButton = screen.getByRole("button", { name: "Toggle session notification" });
+    expect(toggleButton.getAttribute("disabled")).not.toBeNull();
   });
 
   it("disables wrap button in image mode", () => {

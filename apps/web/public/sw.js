@@ -6,6 +6,22 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
+const resolveSafeTargetUrl = (rawUrl) => {
+  const fallbackUrl = new URL("/", self.location.origin);
+  if (typeof rawUrl !== "string" || rawUrl.length === 0) {
+    return fallbackUrl.toString();
+  }
+  try {
+    const candidate = new URL(rawUrl, self.location.origin);
+    if (candidate.origin !== self.location.origin) {
+      return fallbackUrl.toString();
+    }
+    return candidate.toString();
+  } catch {
+    return fallbackUrl.toString();
+  }
+};
+
 self.addEventListener("push", (event) => {
   const payload = (() => {
     if (!event.data) {
@@ -34,9 +50,7 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const rawUrl = event.notification?.data?.url;
-  const targetPath = typeof rawUrl === "string" && rawUrl.length > 0 ? rawUrl : "/";
-  const targetUrl = new URL(targetPath, self.location.origin).toString();
+  const targetUrl = resolveSafeTargetUrl(event.notification?.data?.url);
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {

@@ -16,6 +16,19 @@ describe("TokenInputBanner", () => {
     expect(onSubmit).toHaveBeenCalledWith("token-123");
   });
 
+  it("submits when Enter key is pressed", () => {
+    const onSubmit = vi.fn();
+    render(<TokenInputBanner authError={null} onSubmit={onSubmit} />);
+
+    const input = screen.getByPlaceholderText("Paste access token");
+    fireEvent.change(input, {
+      target: { value: "token-enter" },
+    });
+    fireEvent.submit(input.closest("form")!);
+
+    expect(onSubmit).toHaveBeenCalledWith("token-enter");
+  });
+
   it("shows auth error text when provided", () => {
     render(
       <TokenInputBanner

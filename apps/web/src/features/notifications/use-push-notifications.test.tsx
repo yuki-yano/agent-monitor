@@ -10,6 +10,8 @@ vi.mock("@/state/session-context", () => ({
 }));
 
 describe("usePushNotifications", () => {
+  let originalIsSecureContext: PropertyDescriptor | undefined;
+
   beforeEach(() => {
     useSessionsMock.mockReturnValue({
       token: "token",
@@ -17,10 +19,16 @@ describe("usePushNotifications", () => {
       authError: null,
     });
     localStorage.clear();
+    originalIsSecureContext = Object.getOwnPropertyDescriptor(window, "isSecureContext");
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    if (originalIsSecureContext) {
+      Object.defineProperty(window, "isSecureContext", originalIsSecureContext);
+    } else {
+      Reflect.deleteProperty(window, "isSecureContext");
+    }
   });
 
   it("reports insecure-context when secure context is unavailable", async () => {
@@ -31,6 +39,7 @@ describe("usePushNotifications", () => {
     await waitFor(() => {
       expect(result.current.status).toBe("insecure-context");
     });
+    expect(result.current.pushEnabled).toBe(false);
   });
 
   it("does not start subscription flow when token is missing", async () => {

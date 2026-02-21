@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { defaultConfig, type PushEventType, type SessionDetail } from "@vde-monitor/shared";
+import { type ConfigPushEventType, defaultConfig, type SessionDetail } from "@vde-monitor/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createNotificationDispatcher } from "./dispatcher";
@@ -72,7 +72,10 @@ describe("createNotificationDispatcher", () => {
       token: "token",
       notifications: {
         pushEnabled: true,
-        enabledEventTypes: ["pane.waiting_permission", "pane.task_completed"] as PushEventType[],
+        enabledEventTypes: [
+          "pane.waiting_permission",
+          "pane.task_completed",
+        ] as ConfigPushEventType[],
       },
     };
     const store = createNotificationSubscriptionStore({
@@ -122,7 +125,7 @@ describe("createNotificationDispatcher", () => {
       token: "token",
       notifications: {
         pushEnabled: true,
-        enabledEventTypes: ["pane.task_completed"] as PushEventType[],
+        enabledEventTypes: ["pane.task_completed"] as ConfigPushEventType[],
       },
     };
     const store = createNotificationSubscriptionStore({
@@ -164,7 +167,7 @@ describe("createNotificationDispatcher", () => {
       token: "token",
       notifications: {
         pushEnabled: true,
-        enabledEventTypes: ["pane.task_completed"] as PushEventType[],
+        enabledEventTypes: ["pane.task_completed"] as ConfigPushEventType[],
       },
     };
     const store = createNotificationSubscriptionStore({
@@ -216,7 +219,10 @@ describe("createNotificationDispatcher", () => {
       token: "token",
       notifications: {
         pushEnabled: true,
-        enabledEventTypes: ["pane.waiting_permission", "pane.task_completed"] as PushEventType[],
+        enabledEventTypes: [
+          "pane.waiting_permission",
+          "pane.task_completed",
+        ] as ConfigPushEventType[],
       },
     };
     const store = createNotificationSubscriptionStore({
@@ -271,7 +277,10 @@ describe("createNotificationDispatcher", () => {
       token: "token",
       notifications: {
         pushEnabled: true,
-        enabledEventTypes: ["pane.waiting_permission", "pane.task_completed"] as PushEventType[],
+        enabledEventTypes: [
+          "pane.waiting_permission",
+          "pane.task_completed",
+        ] as ConfigPushEventType[],
       },
     };
     const store = createNotificationSubscriptionStore({
@@ -316,7 +325,10 @@ describe("createNotificationDispatcher", () => {
       token: "token",
       notifications: {
         pushEnabled: true,
-        enabledEventTypes: ["pane.waiting_permission", "pane.task_completed"] as PushEventType[],
+        enabledEventTypes: [
+          "pane.waiting_permission",
+          "pane.task_completed",
+        ] as ConfigPushEventType[],
       },
     };
     const store = createNotificationSubscriptionStore({

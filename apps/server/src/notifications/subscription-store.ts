@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import type { PushEventType } from "@vde-monitor/shared";
+import { type PushEventType, pushEventTypeValues } from "@vde-monitor/shared";
 
 import type {
   NotificationSubscriptionRecord,
@@ -11,12 +11,7 @@ import type {
   UpsertNotificationSubscriptionInput,
 } from "./types";
 
-const PUSH_EVENT_TYPES: PushEventType[] = [
-  "pane.waiting_permission",
-  "pane.task_completed",
-  "pane.error",
-  "pane.long_waiting_permission",
-];
+const PUSH_EVENT_TYPE_SET = new Set<string>(pushEventTypeValues);
 
 type StoreOptions = {
   filePath?: string;
@@ -33,7 +28,7 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
   value != null && typeof value === "object";
 
 const isPushEventType = (value: unknown): value is PushEventType =>
-  typeof value === "string" && PUSH_EVENT_TYPES.includes(value as PushEventType);
+  typeof value === "string" && PUSH_EVENT_TYPE_SET.has(value);
 
 const dedupeStrings = <T extends string>(values: T[]) => {
   const seen = new Set<string>();
@@ -125,6 +120,7 @@ const resolvePreferredRecord = (
 
 export const createNotificationSubscriptionStore = (options: StoreOptions = {}) => {
   const filePath = options.filePath ?? getDefaultNotificationsPath();
+  const fileDirectoryPath = path.dirname(filePath);
   const now = options.now ?? (() => new Date().toISOString());
   const createId = options.createId ?? (() => `sub_${randomUUID()}`);
   const logger = options.logger ?? console;
@@ -132,15 +128,34 @@ export const createNotificationSubscriptionStore = (options: StoreOptions = {}) 
   const subscriptionsById = new Map<string, NotificationSubscriptionRecord>();
   const subscriptionIdByDeviceId = new Map<string, string>();
 
+  let dirEnsured = false;
   const ensureDir = () => {
-    fs.mkdirSync(path.dirname(filePath), { recursive: true, mode: 0o700 });
+    if (dirEnsured) {
+      return;
+    }
+    fs.mkdirSync(fileDirectoryPath, { recursive: true, mode: 0o700 });
+    dirEnsured = true;
   };
 
   const writeFileSafe = (content: string) => {
-    fs.writeFileSync(filePath, content, {
-      encoding: "utf8",
-      mode: 0o600,
-    });
+    const tempFilePath = path.join(
+      fileDirectoryPath,
+      `${path.basename(filePath)}.${process.pid}.${randomUUID()}.tmp`,
+    );
+    try {
+      fs.writeFileSync(tempFilePath, content, {
+        encoding: "utf8",
+        mode: 0o600,
+      });
+      fs.renameSync(tempFilePath, filePath);
+    } catch (error) {
+      try {
+        fs.rmSync(tempFilePath, { force: true });
+      } catch {
+        // ignore
+      }
+      throw error;
+    }
     try {
       fs.chmodSync(filePath, 0o600);
     } catch {
@@ -155,8 +170,18 @@ export const createNotificationSubscriptionStore = (options: StoreOptions = {}) 
   });
 
   const persist = () => {
-    ensureDir();
-    writeFileSafe(`${JSON.stringify(serialize(), null, 2)}\n`);
+    const content = `${JSON.stringify(serialize(), null, 2)}\n`;
+    try {
+      writeFileSafe(content);
+    } catch (error) {
+      const errorCode = (error as NodeJS.ErrnoException).code;
+      if (errorCode !== "ENOENT") {
+        throw error;
+      }
+      dirEnsured = false;
+      ensureDir();
+      writeFileSafe(content);
+    }
   };
 
   const rebuildDeviceMap = () => {
@@ -193,12 +218,15 @@ export const createNotificationSubscriptionStore = (options: StoreOptions = {}) 
       }
       restoreFromRecords(persisted.subscriptions);
     } catch (error) {
-      if (error instanceof Error && !error.message.includes("ENOENT")) {
-        logger.warn(`[vde-monitor] notification subscriptions restore failed: ${error.message}`);
+      const errorCode = (error as NodeJS.ErrnoException).code;
+      if (errorCode !== "ENOENT") {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.warn(`[vde-monitor] notification subscriptions restore failed: ${message}`);
       }
     }
   };
 
+  ensureDir();
   load();
 
   const list = () => {
@@ -230,9 +258,6 @@ export const createNotificationSubscriptionStore = (options: StoreOptions = {}) 
       lastDeliveryError: existingRecord?.lastDeliveryError ?? null,
     };
 
-    if (existingRecord && existingRecord.id !== nextRecord.id) {
-      subscriptionsById.delete(existingRecord.id);
-    }
     subscriptionsById.set(nextRecord.id, nextRecord);
     subscriptionIdByDeviceId.set(nextRecord.deviceId, nextRecord.id);
     persist();

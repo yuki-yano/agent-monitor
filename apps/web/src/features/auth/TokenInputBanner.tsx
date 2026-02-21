@@ -17,6 +17,13 @@ export const TokenInputBanner = ({ authError, onSubmit }: TokenInputBannerProps)
     }
     return authError;
   }, [authError]);
+  const handleSubmit = () => {
+    if (!canSubmit) {
+      return;
+    }
+    onSubmit(tokenDraft.trim());
+    setTokenDraft("");
+  };
 
   return (
     <Card className="mx-auto flex w-full max-w-xl flex-col gap-3 p-4 sm:p-5">
@@ -28,27 +35,25 @@ export const TokenInputBanner = ({ authError, onSubmit }: TokenInputBannerProps)
           {helperText}
         </p>
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <form
+        className="flex flex-col gap-2 sm:flex-row"
+        onSubmit={(event) => {
+          event.preventDefault();
+          handleSubmit();
+        }}
+      >
         <Input
           value={tokenDraft}
           onChange={(event) => setTokenDraft(event.currentTarget.value)}
           placeholder="Paste access token"
           autoComplete="off"
           spellCheck={false}
+          type="password"
         />
-        <Button
-          onClick={() => {
-            if (!canSubmit) {
-              return;
-            }
-            onSubmit(tokenDraft.trim());
-            setTokenDraft("");
-          }}
-          disabled={!canSubmit}
-        >
+        <Button type="submit" disabled={!canSubmit}>
           Save token
         </Button>
-      </div>
+      </form>
       <p className="text-latte-subtext0 text-xs">
         Re-open the URL from CLI output (`#token=...`) if you need a new token link.
       </p>

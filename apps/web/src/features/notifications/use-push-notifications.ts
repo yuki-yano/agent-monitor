@@ -138,7 +138,7 @@ export const usePushNotifications = ({ paneId }: UsePushNotificationsArgs) => {
   }, [apiBaseUrl]);
 
   const isPaneEnabled = enabledPaneIds.includes(paneId);
-  const pushEnabled = settings?.pushEnabled ?? true;
+  const pushEnabled = settings?.pushEnabled ?? false;
 
   const upsertSubscription = useCallback(
     async (subscription: PushSubscription, paneIds: string[]) => {
@@ -399,7 +399,7 @@ export const usePushNotifications = ({ paneId }: UsePushNotificationsArgs) => {
         if (current) {
           setIsSubscribed(true);
           setStatus("subscribed");
-          await upsertSubscription(current, enabledPaneIds);
+          await upsertSubscription(current, readEnabledPaneIds());
           return;
         }
         setIsSubscribed(false);
@@ -418,7 +418,7 @@ export const usePushNotifications = ({ paneId }: UsePushNotificationsArgs) => {
     return () => {
       cancelled = true;
     };
-  }, [apiBasePath, authError, disableNotifications, enabledPaneIds, token, upsertSubscription]);
+  }, [apiBasePath, authError, disableNotifications, token, upsertSubscription]);
 
   return {
     status,

@@ -75,7 +75,6 @@ type ScreenPanelState = {
   notificationPushEnabled: boolean;
   notificationSubscribed: boolean;
   notificationPaneEnabled: boolean;
-  notificationErrorMessage: string | null;
 };
 
 type ScreenPanelActions = {
@@ -88,8 +87,6 @@ type ScreenPanelActions = {
   onUserScrollStateChange: (value: boolean) => void;
   onSelectVirtualWorktree?: (path: string) => void;
   onClearVirtualWorktree?: () => void;
-  onRequestNotificationPermission?: () => void;
-  onDisableNotifications?: () => void;
   onTogglePaneNotification?: () => void;
   onResolveFileReference: (rawToken: string) => Promise<void>;
   onResolveFileReferenceCandidates: (rawTokens: string[]) => Promise<string[]>;
@@ -393,8 +390,10 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
               variant={notificationPaneEnabled ? "primary" : "ghost"}
               size="sm"
               className="h-[30px] w-[30px] p-0"
-              onClick={onTogglePaneNotification}
-              disabled={!notificationPushEnabled || !notificationSubscribed}
+              onClick={onTogglePaneNotification ?? undefined}
+              disabled={
+                !notificationPushEnabled || !notificationSubscribed || !onTogglePaneNotification
+              }
               aria-label="Toggle session notification"
               aria-pressed={notificationPaneEnabled}
             >

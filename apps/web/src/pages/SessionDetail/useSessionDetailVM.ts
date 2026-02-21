@@ -345,9 +345,6 @@ export const useSessionDetailVM = (paneId: string) => {
       notificationPushEnabled: pushNotifications.pushEnabled,
       notificationSubscribed: pushNotifications.isSubscribed,
       notificationPaneEnabled: pushNotifications.isPaneEnabled,
-      notificationErrorMessage: pushNotifications.errorMessage,
-      requestNotificationPermission: pushNotifications.requestPermissionAndSubscribe,
-      disableNotifications: pushNotifications.disableNotifications,
       togglePaneNotification: pushNotifications.togglePaneEnabled,
     },
     controls: {

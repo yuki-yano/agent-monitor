@@ -11,6 +11,8 @@ export type PushEventType =
   | "pane.error"
   | "pane.long_waiting_permission";
 
+export type ConfigPushEventType = "pane.waiting_permission" | "pane.task_completed";
+
 export type AllowedKey =
   | "Enter"
   | "Escape"
@@ -347,7 +349,7 @@ export type NotificationSettings = {
   pushEnabled: boolean;
   vapidPublicKey: string;
   supportedEvents: PushEventType[];
-  enabledEventTypes: PushEventType[];
+  enabledEventTypes: ConfigPushEventType[];
   requireStandaloneOnIOS: boolean;
 };
 
@@ -588,7 +590,7 @@ export type AgentMonitorConfigBase = {
   launch: LaunchConfig;
   notifications: {
     pushEnabled: boolean;
-    enabledEventTypes: PushEventType[];
+    enabledEventTypes: ConfigPushEventType[];
   };
   workspaceTabs: {
     displayMode: WorkspaceTabsDisplayMode;
