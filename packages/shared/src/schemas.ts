@@ -95,7 +95,7 @@ export const notificationSettingsSchema = z.object({
   pushEnabled: z.boolean(),
   vapidPublicKey: z.string().min(1),
   supportedEvents: z.array(pushEventTypeSchema).min(1),
-  enabledEventTypes: z.array(pushEventTypeSchema).min(1),
+  enabledEventTypes: z.array(configPushEventTypeSchema).min(1),
   requireStandaloneOnIOS: z.boolean(),
 });
 

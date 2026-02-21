@@ -9,6 +9,7 @@ import {
   imageAttachmentSchema,
   launchAgentRequestSchema,
   launchCommandResponseSchema,
+  notificationSettingsSchema,
   notificationSubscriptionRevokeSchema,
   notificationSubscriptionUpsertSchema,
   pushEventTypeSchema,
@@ -122,6 +123,40 @@ describe("notification subscription schemas", () => {
 
   it("requires at least one key in revoke payload", () => {
     const result = notificationSubscriptionRevokeSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("notificationSettingsSchema", () => {
+  it("accepts config-supported enabledEventTypes", () => {
+    const result = notificationSettingsSchema.safeParse({
+      pushEnabled: true,
+      vapidPublicKey: "vapid-test",
+      supportedEvents: [
+        "pane.waiting_permission",
+        "pane.task_completed",
+        "pane.error",
+        "pane.long_waiting_permission",
+      ],
+      enabledEventTypes: ["pane.waiting_permission", "pane.task_completed"],
+      requireStandaloneOnIOS: true,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects enabledEventTypes outside config-supported set", () => {
+    const result = notificationSettingsSchema.safeParse({
+      pushEnabled: true,
+      vapidPublicKey: "vapid-test",
+      supportedEvents: [
+        "pane.waiting_permission",
+        "pane.task_completed",
+        "pane.error",
+        "pane.long_waiting_permission",
+      ],
+      enabledEventTypes: ["pane.error"],
+      requireStandaloneOnIOS: true,
+    });
     expect(result.success).toBe(false);
   });
 });

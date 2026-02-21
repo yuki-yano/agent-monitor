@@ -53,17 +53,23 @@ self.addEventListener("notificationclick", (event) => {
   const targetUrl = resolveSafeTargetUrl(event.notification?.data?.url);
 
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
+    (async () => {
+      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       for (const client of clients) {
-        if (client.url.startsWith(self.location.origin)) {
+        if (!client.url.startsWith(self.location.origin)) {
+          continue;
+        }
+        try {
           await client.focus();
           if ("navigate" in client) {
             await client.navigate(targetUrl);
           }
           return;
+        } catch {
+          break;
         }
       }
       await self.clients.openWindow(targetUrl);
-    }),
+    })(),
   );
 });
