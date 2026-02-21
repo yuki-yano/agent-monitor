@@ -23,6 +23,10 @@ export const apiErrorSchema = z.object({
     "PERMISSION_DENIED",
     "TMUX_UNAVAILABLE",
     "WEZTERM_UNAVAILABLE",
+    "RESUME_NOT_FOUND",
+    "RESUME_AMBIGUOUS",
+    "RESUME_UNSUPPORTED",
+    "RESUME_INVALID_INPUT",
     "RATE_LIMIT",
     "PUSH_DISABLED",
     "INTERNAL",
@@ -145,6 +149,7 @@ export const commandResponseSchema = z.object({
 });
 
 export const launchAgentSchema = z.enum(["codex", "claude"]);
+export const launchResumePolicySchema = z.enum(["required", "best_effort"]);
 
 const containsNulOrLineBreak = (value: string) =>
   value.includes("\0") || value.includes("\r") || value.includes("\n") || value.includes("\t");
@@ -171,6 +176,9 @@ export const launchAgentRequestSchema = z
     worktreePath: z.string().trim().min(1).max(1024).optional(),
     worktreeBranch: z.string().trim().min(1).max(256).optional(),
     worktreeCreateIfMissing: z.boolean().optional(),
+    resumeSessionId: z.string().trim().min(1).max(256).optional(),
+    resumeFromPaneId: z.string().trim().min(1).max(64).optional(),
+    resumePolicy: launchResumePolicySchema.optional(),
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -202,6 +210,28 @@ export const launchAgentRequestSchema = z
         message: "worktreePath cannot be combined with worktreeCreateIfMissing",
       });
     }
+    if (value.resumeSessionId && containsNulOrLineBreak(value.resumeSessionId)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["resumeSessionId"],
+        message: "resumeSessionId must not include control characters",
+      });
+    }
+    if (value.resumeFromPaneId && containsNulOrLineBreak(value.resumeFromPaneId)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["resumeFromPaneId"],
+        message: "resumeFromPaneId must not include control characters",
+      });
+    }
+    const resumeRequested = Boolean(value.resumeSessionId || value.resumeFromPaneId);
+    if (!resumeRequested && value.resumePolicy) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["resumePolicy"],
+        message: "resumePolicy requires resumeSessionId or resumeFromPaneId",
+      });
+    }
   });
 
 export const launchRollbackSchema = z.object({
@@ -228,16 +258,31 @@ export const launchAgentResultSchema = z.object({
   verification: launchVerificationSchema,
 });
 
+export const launchResumeMetaSchema = z.object({
+  requested: z.boolean(),
+  reused: z.boolean(),
+  sessionId: z.string().nullable(),
+  source: z.enum(["manual", "hook", "lsof", "history"]).nullable(),
+  confidence: z.enum(["high", "medium", "low", "none"]),
+  policy: launchResumePolicySchema.nullable(),
+  fallbackReason: z
+    .enum(["not_found", "ambiguous", "unsupported", "invalid_input", "policy_best_effort"])
+    .optional(),
+  failureReason: z.enum(["not_found", "ambiguous", "unsupported", "invalid_input"]).optional(),
+});
+
 export const launchCommandResponseSchema = z.discriminatedUnion("ok", [
   z.object({
     ok: z.literal(true),
     result: launchAgentResultSchema,
     rollback: launchRollbackSchema,
+    resume: launchResumeMetaSchema.optional(),
   }),
   z.object({
     ok: z.literal(false),
     error: apiErrorSchema,
     rollback: launchRollbackSchema,
+    resume: launchResumeMetaSchema.optional(),
   }),
 ]);
 
@@ -305,6 +350,10 @@ export const sessionSummarySchema = z.object({
   lastOutputAt: z.string().nullable(),
   lastEventAt: z.string().nullable(),
   lastInputAt: z.string().nullable(),
+  agentSessionId: z.string().nullable().optional(),
+  agentSessionSource: z.enum(["hook", "lsof", "history"]).nullable().optional(),
+  agentSessionConfidence: z.enum(["high", "medium", "low"]).nullable().optional(),
+  agentSessionObservedAt: z.string().nullable().optional(),
   paneDead: z.boolean(),
   alternateOn: z.boolean(),
   pipeAttached: z.boolean(),

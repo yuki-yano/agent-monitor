@@ -433,6 +433,161 @@ describe("createTmuxActions.launchAgentInSession", () => {
     expect(result.rollback).toEqual({ attempted: false, ok: true });
   });
 
+  it("builds resume command with quoted cwd and session id", async () => {
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-windows") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "new-window") {
+          return { stdout: "@42\t3\tcodex-work\t%128\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes") {
+          return { stdout: "codex\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const config = {
+      ...defaultConfig,
+      token: "test-token",
+      launch: {
+        agents: {
+          codex: { options: ["--model", "gpt-5-codex"] },
+          claude: { options: [] },
+        },
+      },
+    };
+    const tmuxActions = createTmuxActions(adapter, config);
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "codex",
+      cwd: "/tmp",
+      resumeSessionId: "sess-1",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(adapter.run).toHaveBeenCalledWith([
+      "send-keys",
+      "-l",
+      "-t",
+      "%128",
+      "--",
+      "cd '/tmp' && codex resume 'sess-1' --model gpt-5-codex",
+    ]);
+  });
+
+  it("relaunches on the source pane when resumeFromPaneId is provided", async () => {
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (
+          args[0] === "list-panes" &&
+          args.includes("#{window_id}\t#{window_index}\t#{window_name}\t#{pane_id}")
+        ) {
+          return { stdout: "@7\t1\tmain\t%13\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes" && args.includes("#{pane_current_command}")) {
+          return { stdout: "codex\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const config = {
+      ...defaultConfig,
+      token: "test-token",
+      launch: {
+        agents: {
+          codex: { options: ["--model", "gpt-5-codex"] },
+          claude: { options: [] },
+        },
+      },
+    };
+    const tmuxActions = createTmuxActions(adapter, config);
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "codex",
+      cwd: "/tmp",
+      resumeSessionId: "sess-1",
+      resumeFromPaneId: "%13",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.result.windowId).toBe("@7");
+    expect(result.result.windowIndex).toBe(1);
+    expect(result.result.windowName).toBe("main");
+    expect(result.result.paneId).toBe("%13");
+    expect(adapter.run).toHaveBeenCalledWith(["send-keys", "-t", "%13", "C-c"]);
+    expect(adapter.run).toHaveBeenCalledWith([
+      "send-keys",
+      "-l",
+      "-t",
+      "%13",
+      "--",
+      "cd '/tmp' && codex resume 'sess-1' --model gpt-5-codex",
+    ]);
+    expect(adapter.run.mock.calls.some((call) => call[0]?.[0] === "new-window")).toBe(false);
+  });
+
+  it("changes cwd before relaunch even when resume session id is unavailable", async () => {
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (
+          args[0] === "list-panes" &&
+          args.includes("#{window_id}\t#{window_index}\t#{window_name}\t#{pane_id}")
+        ) {
+          return { stdout: "@7\t1\tmain\t%13\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes" && args.includes("#{pane_current_command}")) {
+          return { stdout: "codex\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const config = {
+      ...defaultConfig,
+      token: "test-token",
+      launch: {
+        agents: {
+          codex: { options: ["--model", "gpt-5-codex"] },
+          claude: { options: [] },
+        },
+      },
+    };
+    const tmuxActions = createTmuxActions(adapter, config);
+
+    const result = await tmuxActions.launchAgentInSession({
+      sessionName: "dev-main",
+      agent: "codex",
+      cwd: "/tmp",
+      resumeFromPaneId: "%13",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(adapter.run).toHaveBeenCalledWith([
+      "send-keys",
+      "-l",
+      "-t",
+      "%13",
+      "--",
+      "cd '/tmp' && codex --model gpt-5-codex",
+    ]);
+    expect(adapter.run.mock.calls.some((call) => call[0]?.[0] === "new-window")).toBe(false);
+  });
+
   it("overrides configured launch options when agentOptions are provided", async () => {
     const adapter = {
       run: vi.fn(async (args: string[]) => {

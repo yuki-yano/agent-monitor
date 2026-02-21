@@ -5,6 +5,7 @@ import { deriveHookState, mapHookToPane } from "./monitor-utils";
 export type HookEventContext = {
   paneId: string;
   hookState: HookStateSignal;
+  sessionId: string;
 };
 
 type HookPaneSnapshot = {
@@ -41,6 +42,10 @@ export const handleHookLine = (
   if (!paneId) {
     return false;
   }
-  onHook({ paneId, hookState: { ...hookState, at: event.ts } });
+  onHook({
+    paneId,
+    hookState: { ...hookState, at: event.ts },
+    sessionId: event.session_id,
+  });
   return true;
 };

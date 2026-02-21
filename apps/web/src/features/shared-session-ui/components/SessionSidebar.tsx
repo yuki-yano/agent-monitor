@@ -20,7 +20,7 @@ import { useSidebarPreview } from "@/features/shared-session-ui/hooks/useSidebar
 import { cn } from "@/lib/cn";
 import type { SessionGroup } from "@/lib/session-group";
 import type { Theme } from "@/lib/theme";
-import type { LaunchAgentRequestOptions } from "@/state/launch-agent-options";
+import type { LaunchAgentHandler } from "@/state/launch-agent-options";
 
 type SessionSidebarState = {
   sessionGroups: SessionGroup[];
@@ -51,11 +51,7 @@ type SessionSidebarState = {
 type SessionSidebarActions = {
   onSelectSession?: (paneId: string) => void;
   onFocusPane?: (paneId: string) => Promise<void> | void;
-  onLaunchAgentInSession?: (
-    sessionName: string,
-    agent: "codex" | "claude",
-    options?: LaunchAgentRequestOptions,
-  ) => Promise<void> | void;
+  onLaunchAgentInSession?: LaunchAgentHandler;
   onTouchSession?: (paneId: string) => void;
   onTouchRepoPin?: (repoRoot: string | null) => void;
 };

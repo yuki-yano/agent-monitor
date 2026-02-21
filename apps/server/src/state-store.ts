@@ -17,6 +17,10 @@ type PersistedSession = {
   lastEventAt: string | null;
   lastMessage: string | null;
   lastInputAt: string | null;
+  agentSessionId?: string | null;
+  agentSessionSource?: "hook" | "lsof" | "history" | null;
+  agentSessionConfidence?: "high" | "medium" | "low" | null;
+  agentSessionObservedAt?: string | null;
   customTitle: string | null;
   state: SessionStateValue;
   stateReason: string;
@@ -130,6 +134,10 @@ export const saveState = (sessions: SessionDetail[], options: SaveStateOptions =
           lastEventAt: session.lastEventAt,
           lastMessage: session.lastMessage,
           lastInputAt: session.lastInputAt,
+          agentSessionId: session.agentSessionId ?? null,
+          agentSessionSource: session.agentSessionSource ?? null,
+          agentSessionConfidence: session.agentSessionConfidence ?? null,
+          agentSessionObservedAt: session.agentSessionObservedAt ?? null,
           customTitle: session.customTitle ?? null,
           state: session.state,
           stateReason: session.stateReason,

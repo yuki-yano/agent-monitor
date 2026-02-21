@@ -10,6 +10,10 @@ describe("pane-state", () => {
     expect(state.lastEventAt).toBeNull();
     expect(state.lastMessage).toBeNull();
     expect(state.lastInputAt).toBeNull();
+    expect(state.agentSessionId).toBeNull();
+    expect(state.agentSessionSource).toBeNull();
+    expect(state.agentSessionConfidence).toBeNull();
+    expect(state.agentSessionObservedAt).toBeNull();
     expect(state.externalInputCursorBytes).toBeNull();
     expect(state.externalInputSignature).toBeNull();
     expect(state.externalInputLastDetectedAt).toBeNull();

@@ -137,14 +137,19 @@ export const useSessionDetailTimelineLogsActions = ({
       const result = await launchAgentInSession(sessionName, agent, createRequestId(), options);
       if (!result.ok) {
         setScreenError(result.error?.message ?? API_ERROR_MESSAGES.launchAgent);
-        return;
+        return result;
       }
       await refreshSessions();
       if (result.result.verification.status !== "verified") {
         setScreenError(`Launch verification: ${result.result.verification.status}`);
-        return;
+        return result;
+      }
+      if (result.resume?.fallbackReason) {
+        setScreenError(`Resume fallback: ${result.resume.fallbackReason}`);
+        return result;
       }
       setScreenError(null);
+      return result;
     },
     [launchAgentInSession, refreshSessions, setScreenError],
   );

@@ -49,6 +49,8 @@ export const createSessionRoutes = ({
     .route(
       "/",
       createLaunchRoute({
+        config,
+        monitor,
         actions,
         sendLimiter,
         getLimiterKey,

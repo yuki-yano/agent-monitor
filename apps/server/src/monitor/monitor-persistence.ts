@@ -40,6 +40,10 @@ export const restoreMonitorRuntimeState = ({
     state.lastEventAt = session.lastEventAt ?? null;
     state.lastMessage = session.lastMessage ?? null;
     state.lastInputAt = session.lastInputAt ?? null;
+    state.agentSessionId = session.agentSessionId ?? null;
+    state.agentSessionSource = session.agentSessionSource ?? null;
+    state.agentSessionConfidence = session.agentSessionConfidence ?? null;
+    state.agentSessionObservedAt = session.agentSessionObservedAt ?? null;
     if (session.customTitle) {
       customTitles.set(paneId, session.customTitle);
     }

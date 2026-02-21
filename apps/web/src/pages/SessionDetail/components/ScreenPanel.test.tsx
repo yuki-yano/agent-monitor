@@ -28,10 +28,43 @@ vi.mock("react-virtuoso", () => ({
 describe("ScreenPanel", () => {
   type ScreenPanelState = Parameters<typeof ScreenPanel>[0]["state"];
   type ScreenPanelActions = Parameters<typeof ScreenPanel>[0]["actions"];
+  const buildSourceSession = () => ({
+    paneId: "pane-1",
+    sessionName: "dev-main",
+    windowIndex: 0,
+    paneIndex: 0,
+    windowActivity: null,
+    paneActive: true,
+    currentCommand: "codex",
+    currentPath: "/repo/.worktree/feature/current",
+    paneTty: "/dev/ttys001",
+    title: "dev-main",
+    customTitle: null,
+    branch: "feature/current",
+    worktreePath: "/repo/.worktree/feature/current",
+    worktreeDirty: false,
+    worktreeLocked: false,
+    worktreeLockOwner: null,
+    worktreeLockReason: null,
+    worktreeMerged: false,
+    repoRoot: "/repo",
+    agent: "codex" as const,
+    state: "RUNNING" as const,
+    stateReason: "running",
+    lastMessage: null,
+    lastOutputAt: null,
+    lastEventAt: null,
+    lastInputAt: null,
+    paneDead: false,
+    alternateOn: false,
+    pipeAttached: true,
+    pipeConflict: false,
+  });
 
   const buildState = (overrides: Partial<ScreenPanelState> = {}): ScreenPanelState => ({
     mode: "text",
     wrapMode: "off",
+    sessionName: "dev-main",
     paneId: "pane-1",
     sourceRepoRoot: "/repo",
     agent: "codex",
@@ -68,6 +101,13 @@ describe("ScreenPanel", () => {
     worktreeBaseBranch: null,
     actualWorktreePath: null,
     virtualWorktreePath: null,
+    sourceSession: null,
+    launchConfig: {
+      agents: {
+        codex: { options: [] },
+        claude: { options: [] },
+      },
+    },
     notificationStatus: "idle",
     notificationPushEnabled: true,
     notificationSubscribed: false,
@@ -84,6 +124,7 @@ describe("ScreenPanel", () => {
     onUserScrollStateChange: vi.fn(),
     onRequestNotificationPermission: vi.fn(),
     onTogglePaneNotification: vi.fn(),
+    onLaunchAgentInSession: vi.fn(),
     onResolveFileReference: vi.fn(async () => undefined),
     onResolveFileReferenceCandidates: vi.fn(async (rawTokens: string[]) => rawTokens),
     ...overrides,
@@ -163,6 +204,40 @@ describe("ScreenPanel", () => {
     const smartButton = screen.getByRole("button", { name: "Toggle wrap mode" });
     expect(
       notificationButton.compareDocumentPosition(smartButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
+  });
+
+  it("places resume/move button to the left of notification toggle", () => {
+    const state = buildState({
+      sourceSession: buildSourceSession(),
+      worktreeSelectorEnabled: true,
+      worktreeEntries: [
+        {
+          path: "/repo/.worktree/feature/current",
+          branch: "feature/current",
+          dirty: false,
+          locked: false,
+          lockOwner: null,
+          lockReason: null,
+          merged: false,
+          prStatus: "none",
+          ahead: 0,
+          behind: 0,
+          fileChanges: { add: 0, m: 0, d: 0 },
+          additions: 0,
+          deletions: 0,
+        },
+      ],
+      notificationPushEnabled: true,
+      notificationSubscribed: true,
+    });
+    const actions = buildActions();
+    render(<ScreenPanel state={state} actions={actions} controls={null} />);
+
+    const resumeButton = screen.getByRole("button", { name: "Resume or move to worktree" });
+    const notificationButton = screen.getByRole("button", { name: "Toggle session notification" });
+    expect(
+      resumeButton.compareDocumentPosition(notificationButton) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).not.toBe(0);
   });
 

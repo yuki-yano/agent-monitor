@@ -119,6 +119,10 @@ export const createSessionMonitor = (
     const state = paneStates.get(context.paneId);
     state.hookState = context.hookState;
     state.lastEventAt = context.hookState.at;
+    state.agentSessionId = context.sessionId;
+    state.agentSessionSource = "hook";
+    state.agentSessionConfidence = "high";
+    state.agentSessionObservedAt = context.hookState.at;
   };
 
   const recordInput = (paneId: string, at = new Date().toISOString()) => {

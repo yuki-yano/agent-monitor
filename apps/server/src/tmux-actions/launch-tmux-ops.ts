@@ -11,11 +11,46 @@ import type { ActionResult } from "./action-results";
 
 const LAUNCH_VERIFY_INTERVAL_MS = 200;
 const LAUNCH_VERIFY_MAX_ATTEMPTS = 5;
+const LAUNCH_INTERRUPT_DELAY_MS = 120;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const isTmuxTargetMissing = (message: string) =>
+  /can't find pane|can't find window|no such pane|no such window|invalid pane|invalid window/i.test(
+    message,
+  );
 
-export const buildLaunchCommandLine = (agent: LaunchAgent, options: string[]) =>
-  [agent, ...options].join(" ");
+export const quoteShellValue = (value: string) => `'${value.replace(/'/g, `'"'"'`)}'`;
+
+export const buildLaunchCommandLine = ({
+  agent,
+  options,
+  resumeSessionId,
+  finalCwd,
+  alwaysPrefixCwd = false,
+}: {
+  agent: LaunchAgent;
+  options: string[];
+  resumeSessionId?: string;
+  finalCwd?: string;
+  alwaysPrefixCwd?: boolean;
+}) => {
+  const optionsSuffix = options.join(" ").trim();
+  if (!resumeSessionId) {
+    const launchCommand = [agent, ...options].join(" ");
+    if (!finalCwd || !alwaysPrefixCwd) {
+      return launchCommand;
+    }
+    return `cd ${quoteShellValue(finalCwd)} && ${launchCommand}`;
+  }
+  const quotedSessionId = quoteShellValue(resumeSessionId);
+  const resumeBase =
+    agent === "codex" ? `codex resume ${quotedSessionId}` : `claude --resume ${quotedSessionId}`;
+  const resumeCommand = optionsSuffix.length > 0 ? `${resumeBase} ${optionsSuffix}` : resumeBase;
+  if (!finalCwd) {
+    return resumeCommand;
+  }
+  return `cd ${quoteShellValue(finalCwd)} && ${resumeCommand}`;
+};
 
 export const assertSessionExists = async (
   adapter: TmuxAdapter,
@@ -136,25 +171,114 @@ export const createDetachedWindow = async ({
   };
 };
 
+export const resolveExistingPaneLaunchTarget = async ({
+  adapter,
+  paneId,
+}: {
+  adapter: TmuxAdapter;
+  paneId: string;
+}): Promise<
+  | {
+      ok: true;
+      windowId: string;
+      windowIndex: number;
+      windowName: string;
+      paneId: string;
+    }
+  | { ok: false; error: ApiError }
+> => {
+  const listed = await adapter.run([
+    "list-panes",
+    "-t",
+    paneId,
+    "-F",
+    "#{window_id}\t#{window_index}\t#{window_name}\t#{pane_id}",
+  ]);
+  if (listed.exitCode !== 0) {
+    const message = listed.stderr || "failed to resolve target pane";
+    return {
+      ok: false,
+      error: buildError(isTmuxTargetMissing(message) ? "INVALID_PANE" : "INTERNAL", message),
+    };
+  }
+  const firstLine = listed.stdout.split(/\r?\n/).find((line) => line.trim().length > 0) ?? "";
+  const [windowId, indexRaw, windowName, resolvedPaneId] = firstLine.split("\t");
+  if (!windowId || !indexRaw || !windowName || !resolvedPaneId) {
+    return {
+      ok: false,
+      error: buildError("INTERNAL", "unexpected tmux list-panes output"),
+    };
+  }
+  const windowIndex = Number.parseInt(indexRaw, 10);
+  if (Number.isNaN(windowIndex)) {
+    return {
+      ok: false,
+      error: buildError("INTERNAL", "invalid tmux window index"),
+    };
+  }
+  return {
+    ok: true,
+    windowId,
+    windowIndex,
+    windowName,
+    paneId: resolvedPaneId,
+  };
+};
+
+export const interruptPaneForRelaunch = async ({
+  adapter,
+  paneId,
+  exitCopyModeIfNeeded,
+}: {
+  adapter: TmuxAdapter;
+  paneId: string;
+  exitCopyModeIfNeeded: (paneId: string) => Promise<void>;
+}): Promise<ApiError | null> => {
+  await exitCopyModeIfNeeded(paneId);
+  const interrupt = await adapter.run(["send-keys", "-t", paneId, "C-c"]);
+  if (interrupt.exitCode !== 0) {
+    const message = interrupt.stderr || "failed to interrupt existing pane process";
+    return buildError(isTmuxTargetMissing(message) ? "INVALID_PANE" : "INTERNAL", message);
+  }
+  await sleep(LAUNCH_INTERRUPT_DELAY_MS);
+  return null;
+};
+
 export const sendLaunchCommand = async ({
   adapter,
   paneId,
   agent,
   options,
+  resumeSessionId,
+  finalCwd,
   exitCopyModeIfNeeded,
   sendEnterKey,
   internalError,
+  skipExitCopyMode = false,
+  forceShellCwdPrefix = false,
 }: {
   adapter: TmuxAdapter;
   paneId: string;
   agent: LaunchAgent;
   options: string[];
+  resumeSessionId?: string;
+  finalCwd?: string;
   exitCopyModeIfNeeded: (paneId: string) => Promise<void>;
   sendEnterKey: (paneId: string) => Promise<ActionResult>;
   internalError: (message: string) => ActionResult;
+  skipExitCopyMode?: boolean;
+  forceShellCwdPrefix?: boolean;
 }) => {
-  await exitCopyModeIfNeeded(paneId);
-  const commandLine = buildLaunchCommandLine(agent, options);
+  if (!skipExitCopyMode) {
+    await exitCopyModeIfNeeded(paneId);
+  }
+  const commandLine = buildLaunchCommandLine({
+    agent,
+    options,
+    resumeSessionId,
+    finalCwd,
+    alwaysPrefixCwd: forceShellCwdPrefix,
+  });
   const sendResult = await adapter.run(["send-keys", "-l", "-t", paneId, "--", commandLine]);
   if (sendResult.exitCode !== 0) {
     return internalError(sendResult.stderr || "send-keys launch command failed");

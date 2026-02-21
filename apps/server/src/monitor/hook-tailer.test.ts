@@ -42,6 +42,7 @@ describe("handleHookLine", () => {
     expect(onHook).toHaveBeenCalledWith({
       paneId: "2",
       hookState: { state: "RUNNING", reason: "hook:PreToolUse", at: event.ts },
+      sessionId: "s1",
     });
   });
 
@@ -59,6 +60,7 @@ describe("handleHookLine", () => {
     expect(onHook).toHaveBeenCalledWith({
       paneId: "1",
       hookState: { state: "WAITING_INPUT", reason: "hook:stop", at: event.ts },
+      sessionId: "s1",
     });
   });
 });

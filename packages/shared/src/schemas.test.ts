@@ -600,6 +600,18 @@ describe("launch schemas", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts launch request with resume fields", () => {
+    const result = launchAgentRequestSchema.safeParse({
+      sessionName: "dev-main",
+      agent: "claude",
+      requestId: "req-1",
+      resumeSessionId: "sess-1",
+      resumeFromPaneId: "%12",
+      resumePolicy: "best_effort",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("rejects launch request windowName with control characters", () => {
     const result = launchAgentRequestSchema.safeParse({
       sessionName: "dev-main",
@@ -617,6 +629,26 @@ describe("launch schemas", () => {
       requestId: "req-1",
       cwd: "/tmp/work",
       worktreePath: "/tmp/worktree",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects resumeSessionId with control characters", () => {
+    const result = launchAgentRequestSchema.safeParse({
+      sessionName: "dev-main",
+      agent: "codex",
+      requestId: "req-1",
+      resumeSessionId: "bad\tid",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects resumePolicy without resume fields", () => {
+    const result = launchAgentRequestSchema.safeParse({
+      sessionName: "dev-main",
+      agent: "codex",
+      requestId: "req-1",
+      resumePolicy: "required",
     });
     expect(result.success).toBe(false);
   });
@@ -664,6 +696,14 @@ describe("launch schemas", () => {
       rollback: {
         attempted: false,
         ok: true,
+      },
+      resume: {
+        requested: true,
+        reused: true,
+        sessionId: "sess-1",
+        source: "manual",
+        confidence: "high",
+        policy: "required",
       },
     });
     expect(result.success).toBe(true);

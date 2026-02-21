@@ -77,6 +77,9 @@ export type LaunchAgentJson = {
   worktreePath?: string;
   worktreeBranch?: string;
   worktreeCreateIfMissing?: boolean;
+  resumeSessionId?: string;
+  resumeFromPaneId?: string;
+  resumePolicy?: "required" | "best_effort";
 };
 
 export type SessionTitleJson = {

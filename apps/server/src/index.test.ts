@@ -210,6 +210,9 @@ describe("runLaunchAgentCommand", () => {
       cwd: undefined,
       worktreePath: undefined,
       worktreeBranch: undefined,
+      resumeSessionId: undefined,
+      resumeFromPaneId: undefined,
+      resumePolicy: undefined,
     });
     expect(consoleSpy).toHaveBeenCalledTimes(1);
     const serialized = consoleSpy.mock.calls[0]?.[0];
@@ -243,6 +246,38 @@ describe("runLaunchAgentCommand", () => {
 
     expect(exitCode).toBe(3);
     expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  it("returns exit code 5 when launch fails with RESUME_*", async () => {
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    launchAgentInSessionMock.mockResolvedValueOnce({
+      ok: false,
+      error: { code: "RESUME_NOT_FOUND", message: "resume not found" },
+      rollback: {
+        attempted: false,
+        ok: true,
+      },
+      resume: {
+        requested: true,
+        reused: false,
+        sessionId: null,
+        source: null,
+        confidence: "none",
+        policy: "required",
+        failureReason: "not_found",
+      },
+    });
+
+    const exitCode = await runLaunchAgentCommand({
+      command: "tmux",
+      subcommand: "launch-agent",
+      session: "dev-main",
+      agent: "codex",
+      output: "text",
+    } as never);
+
+    expect(exitCode).toBe(5);
     consoleSpy.mockRestore();
   });
 });

@@ -1,5 +1,5 @@
-import type { WorktreeListEntry } from "@vde-monitor/shared";
-import { Bell, BellOff, FileText, Image, RefreshCw, TextWrap } from "lucide-react";
+import type { LaunchConfig, SessionSummary, WorktreeListEntry } from "@vde-monitor/shared";
+import { Bell, BellOff, FileText, GitBranch, Image, RefreshCw, TextWrap } from "lucide-react";
 import {
   forwardRef,
   type HTMLAttributes,
@@ -9,13 +9,16 @@ import {
   type RefObject,
   useCallback,
   useMemo,
+  useState,
 } from "react";
 import type { VirtuosoHandle } from "react-virtuoso";
 
+import { ResumeWorktreeDialog } from "@/components/resume-worktree-dialog";
 import { Button, Callout, Card, Tabs, TabsList, TabsTrigger, Toolbar } from "@/components/ui";
 import type { PushUiStatus } from "@/features/notifications/use-push-notifications";
 import { cn } from "@/lib/cn";
 import type { ScreenMode } from "@/lib/screen-loading";
+import type { LaunchAgentHandler } from "@/state/launch-agent-options";
 
 import type { ScreenWrapMode } from "../atoms/screenAtoms";
 import { usePromptContextLayout } from "../hooks/usePromptContextLayout";
@@ -35,6 +38,7 @@ import {
 type ScreenPanelState = {
   mode: ScreenMode;
   wrapMode: ScreenWrapMode;
+  sessionName: string;
   paneId: string;
   sourceRepoRoot: string | null;
   agent: "codex" | "claude" | "unknown";
@@ -71,6 +75,8 @@ type ScreenPanelState = {
   worktreeBaseBranch: string | null;
   actualWorktreePath: string | null;
   virtualWorktreePath: string | null;
+  sourceSession: SessionSummary | null;
+  launchConfig: LaunchConfig;
   notificationStatus: PushUiStatus;
   notificationPushEnabled: boolean;
   notificationSubscribed: boolean;
@@ -89,6 +95,7 @@ type ScreenPanelActions = {
   onClearVirtualWorktree?: () => void;
   onRequestNotificationPermission?: () => void;
   onTogglePaneNotification?: () => void;
+  onLaunchAgentInSession?: LaunchAgentHandler;
   onResolveFileReference: (rawToken: string) => Promise<void>;
   onResolveFileReferenceCandidates: (rawTokens: string[]) => Promise<string[]>;
 };
@@ -197,6 +204,7 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
   const {
     mode,
     wrapMode,
+    sessionName,
     paneId,
     sourceRepoRoot,
     agent,
@@ -224,6 +232,8 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     worktreeBaseBranch,
     actualWorktreePath,
     virtualWorktreePath,
+    sourceSession,
+    launchConfig,
     notificationStatus,
     notificationPushEnabled,
     notificationSubscribed,
@@ -241,6 +251,7 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     onClearVirtualWorktree,
     onRequestNotificationPermission,
     onTogglePaneNotification,
+    onLaunchAgentInSession,
     onResolveFileReference,
     onResolveFileReferenceCandidates,
   } = actions;
@@ -312,6 +323,11 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
     [agent, effectiveWrapMode, mode, screenLines],
   );
   const showPaneNotificationToggle = notificationStatus !== "needs-ios-install";
+  const showResumeWorktreeButton =
+    Boolean(sourceSession) &&
+    Boolean(onLaunchAgentInSession) &&
+    (worktreeSelectorEnabled || Boolean(worktreeRepoRoot));
+  const [resumeDialogOpen, setResumeDialogOpen] = useState(false);
   const paneNotificationClickHandler = notificationSubscribed
     ? onTogglePaneNotification
     : onRequestNotificationPermission;
@@ -393,6 +409,18 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
         <div className="flex items-center gap-2">{screenModeTabs(mode, onModeChange)}</div>
         <div className="flex items-center gap-2">
           <RawModeIndicator rawMode={rawMode} allowDangerKeys={allowDangerKeys} />
+          {showResumeWorktreeButton && sourceSession && onLaunchAgentInSession ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-[30px] w-[30px] p-0"
+              onClick={() => setResumeDialogOpen(true)}
+              aria-label="Resume or move to worktree"
+              title="Resume or move to worktree"
+            >
+              <GitBranch className="h-3.5 w-3.5" />
+            </Button>
+          ) : null}
           {showPaneNotificationToggle ? (
             <Button
               variant={notificationPaneEnabled ? "primary" : "ghost"}
@@ -437,6 +465,18 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
           </Button>
         </div>
       </Toolbar>
+      {showResumeWorktreeButton && sourceSession && onLaunchAgentInSession ? (
+        <ResumeWorktreeDialog
+          open={resumeDialogOpen}
+          onOpenChange={setResumeDialogOpen}
+          sessionName={sessionName}
+          sourceSession={sourceSession}
+          launchConfig={launchConfig}
+          worktreeEntries={worktreeEntries}
+          worktreeRepoRoot={worktreeRepoRoot}
+          onLaunchAgentInSession={onLaunchAgentInSession}
+        />
+      ) : null}
       {fallbackReason && (
         <Callout tone="warning" size="xs">
           Image fallback: {fallbackReason}

@@ -644,6 +644,9 @@ describe("createApiRouter", () => {
       worktreePath: undefined,
       worktreeBranch: undefined,
       worktreeCreateIfMissing: undefined,
+      resumeSessionId: undefined,
+      resumeFromPaneId: undefined,
+      resumePolicy: undefined,
     });
   });
 
@@ -671,6 +674,9 @@ describe("createApiRouter", () => {
       worktreePath: undefined,
       worktreeBranch: "feature/new-pane",
       worktreeCreateIfMissing: true,
+      resumeSessionId: undefined,
+      resumeFromPaneId: undefined,
+      resumePolicy: undefined,
     });
   });
 
@@ -686,6 +692,95 @@ describe("createApiRouter", () => {
     });
 
     expect(res.status).toBe(400);
+    expect(actions.launchAgentInSession).not.toHaveBeenCalled();
+  });
+
+  it("returns RESUME_INVALID_INPUT when required resume fails", async () => {
+    const { api, actions } = createTestContext();
+    const res = await api.request("/sessions/launch", {
+      method: "POST",
+      headers: { ...authHeaders, "content-type": "application/json" },
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "launch-required-resume-fail",
+        resumeFromPaneId: "%missing",
+        resumePolicy: "required",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.command.ok).toBe(false);
+    expect(data.command.error.code).toBe("RESUME_INVALID_INPUT");
+    expect(data.command.resume).toMatchObject({
+      requested: true,
+      reused: false,
+      failureReason: "invalid_input",
+      policy: "required",
+    });
+    expect(actions.launchAgentInSession).not.toHaveBeenCalled();
+  });
+
+  it("falls back to new launch on best_effort resume resolve failure", async () => {
+    const { api, actions } = createTestContext();
+    const res = await api.request("/sessions/launch", {
+      method: "POST",
+      headers: { ...authHeaders, "content-type": "application/json" },
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "launch-best-effort-resume-fail",
+        resumeFromPaneId: "%missing",
+        resumePolicy: "best_effort",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.command.ok).toBe(true);
+    expect(data.command.resume).toMatchObject({
+      requested: true,
+      reused: false,
+      fallbackReason: "invalid_input",
+      policy: "best_effort",
+    });
+    expect(actions.launchAgentInSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resumeSessionId: undefined,
+        resumeFromPaneId: "%missing",
+        resumePolicy: "best_effort",
+      }),
+    );
+  });
+
+  it("returns TMUX_UNAVAILABLE with resume unsupported metadata on non-tmux backend", async () => {
+    const { api, actions } = createTestContext({
+      multiplexer: {
+        ...defaultConfig.multiplexer,
+        backend: "wezterm",
+      },
+    });
+    const res = await api.request("/sessions/launch", {
+      method: "POST",
+      headers: { ...authHeaders, "content-type": "application/json" },
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "launch-wezterm-resume",
+        resumeSessionId: "sess-1",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.command.ok).toBe(false);
+    expect(data.command.error.code).toBe("TMUX_UNAVAILABLE");
+    expect(data.command.resume).toMatchObject({
+      requested: true,
+      reused: false,
+      failureReason: "unsupported",
+    });
     expect(actions.launchAgentInSession).not.toHaveBeenCalled();
   });
 
@@ -746,6 +841,39 @@ describe("createApiRouter", () => {
     expect(secondData.command.ok).toBe(false);
     expect(secondData.command.error.code).toBe("INVALID_PAYLOAD");
     expect(secondData.command.error.message).toBe("requestId payload mismatch");
+    expect(actions.launchAgentInSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats omitted resumePolicy and required as the same idempotency payload for manual resume", async () => {
+    const { api, actions } = createTestContext();
+    const headers = { ...authHeaders, "content-type": "application/json" };
+
+    const first = await api.request("/sessions/launch", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "launch-resume-idempotent",
+        resumeSessionId: "sess-1",
+      }),
+    });
+    const second = await api.request("/sessions/launch", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        sessionName: "dev-main",
+        agent: "codex",
+        requestId: "launch-resume-idempotent",
+        resumeSessionId: "sess-1",
+        resumePolicy: "required",
+      }),
+    });
+
+    const firstData = await first.json();
+    const secondData = await second.json();
+    expect(firstData.command.ok).toBe(true);
+    expect(secondData.command.ok).toBe(true);
     expect(actions.launchAgentInSession).toHaveBeenCalledTimes(1);
   });
 

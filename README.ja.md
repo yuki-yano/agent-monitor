@@ -15,6 +15,7 @@ Codex CLI / Claude Code ワークフロー向けに設計されており、デ�
 - 再起動をまたいだセッション / リポジトリのタイムラインと活動履歴を追跡
 - 監視しながら Git diff / commit を確認し、リポジトリ単位のノートを管理
 - tmux セッションへ Codex / Claude エージェントを起動
+- 既存の Codex / Claude セッションを source pane で再開し、別の `vw` worktree 文脈へ移動
 - Session Detail で worktree 文脈を切り替え、同一セッションのまま timeline / diff / commits / files を確認（[`vde-worktree`](https://github.com/yuki-yano/vde-worktree) / `vw` が必要）
 
 ## 主な機能
@@ -23,7 +24,7 @@ Codex CLI / Claude Code ワークフロー向けに設計されており、デ�
 - Session Detail: ライブスクリーン表示（text/image）、追従モード、入力コンポーザー（text/keys/raw）
 - タイムラインと文脈情報: 状態タイムライン、repo notes、git diff / commits、ファイル閲覧
 - worktree 文脈切替: セッションを維持したまま、選択した worktree を基準に timeline / git / files を確認（[`vde-worktree`](https://github.com/yuki-yano/vde-worktree) / `vw` が必要）
-- エージェント操作: CLI / UI から tmux セッションへ Codex / Claude を起動
+- エージェント操作: CLI / UI から Codex / Claude の起動、または既存セッションの再開/移動
 - マルチ pane 監視: デスクトップ向け Chat Grid で並列監視
 - モバイル UI/UX 優先: 主要な監視・操作フローをスマホブラウザの一次体験として設計
 - PWA Push 通知: セッション単位トグル（既定OFF）と設定ファイルの全体ON/OFFに対応
@@ -129,9 +130,14 @@ npx vde-monitor@latest [options]
 --tailscale             Use Tailscale IP for access URL
 --https                 Enable Tailscale HTTPS guidance/QR (effective with `--tailscale`)
 --bind <ip>             Bind to specific IPv4
---web-port <port>       Override displayed web port in URL
 --multiplexer <name>    `tmux` or `wezterm`
 --backend <name>        image backend (`alacritty`, `terminal`, `iterm`, `wezterm`, `ghostty`)
+```
+
+高度なオプション:
+
+```text
+--web-port <port>       Override displayed web port in URL
 --wezterm-cli <path>    wezterm binary path (default: `wezterm`)
 --wezterm-target <t>    wezterm target (`auto` or explicit target)
 --socket-name <name>    tmux socket name
