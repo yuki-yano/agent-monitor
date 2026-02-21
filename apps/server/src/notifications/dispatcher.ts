@@ -150,13 +150,48 @@ export const createNotificationDispatcher = ({
   const lastFingerprintBySubscriptionId = new Map<string, string>();
   const lastSentAtByPaneEventBySubscriptionId = new Map<string, number>();
   const consecutiveFailureCountBySubscriptionId = new Map<string, number>();
+  const endpointBySubscriptionId = new Map<string, string>();
   const cleanupSubscriptionCache = (subscriptionId: string) => {
     lastFingerprintBySubscriptionId.delete(subscriptionId);
     consecutiveFailureCountBySubscriptionId.delete(subscriptionId);
+    endpointBySubscriptionId.delete(subscriptionId);
     const cooldownKeyPrefix = `${subscriptionId}:`;
     Array.from(lastSentAtByPaneEventBySubscriptionId.keys()).forEach((key) => {
       if (key.startsWith(cooldownKeyPrefix)) {
         lastSentAtByPaneEventBySubscriptionId.delete(key);
+      }
+    });
+  };
+  const reconcileSubscriptionCaches = (
+    subscriptions: Array<{
+      id: string;
+      endpoint: string;
+    }>,
+  ) => {
+    const activeSubscriptionIds = new Set(subscriptions.map((subscription) => subscription.id));
+    subscriptions.forEach((subscription) => {
+      const previousEndpoint = endpointBySubscriptionId.get(subscription.id);
+      if (previousEndpoint != null && previousEndpoint !== subscription.endpoint) {
+        cleanupSubscriptionCache(subscription.id);
+      }
+      endpointBySubscriptionId.set(subscription.id, subscription.endpoint);
+    });
+    Array.from(lastFingerprintBySubscriptionId.keys()).forEach((subscriptionId) => {
+      if (!activeSubscriptionIds.has(subscriptionId)) {
+        cleanupSubscriptionCache(subscriptionId);
+      }
+    });
+    Array.from(consecutiveFailureCountBySubscriptionId.keys()).forEach((subscriptionId) => {
+      if (!activeSubscriptionIds.has(subscriptionId)) {
+        cleanupSubscriptionCache(subscriptionId);
+      }
+    });
+    Array.from(lastSentAtByPaneEventBySubscriptionId.keys()).forEach((cooldownKey) => {
+      const separatorIndex = cooldownKey.indexOf(":");
+      const subscriptionId =
+        separatorIndex >= 0 ? cooldownKey.slice(0, separatorIndex) : cooldownKey;
+      if (!activeSubscriptionIds.has(subscriptionId)) {
+        cleanupSubscriptionCache(subscriptionId);
       }
     });
   };
@@ -176,6 +211,7 @@ export const createNotificationDispatcher = ({
     }
 
     const subscriptions = subscriptionStore.list();
+    reconcileSubscriptionCaches(subscriptions);
     const candidates = subscriptions.filter((subscription) => {
       if (!subscription.paneIds.includes(event.paneId)) {
         return false;

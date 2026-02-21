@@ -399,9 +399,13 @@ export const ScreenPanel = ({ state, actions, controls }: ScreenPanelProps) => {
               size="sm"
               className="h-[30px] w-[30px] p-0"
               onClick={paneNotificationClickHandler ?? undefined}
-              disabled={!notificationPushEnabled || !paneNotificationClickHandler}
+              disabled={
+                !notificationPushEnabled ||
+                !paneNotificationClickHandler ||
+                notificationStatus === "denied"
+              }
               aria-label={paneNotificationAriaLabel}
-              aria-pressed={notificationPaneEnabled}
+              aria-pressed={notificationSubscribed ? notificationPaneEnabled : undefined}
             >
               {notificationPaneEnabled ? (
                 <Bell className="h-3.5 w-3.5" />

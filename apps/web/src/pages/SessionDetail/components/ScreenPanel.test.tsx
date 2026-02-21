@@ -148,6 +148,7 @@ describe("ScreenPanel", () => {
     fireEvent.click(toggleButton);
     expect(actions.onRequestNotificationPermission).toHaveBeenCalledTimes(1);
     expect(actions.onTogglePaneNotification).not.toHaveBeenCalled();
+    expect(toggleButton.getAttribute("aria-pressed")).toBeNull();
   });
 
   it("places notification toggle to the left of smart wrap button", () => {
@@ -200,6 +201,19 @@ describe("ScreenPanel", () => {
     const actions = buildActions({
       onRequestNotificationPermission: undefined,
     });
+    render(<ScreenPanel state={state} actions={actions} controls={null} />);
+
+    const toggleButton = screen.getByRole("button", { name: "Enable push notifications" });
+    expect(toggleButton.getAttribute("disabled")).not.toBeNull();
+  });
+
+  it("disables notification toggle when notification permission is denied", () => {
+    const state = buildState({
+      notificationStatus: "denied",
+      notificationPushEnabled: true,
+      notificationSubscribed: false,
+    });
+    const actions = buildActions();
     render(<ScreenPanel state={state} actions={actions} controls={null} />);
 
     const toggleButton = screen.getByRole("button", { name: "Enable push notifications" });

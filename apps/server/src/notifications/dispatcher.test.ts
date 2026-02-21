@@ -401,6 +401,72 @@ describe("createNotificationDispatcher", () => {
     expect(sendNotification).toHaveBeenCalledTimes(3);
   });
 
+  it("reconciles stale caches after external subscription removal", async () => {
+    const config = {
+      ...defaultConfig,
+      token: "token",
+      notifications: {
+        pushEnabled: true,
+        enabledEventTypes: [
+          "pane.waiting_permission",
+          "pane.task_completed",
+        ] as ConfigPushEventType[],
+      },
+    };
+    const store = createNotificationSubscriptionStore({
+      filePath: createTempStorePath(),
+      createId: () => "sub-1",
+      now: () => "2026-02-20T00:00:00.000Z",
+    });
+    store.upsert({
+      deviceId: "device-1",
+      subscription: {
+        endpoint: "https://push.example/sub/1",
+        expirationTime: null,
+        keys: { p256dh: "abc_DEF-123", auth: "xyz_DEF-456" },
+      },
+      scope: { paneIds: ["%1"], eventTypes: null },
+      client: { platform: "desktop", standalone: false },
+    });
+
+    const sendNotification = vi.fn(async () => undefined);
+    let currentNowMs = 1000;
+    const dispatcher = createNotificationDispatcher({
+      config,
+      subscriptionStore: store,
+      sendNotification,
+      cooldownMs: 60_000,
+      now: () => "2026-02-20T00:00:01.000Z",
+      nowMs: () => currentNowMs,
+      sleep: async () => undefined,
+      logger: { log: vi.fn(), warn: vi.fn() },
+    });
+
+    await dispatcher.dispatchTransition(
+      createTransition(createDetail("RUNNING", "poll"), createDetail("WAITING_PERMISSION", "poll")),
+    );
+    expect(sendNotification).toHaveBeenCalledTimes(1);
+
+    store.removeAll();
+    store.upsert({
+      deviceId: "device-2",
+      subscription: {
+        endpoint: "https://push.example/sub/2",
+        expirationTime: null,
+        keys: { p256dh: "abc_DEF-123", auth: "xyz_DEF-456" },
+      },
+      scope: { paneIds: ["%1"], eventTypes: null },
+      client: { platform: "desktop", standalone: false },
+    });
+
+    currentNowMs = 1001;
+    await dispatcher.dispatchTransition(
+      createTransition(createDetail("RUNNING", "poll"), createDetail("WAITING_PERMISSION", "poll")),
+    );
+
+    expect(sendNotification).toHaveBeenCalledTimes(2);
+  });
+
   it("skips transitions from restore source and first observation", async () => {
     const config = {
       ...defaultConfig,
