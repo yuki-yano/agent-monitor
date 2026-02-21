@@ -29,6 +29,11 @@ import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from "react";
 
 import { API_ERROR_MESSAGES } from "@/lib/api-messages";
+import {
+  buildNotificationSessionTitleFingerprint,
+  syncLocalNotificationSessionTitles,
+  toNotificationSessionTitleEntries,
+} from "@/lib/notification-session-title-store";
 
 import { defaultLaunchConfig, type LaunchAgentRequestOptions } from "./launch-agent-options";
 import {
@@ -181,6 +186,7 @@ const SessionRuntime = ({ children }: { children: ReactNode }) => {
     : connectionIssue != null && /unauthorized/i.test(connectionIssue)
       ? connectionIssue
       : null;
+  const notificationTitleFingerprintRef = useRef<string>("");
 
   const {
     refreshSessions: refreshSessionsApi,
@@ -245,6 +251,20 @@ const SessionRuntime = ({ children }: { children: ReactNode }) => {
     setWorkspaceTabsDisplayMode("all");
     setLaunchConfig(defaultLaunchConfig);
   }, [setFileNavigatorConfig, setLaunchConfig, setWorkspaceTabsDisplayMode, token]);
+
+  useEffect(() => {
+    if (!hasToken) {
+      notificationTitleFingerprintRef.current = "";
+      return;
+    }
+    const nextEntries = toNotificationSessionTitleEntries(sessions);
+    const nextFingerprint = buildNotificationSessionTitleFingerprint(nextEntries);
+    if (notificationTitleFingerprintRef.current === nextFingerprint) {
+      return;
+    }
+    notificationTitleFingerprintRef.current = nextFingerprint;
+    void syncLocalNotificationSessionTitles(nextEntries).catch(() => undefined);
+  }, [hasToken, sessions]);
 
   const sessionApi = useMemo(
     () => ({
