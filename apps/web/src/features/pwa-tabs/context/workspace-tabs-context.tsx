@@ -105,6 +105,10 @@ export const WorkspaceTabsProvider = ({ children }: PropsWithChildren) => {
         void navigate({ to: "/chat-grid" });
         return;
       }
+      if (tab.id === "system:usage") {
+        void navigate({ to: "/usage" });
+        return;
+      }
       void navigate({ href: "/" });
     },
     [navigate],
