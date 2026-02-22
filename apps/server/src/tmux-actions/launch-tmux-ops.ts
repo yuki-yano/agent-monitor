@@ -550,6 +550,34 @@ export const sendLaunchCommand = async ({
   return sendEnterKey(paneId);
 };
 
+export const sendClaudeWorktreeCdCommand = async ({
+  adapter,
+  paneId,
+  worktreePath,
+  exitCopyModeIfNeeded,
+  sendEnterKey,
+  internalError,
+  skipExitCopyMode = false,
+}: {
+  adapter: TmuxAdapter;
+  paneId: string;
+  worktreePath: string;
+  exitCopyModeIfNeeded: (paneId: string) => Promise<void>;
+  sendEnterKey: (paneId: string) => Promise<ActionResult>;
+  internalError: (message: string) => ActionResult;
+  skipExitCopyMode?: boolean;
+}) => {
+  if (!skipExitCopyMode) {
+    await exitCopyModeIfNeeded(paneId);
+  }
+  const commandLine = `!cd ${quoteShellValue(worktreePath)}`;
+  const sendResult = await adapter.run(["send-keys", "-l", "-t", paneId, "--", commandLine]);
+  if (sendResult.exitCode !== 0) {
+    return internalError(sendResult.stderr || "send-keys claude worktree cd command failed");
+  }
+  return sendEnterKey(paneId);
+};
+
 export const verifyLaunch = async ({
   adapter,
   paneId,

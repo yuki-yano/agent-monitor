@@ -647,6 +647,98 @@ describe("createTmuxActions.launchAgentInSession", () => {
     }
   });
 
+  it("keeps claude running and sends !cd to move worktree on resume", async () => {
+    vi.mocked(resolveVwWorktreeSnapshotCached).mockResolvedValueOnce({
+      repoRoot: "/tmp",
+      baseBranch: "main",
+      entries: [
+        {
+          path: "/tmp",
+          branch: "feature/next",
+          dirty: false,
+          locked: { value: false, owner: null, reason: null },
+          merged: { overall: false, byPR: null },
+          pr: { status: "none" },
+        },
+      ],
+    });
+    const adapter = {
+      run: vi.fn(async (args: string[]) => {
+        if (args[0] === "has-session") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes" && args.includes("#{pane_current_path}")) {
+          return { stdout: "/tmp\n", stderr: "", exitCode: 0 };
+        }
+        if (
+          args[0] === "display-message" &&
+          args.includes("#{window_id}\t#{window_index}\t#{window_name}\t#{pane_id}")
+        ) {
+          return { stdout: "@7\t1\tmain\t%13\n", stderr: "", exitCode: 0 };
+        }
+        if (args[0] === "list-panes" && args.includes("#{pane_current_command}")) {
+          return { stdout: "claude\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    };
+    const config = {
+      ...defaultConfig,
+      token: "test-token",
+      launch: {
+        agents: {
+          codex: { options: ["--model", "gpt-5-codex"] },
+          claude: { options: [] },
+        },
+      },
+    };
+    const tmuxActions = createTmuxActions(adapter, config);
+    const killSpy = vi
+      .spyOn(process, "kill")
+      .mockImplementation((() => true) as typeof process.kill);
+
+    try {
+      const result = await tmuxActions.launchAgentInSession({
+        sessionName: "dev-main",
+        agent: "claude",
+        worktreePath: "/tmp",
+        resumeFromPaneId: "%13",
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+      expect(killSpy).not.toHaveBeenCalled();
+      expect(vi.mocked(execa)).not.toHaveBeenCalled();
+      expect(adapter.run).toHaveBeenCalledWith([
+        "send-keys",
+        "-l",
+        "-t",
+        "%13",
+        "--",
+        "!cd '/tmp'",
+      ]);
+      expect(
+        adapter.run.mock.calls.some(
+          (call) => call[0]?.[0] === "display-message" && call[0]?.includes("#{pane_pid}"),
+        ),
+      ).toBe(false);
+      expect(
+        adapter.run.mock.calls.some(
+          (call) =>
+            call[0]?.[0] === "send-keys" &&
+            call[0]?.[1] === "-l" &&
+            typeof call[0]?.[5] === "string" &&
+            call[0][5].includes("claude --resume"),
+        ),
+      ).toBe(false);
+      expect(adapter.run.mock.calls.some((call) => call[0]?.[0] === "new-window")).toBe(false);
+    } finally {
+      killSpy.mockRestore();
+    }
+  });
+
   it("overrides configured launch options when agentOptions are provided", async () => {
     const adapter = {
       run: vi.fn(async (args: string[]) => {

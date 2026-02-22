@@ -392,7 +392,7 @@ export const ResumeWorktreeDialog = ({
             <button
               type="submit"
               className={cn(
-                "border-latte-blue/45 bg-latte-blue/15 text-latte-blue hover:bg-latte-blue/20 rounded-md border px-2.5 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-latte-blue/15",
+                "border-latte-blue/45 bg-latte-blue/15 text-latte-blue hover:bg-latte-blue/20 disabled:hover:bg-latte-blue/15 rounded-md border px-2.5 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50",
                 className,
               )}
               disabled={submitting || !hasManagedWorktrees}

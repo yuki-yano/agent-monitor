@@ -17,6 +17,7 @@ import {
   resolveExistingPaneLaunchTarget,
   resolveUniqueWindowName,
   rollbackCreatedWindow,
+  sendClaudeWorktreeCdCommand,
   sendLaunchCommand,
   verifyLaunch,
 } from "./launch-tmux-ops";
@@ -197,6 +198,41 @@ export const createLaunchActions = ({
       });
       if (!target.ok) {
         return launchError(target.error, defaultLaunchRollback());
+      }
+
+      if (agent === "claude" && resumeCommandCwd) {
+        const sendResult = await sendClaudeWorktreeCdCommand({
+          adapter,
+          paneId: target.paneId,
+          worktreePath: resumeCommandCwd,
+          exitCopyModeIfNeeded,
+          sendEnterKey,
+          internalError,
+        });
+        if (!sendResult.ok) {
+          console.warn(
+            `[vde-monitor] claude worktree move send failed: session=${normalizedSessionName} pane=${target.paneId} window=${target.windowId}:${target.windowName} error=${sendResult.error.message}`,
+          );
+          return launchError(sendResult.error, defaultLaunchRollback());
+        }
+
+        const verification = await verifyLaunch({
+          adapter,
+          paneId: target.paneId,
+          agent,
+        });
+
+        return launchSuccess({
+          sessionName: normalizedSessionName,
+          agent,
+          windowId: target.windowId,
+          windowIndex: target.windowIndex,
+          windowName: target.windowName,
+          paneId: target.paneId,
+          launchedCommand: agent,
+          resolvedOptions,
+          verification,
+        });
       }
 
       const interruptError = await interruptPaneForRelaunch({
